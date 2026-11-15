@@ -1,0 +1,107 @@
+// Test data for Playwright: plain SQL (the app's server modules can't load outside Next.js).
+import { hash } from "@node-rs/argon2";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { config } from "dotenv";
+import pg from "pg";
+
+config({ path: ".env.local", quiet: true });
+// Opened on first use, and again after closeDb() (Playwright runs afterAll hooks when a worker restarts).
+let _pool: pg.Pool | null = null;
+const pool = new Proxy({} as pg.Pool, {
+  get(_t, prop) {
+    _pool ??= new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+    const v = (_pool as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(_pool) : v;
+  },
+});
+
+export const uid = () => randomUUID().slice(0, 8);
+
+export async function createFamily(opts: { password?: string; studentPassword?: string; studentName?: string } = {}) {
+  const tag = uid();
+  const parent = { name: `Parent ${tag}`, email: `parent-${tag}@test.owlrnd`, password: opts.password ?? "parentpass1" };
+  const student = { name: opts.studentName ?? "Scout", username: `scout.${tag}`, password: opts.studentPassword ?? "practice1" };
+  const { rows } = await pool.query(
+    `insert into parents (name, email, password_hash, email_verified_at) values ($1, $2, $3, now()) returning id`,
+    [parent.name, parent.email, await hash(parent.password)],
+  );
+  const parentId = rows[0].id as string;
+  const st = await pool.query(`insert into students (parent_id, name, class_name, username, password_hash) values ($1, $2, 'Class 10', $3, $4) returning id`, [
+    parentId,
+    student.name,
+    student.username,
+    await hash(student.password),
+  ]);
+  return { parentId, studentId: st.rows[0].id as string, parent, student };
+}
+
+export async function deleteParentByEmail(email: string) {
+  await pool.query(`delete from parents where lower(email) = lower($1)`, [email]);
+  await pool.query(`delete from invitations where lower(email) = lower($1)`, [email]);
+  await pool.query(`delete from access_requests where lower(email) = lower($1)`, [email]);
+}
+
+/** A closed-beta invitation (as `npm run invite` makes it, without the email). Returns the sign-up path. */
+export async function createInvitation(email: string, { expiresInDays = 14 } = {}) {
+  const token = randomBytes(32).toString("base64url");
+  const hash = createHash("sha256").update(token).digest("base64url");
+  await pool.query(`insert into invitations (email, token_hash, expires_at) values ($1, $2, now() + ($3 || ' days')::interval)`, [email, hash, String(expiresInDays)]);
+  return `/sign-up?invite=${token}`;
+}
+
+export async function accessRequestFor(email: string): Promise<{ name: string; note: string | null; status: string } | null> {
+  const { rows } = await pool.query(`select name, note, status from access_requests where lower(email) = lower($1)`, [email]);
+  return rows[0] ?? null;
+}
+
+export async function closeDb() {
+  const p = _pool;
+  _pool = null;
+  await p?.end();
+}
+
+export type FixtureQuestion = { type: "multiple_choice" | "short"; prompt: string; options?: string[]; correct?: number; expected?: string; explanation?: string };
+
+/** An active track with one ready exam, written straight to the database (no AI). */
+export async function createTrackWithExam(
+  studentId: string,
+  opts: {
+    name?: string;
+    status?: "active" | "paused" | "goal_reached";
+    testDate?: string | null;
+    questions?: FixtureQuestion[];
+    goal?: { threshold: number; runLength: number };
+    topicNames?: string[];
+  } = {},
+) {
+  const qs =
+    opts.questions ??
+    Array.from({ length: 10 }, (_, i): FixtureQuestion =>
+      i < 6
+        ? { type: "multiple_choice", prompt: `Question ${i + 1}: what is the unit of resistance?`, options: ["Ohm", "Volt", "Ampere", "Watt"], correct: 0 }
+        : { type: "short", prompt: `Question ${i + 1}: name the law that links V, I and R.`, expected: "Ohm's law" },
+    );
+  const { rows: tr } = await pool.query(
+    `insert into tracks (student_id, name, status, test_date, test_label, goal_threshold, goal_run_length, next_exam, activated_at)
+     values ($1, $2, $3, $4, 'unit test', $5, $6, 'ready', now()) returning id`,
+    [studentId, opts.name ?? "Physics: Current electricity", opts.status ?? "active", opts.testDate ?? null, opts.goal?.threshold ?? 8, opts.goal?.runLength ?? 3],
+  );
+  const trackId = tr[0].id as string;
+  const names = opts.topicNames ?? ["Ohm's law"];
+  const tp: { id: string }[] = [];
+  for (const [i, name] of names.entries()) {
+    const { rows } = await pool.query(`insert into topics (track_id, name, position) values ($1, $2, $3) returning id`, [trackId, name, i]);
+    tp.push(rows[0]);
+  }
+  const { rows: ex } = await pool.query(`insert into exams (student_id, track_id, number, status) values ($1, $2, 1, 'ready') returning id`, [studentId, trackId]);
+  const examId = ex[0].id as string;
+  for (const [i, q] of qs.entries()) {
+    const { rows } = await pool.query(
+      `insert into questions (track_id, topic_id, type, prompt, options, correct_option, expected_answer, difficulty, explanation)
+       values ($1, $2, $3, $4, $5, $6, $7, 2, $8) returning id`,
+      [trackId, tp[i % tp.length]!.id, q.type, q.prompt, JSON.stringify(q.options ?? []), q.correct ?? null, q.expected ?? null, q.explanation ?? `SECRET-EXPLANATION-${i + 1}`],
+    );
+    await pool.query(`insert into exam_questions (exam_id, question_id, position) values ($1, $2, $3)`, [examId, rows[0].id, i + 1]);
+  }
+  return { trackId, examId };
+}

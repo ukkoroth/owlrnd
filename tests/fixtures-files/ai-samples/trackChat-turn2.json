@@ -1,0 +1,29 @@
+{
+  "reply": "Done. I have added more calculation questions on resistors in parallel, changed the goal to 9 / 10 or better in 3 exams in a row, and removed the test date. The name stays Physics: Electricity, with the same three topics: Ohm's law, resistors in series, and resistors in parallel. I have kept the label \"unit test\" without a date; tell me if you would like that removed too. If everything looks right, you can press \"Create track\".",
+  "extracted": [],
+  "preview": {
+    "name": "Physics: Electricity",
+    "topics": [
+      {
+        "name": "Ohm's law",
+        "description": "V = IR, resistance and its SI unit the ohm, calculating V, I or R."
+      },
+      {
+        "name": "Resistors in series",
+        "description": "Same current through each resistor; equivalent resistance Rs = R1 + R2 + R3."
+      },
+      {
+        "name": "Resistors in parallel",
+        "description": "Same potential difference across each; 1/Rp = 1/R1 + 1/R2 + 1/R3, Rp less than the smallest resistor, use in domestic circuits."
+      }
+    ],
+    "testDate": null,
+    "testLabel": "unit test",
+    "goal": {
+      "threshold": 9,
+      "runLength": 3
+    },
+    "focusNotes": "Include more calculation questions on resistors in parallel, such as finding the equivalent resistance."
+  },
+  "ready": true
+}

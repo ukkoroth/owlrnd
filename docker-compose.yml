@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: owlrnd
+      POSTGRES_PASSWORD: owlrnd
+      POSTGRES_DB: owlrnd
+    # 5433 on the host so it doesn't clash with a Homebrew Postgres on 5432
+    ports: ["5433:5432"]
+    volumes: [owlrnd-pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U owlrnd"]
+      interval: 2s
+      retries: 20
+  mailpit:
+    # Catches every email in dev. Inbox: http://localhost:8025 · SMTP: localhost:1025
+    image: axllent/mailpit:v1.27
+    ports: ["1025:1025", "8025:8025"]
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+volumes:
+  owlrnd-pg:

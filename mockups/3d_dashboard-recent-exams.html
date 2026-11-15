@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>3d_dashboard-recent-exams</title>
+
+
+
+
+
+
+
+
+
+
+<style>
+body{margin:0}
+summary.acct{list-style:none}summary.acct::-webkit-details-marker{display:none}
+a{color:#2563EB}a:hover{color:#2563EB}
+</style>
+</head><body><div id="root">
+
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F3F7FF; color: #132C6B; font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<aside style="flex: 1 1 220px; box-sizing: border-box; padding: 28px 20px; display: flex; flex-direction: column; gap: 28px; background: #1E40AF; color: #FFFFFF">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<svg aria-hidden="true" width="30" height="30" viewBox="0 0 4.54 4.54" fill="none"><rect x="0" y="0" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="1.18" y="0" width="1" height="1" rx="0.18" fill="#5F86E6"></rect><rect x="2.36" y="0" width="1" height="1" rx="0.18" fill="#7AA2FF"></rect><rect x="3.54" y="0" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="0" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF"></rect><rect x="1.18" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="2.36" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="3.54" y="1.18" width="1" height="1" rx="0.18" fill="#7AA2FF"></rect><rect x="0" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF"></rect><rect x="1.18" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="2.36" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="3.54" y="2.36" width="1" height="1" rx="0.18" fill="#A9C4FF"></rect><rect x="0" y="3.54" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="1.18" y="3.54" width="1" height="1" rx="0.18" fill="#D6E3FF"></rect><rect x="2.36" y="3.54" width="1" height="1" rx="0.18" fill="#A9C4FF"></rect><rect x="3.54" y="3.54" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect></svg>
+<div style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 20px; font-weight: 700">owlrnd</div>
+</div>
+<nav style="display: flex; flex-wrap: wrap; gap: 6px">
+<a href="MvpHome.dc.html" style="flex: 1 1 150px; display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 2px; background: #FFFFFF; color: #1E40AF; font-size: 15px; font-weight: 600; text-decoration: none">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4v-6H4zM10 20h4V9h-4zM16 20h4V4h-4z"></path></svg>
+Exams
+</a>
+</nav>
+<a href="MvpPoints.dc.html" style="margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 2px; border: 1px solid #7AA2FF; color: #FFFFFF; text-decoration: none">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 700">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z"></path></svg>
+5,640
+</span>
+<span style="font-size: 13px; color: #D3E0FF">points · Champion level</span>
+</a>
+<details style="position: relative;">
+<summary class="acct" aria-label="Account menu for Scout" style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 8px; border-radius: 2px; border: 1px solid #3B5FC7; cursor: pointer">
+<span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; background: #FFFFFF; color: #1E40AF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px">S</span>
+<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 600">Scout</span>
+<span style="font-size: 12px; color: #D3E0FF">Student</span>
+</span>
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg>
+</summary>
+<div style="position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid #CFDDF5; border-radius: 2px; background: #FFFFFF">
+<a href="MvpMe.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 2px; color: #132C6B; font-size: 15px; font-weight: 600; text-decoration: none">Profile</a>
+<a href="MvpLogin.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 2px; color: #132C6B; font-size: 15px; font-weight: 600; text-decoration: none">Sign out</a>
+</div>
+</details>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 2.5rem 5%">
+<div style="max-width: 1000px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 14px; color: #4A5F8A">Saturday, 14 November</div>
+<h1 style="margin: 0; font-size: 2rem; font-weight: 600; letter-spacing: -0.02em">Hi Scout</h1>
+</div>
+<div role="group" aria-label="Dashboard view" style="display: flex; gap: 28px; border-bottom: 1px solid #CFDDF5">
+<button type="button" aria-pressed="false" style="height: 44px; padding: 0 4px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #4A5F8A; font: 600 16px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">Today</button>
+<button type="button" aria-pressed="true" style="height: 44px; padding: 0 4px; border: 0; border-bottom: 3px solid #2563EB; background: transparent; color: #132C6B; font: 600 16px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">Recent exams</button>
+<button type="button" aria-pressed="false" style="height: 44px; padding: 0 4px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #4A5F8A; font: 600 16px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">All tracks</button>
+</div>
+
+
+<div style="display: flex; flex-direction: column">
+<div style="font-size: 18px; font-weight: 600">Exams you practised recently</div>
+<h2 style="margin: 0; padding: 14px 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #4A5F8A">Today · Sat 14 Nov</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">8 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 80%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Physics: Current electricity · Exam 2</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>Ohm's law, series circuits · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>resistors in parallel</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+<h2 style="margin: 0; padding: 14px 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #4A5F8A">Fri 13 Nov</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">7 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 70%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Physics: Reflection of light · Exam 4</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>laws of reflection · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>mirror formula</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">7 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 70%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Maths: Quadratic equations · Exam 1</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>standard form · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>factorising</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+<h2 style="margin: 0; padding: 14px 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #4A5F8A">Wed 11 Nov</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">9 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 90%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Maths: Linear equations · Exam 3</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>solving and graphing · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>word problems</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">6 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 60%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Physics: Reflection of light · Exam 3</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>plane mirrors · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>mirror formula, ray diagrams</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 0; border-top: 1px solid #CFDDF5">
+<div style="min-width: 78px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 20px; font-weight: 700">5 / 10</span>
+<div aria-hidden="true" style="height: 6px; background: #E3ECFB; display: flex"><div style="width: 50%; background: #2563EB"></div></div>
+</div>
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px; font-weight: 600">Maths: Trigonometry · Exam 2</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A5F8A"><span style="font-weight: 600; color: #132C6B">Strong: </span>ratios · <span style="font-weight: 600; color: #8C1D18">Needs work: </span>identities, heights and distances</span>
+</div>
+<a href="MvpResult.dc.html" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">Result</a>
+</div>
+</div>
+
+</div>
+
+</main></div>
+
+
+</div>
+
+
+
+</body></html>

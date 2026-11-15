@@ -1,0 +1,144 @@
+# 5. Business rules
+
+These rules are the source of truth. Values marked **(default)** are working defaults listed in `10-decisions.md`; keep them configurable.
+
+## §1 Accounts and sign-in
+
+**Roles.** Two roles: parent and student. A parent has many students. A student belongs to exactly one parent.
+
+**Parent sign-up.**
+- Name, email and password. Password at least 8 characters **(default)**.
+- After sign-up, a 6-digit code is emailed to verify the address. The account cannot be used until it is verified.
+
+**Students.**
+- Created only by their parent: name, class, username and password. No email.
+- Usernames are unique across the whole app.
+- A student cannot change their own password; the parent sets a new one on the edit screen (5e) or the student uses "Forgot password" (5g), which also sends the code to the parent.
+
+**Sign-in (both roles).**
+1. One screen (3a): username or email, plus password.
+2. If they are correct, a new 6-digit code is emailed to the **parent's** email: for a parent, their own; for a student, their parent's.
+3. The code screen (3b) shows the parent's email masked (for example `u•••@example.com`). For students the text says to ask their parent for the code.
+4. On success, a parent lands on Your students (2k) and a student on their dashboard (3c).
+
+**Codes** (verification, sign-in, password reset).
+- 6 digits, single use, valid for 10 minutes **(default)**.
+- A new code makes earlier unused codes invalid.
+- Wrong code: show an error with the tries left. After 3 wrong tries **(default)** the code is invalidated and a new one is sent automatically (5f).
+- "Send a new code" is available at any time; limit resends to 5 per hour **(default)**.
+
+**Password reset** (5g, 5h). Enter username or email; a reset code goes to the parent's email; enter the code and a new password twice.
+
+**Sign-out.** From the profile menu at the bottom of the sidebar (5a, 5c). It ends the session on that device.
+
+**Email change** (parent). Needs a code sent to the new address before it takes effect.
+
+**Remove a student** (5e). Deletes the student's account, tracks, exams and points after a confirmation. It cannot be undone.
+
+## §2 Tracks
+
+- A track belongs to one student. Its name includes the subject, for example "Physics: Current electricity" or "Maths: Quadratic equations".
+- A track has: name, topics (found by the AI from the parent's material), the material itself (messages and attached files), optional test date, goal, and status.
+- **Status:** `active`, `paused` (by the parent) or `goal reached` (stopped).
+- Only active tracks produce new exams. Paused and goal-reached tracks keep their history.
+- The parent creates tracks in the AI chat (2e, 2f). Nothing goes live until the parent confirms.
+- Pause and resume are parent actions. Archive (on goal-reached tracks) hides the track from the student's lists but keeps its history.
+- "Select from packages" is not available in 0.1; show it as Coming soon (2c).
+
+## §3 Goals
+
+- Every track has one goal of the form **"score X / 10 or better in N exams in a row"**. Suggested default: X = 8, N = 3 **(default)**. The parent can change X and N in the chat.
+- Goal progress counts consecutive qualifying exams in that track and resets to 0 on an exam below X.
+- When progress reaches N, the track's status becomes `goal reached`: it stops producing exams, the student sees "Goal reached" with no Start button, and the parent sees "Add topics to continue".
+- **Restarting** (2j): the parent adds material in a chat; the AI finds the new topics; earlier topics stay as revision (about 2 questions per exam **(default)**); the parent agrees a new goal; status returns to `active` with progress 0.
+
+## §4 Building exams (adaptivity)
+
+Adaptivity happens **between** exams. The whole paper is shown at once and does not change while the student answers.
+
+- An exam has at most **10 questions**.
+- **Question types in 0.1:** multiple choice (4 options, one correct), short answer (a word or one sentence), and long typed answer (a few sentences).
+- **Topic strength** per student per topic: `strong`, `needs work` or `not tested`. A topic is strong when at least 80% of its last 5 questions were answered correctly, with at least 3 answered **(default)**.
+- **First exam in a track:** covers every topic about evenly.
+- **Later exams:** about 50% weak topics, 30% not-tested topics and 20% strong topics as repeats **(default)**. When there are no weak or untested topics, fill with strong topics at a slightly harder level.
+- A question the student missed may come back, reworded, in a later exam. Do not repeat an identical question within 3 exams **(default)** unless it is a deliberate retry of a miss.
+- Questions stay within the track's topics and material and at the student's class level (see AI §6).
+- The result screen states what the next exam will focus on, using these rules.
+
+## §5 Exam paper layout
+
+- An exam page is never taller than the browser window; **the page never scrolls**.
+- Questions are laid out at normal size, measured, and placed page by page until the next one would overflow. Do not use a fixed number per page.
+- A question never splits across pages; it stays with all its options or its answer box.
+- Text is never shrunk below 16px to make questions fit; move them to the next page instead.
+- On window resize, page the questions again, keep every answer, and keep the student on the page holding the question they were on.
+- Show "Page X of Y" at the bottom left, with Next and Previous beside Submit. **Submit appears only on the last page.**
+- Question numbers run continuously across pages.
+- Answers are kept when moving between pages and if the student leaves and returns before submitting.
+- **Submitting with blank questions** shows a warning naming them (4.1c). Blank answers count as wrong.
+
+## §6 Marking
+
+- Multiple choice is marked immediately.
+- Short answers accept reasonable spelling mistakes and equivalent wording; the AI judges equivalence against the expected answer.
+- Long typed answers are marked by the AI against a list of key points, with partial marks.
+- While typed answers are being marked, the student sees "Marking your answers" (4.1d) and may leave; the result appears on the dashboard when ready.
+- **Score:** each question carries marks (multiple choice and short answers 1 mark; long answers 2 or 3 marks **(default)**). The score shown is out of 10, scaled from total marks and rounded to the nearest whole number **(default)**.
+- The marked paper (4.1f) shows the correct answer, the student's wrong answer and a one-line reason for each miss. Marked written answers (4.1g) show a verdict, marks, what a full answer includes and short feedback.
+- After marking, update topic strength (§4), goal progress (§3) and points (§8).
+
+## §7 Suggestions on the Today tab
+
+- Show up to 3 suggested exams, at most one per track.
+- Only active tracks are eligible.
+- Order **(default)**: the track with the nearest upcoming test date first; then tracks not practised for the longest time; then the track with the most weak topics.
+- When the student finishes a suggested exam, a new suggestion takes its place, so a keen student can keep practising.
+- Show "N completed today".
+- **First day** (3f): no exams taken yet; show the one available exam and a short explanation.
+- **Nothing to practise** (3g): no active tracks; list each track with its status.
+
+## §8 Points and levels
+
+Points reward effort and improvement more than raw marks. Points only add up; they are never spent or taken away.
+
+| Event, per exam | Points |
+| --- | --- |
+| Finish an exam | 10 |
+| Each correct answer | 2 (up to 20) |
+| Each extra correct answer compared with the last exam in the same track | 5 |
+| A weak topic becomes strong | 10 each |
+| A perfect 10 / 10 | 10 extra |
+| First exam of the day, when the student also practised the day before | 5, or 10 from day 7 of an unbroken streak |
+
+- Full points apply to the first 5 exams a day **(default)**; after that only correct answers score.
+- Worked example: 8 / 10, up from 6 last time, on day 4 of a streak: 10 + 16 + (2 × 5) + 5 = **41 points**.
+- The result screen shows the breakdown; the points page shows today's breakdown and the rules.
+
+**Levels** (by total points) **(default thresholds)**:
+
+| Level | Points |
+| --- | --- |
+| Explorer | 500 |
+| Trailblazer | 2,000 |
+| Champion | 5,000 |
+| Mastermind | 10,000 |
+| All-rounder | 20,000 |
+
+The sidebar shows the total and current level on every student screen. The parent sees the same total and level.
+
+## §9 Activity charts
+
+- Count **completed exams per day** in the student's time zone.
+- **7-day bar chart:** the last 7 days ending today; the count above each bar; today highlighted.
+- **26-week activity grid:** one square per day for the last 26 weeks, weeks as columns, days as rows, today outlined. Five shades for 0, 1, 2, 3 and 4 or more exams.
+- Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data.
+
+## §10 Permissions
+
+| Action | Parent | Student |
+| --- | --- | --- |
+| Add, edit or remove students | Yes | No |
+| Create, pause, resume, archive tracks; add topics; set goals | Yes | No |
+| Take exams | No | Yes |
+| See results, marked papers, points, activity | Yes, for their own students | Yes, their own |
+| Change password | Own; sets students' passwords | Through "Forgot password" only |

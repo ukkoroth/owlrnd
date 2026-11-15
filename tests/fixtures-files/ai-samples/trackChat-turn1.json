@@ -1,0 +1,36 @@
+{
+  "reply": "I have read page 142 and set up a draft in the preview. Name: Physics: Electricity. Topics: Ohm's law, resistors in series, and resistors in parallel. Test: unit test on Friday 20 November 2026. Goal: 8 / 10 or better in 3 exams in a row. The questions will mix multiple choice and short answers, including small calculations like the worked examples on the page. Does this look right, or would you like to change anything?",
+  "extracted": [
+    {
+      "attachment": 1,
+      "label": "Page 142",
+      "readable": true,
+      "text": "Chapter 12 - Electricity (page 142)\n\n12.4 Ohm's Law\nThe potential difference V across the ends of a metallic wire in an electric circuit is directly proportional to the current I flowing through it, provided its temperature remains the same. This is called Ohm's law: V = I R, where R is the resistance of the wire. The SI unit of resistance is the ohm (Ω). 1 Ω = 1 V / 1 A.\n\nExample 12.3: An electric bulb draws a current of 0.5 A when connected to a 220 V supply. Find its resistance.\nSolution: R = V / I = 220 V / 0.5 A = 440 Ω.\n\n12.6 Resistance of a system of resistors\nResistors in series: When resistors R1, R2 and R3 are joined end to end, the same current flows through each. The equivalent resistance is Rs = R1 + R2 + R3.\n\nResistors in parallel: When resistors are connected between the same two points, the potential difference across each is the same and the total current is shared. The equivalent resistance is given by 1/Rp = 1/R1 + 1/R2 + 1/R3. The equivalent resistance of resistors in parallel is less than the smallest individual resistance.\n\nExample 12.8: Two resistors of 4 Ω and 6 Ω are connected in parallel. 1/Rp = 1/4 + 1/6 = 5/12, so Rp = 2.4 Ω.\n\nQuestions\n1. Judge the equivalent resistance when 1 Ω and 10^6 Ω are joined in parallel.\n2. Why is a series arrangement not used for domestic circuits?"
+    }
+  ],
+  "preview": {
+    "name": "Physics: Electricity",
+    "topics": [
+      {
+        "name": "Ohm's law",
+        "description": "V = IR, resistance and its SI unit the ohm, calculating V, I or R."
+      },
+      {
+        "name": "Resistors in series",
+        "description": "Same current through each resistor; equivalent resistance Rs = R1 + R2 + R3."
+      },
+      {
+        "name": "Resistors in parallel",
+        "description": "Same potential difference across each; 1/Rp = 1/R1 + 1/R2 + 1/R3, Rp less than the smallest resistor, use in domestic circuits."
+      }
+    ],
+    "testDate": "2026-11-20",
+    "testLabel": "unit test",
+    "goal": {
+      "threshold": 8,
+      "runLength": 3
+    },
+    "focusNotes": null
+  },
+  "ready": false
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>2e_create-the-first-track-start-of-the-chat</title>
+
+
+
+
+
+
+
+
+
+
+<style>
+body{margin:0}
+summary.acct{list-style:none}summary.acct::-webkit-details-marker{display:none}
+a{color:#2563EB}a:hover{color:#2563EB}
+</style>
+</head><body><div id="root">
+
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F3F7FF; color: #132C6B; font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<aside style="flex: 1 1 220px; box-sizing: border-box; padding: 28px 20px; display: flex; flex-direction: column; gap: 28px; background: #1E40AF; color: #FFFFFF">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<svg aria-hidden="true" width="30" height="30" viewBox="0 0 4.54 4.54" fill="none"><rect x="0" y="0" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="1.18" y="0" width="1" height="1" rx="0.18" fill="#5F86E6"></rect><rect x="2.36" y="0" width="1" height="1" rx="0.18" fill="#7AA2FF"></rect><rect x="3.54" y="0" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="0" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF"></rect><rect x="1.18" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="2.36" y="1.18" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="3.54" y="1.18" width="1" height="1" rx="0.18" fill="#7AA2FF"></rect><rect x="0" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF"></rect><rect x="1.18" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="2.36" y="2.36" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="3.54" y="2.36" width="1" height="1" rx="0.18" fill="#A9C4FF"></rect><rect x="0" y="3.54" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect><rect x="1.18" y="3.54" width="1" height="1" rx="0.18" fill="#D6E3FF"></rect><rect x="2.36" y="3.54" width="1" height="1" rx="0.18" fill="#A9C4FF"></rect><rect x="3.54" y="3.54" width="1" height="1" rx="0.18" fill="#FFFFFF" fill-opacity="0.09"></rect></svg>
+<div style="font-size: 20px; font-weight: 700">owlrnd</div>
+</div>
+<nav style="display: flex; flex-wrap: wrap; gap: 6px">
+<a href="MvpStudents.dc.html" style="flex: 1 1 150px; display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 2px; background: #FFFFFF; color: #1E40AF; font-size: 15px; font-weight: 600; text-decoration: none">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c2.2.7 3.5 2.4 3.5 5.2"></path></svg>
+Students
+</a>
+</nav>
+<details style="position: relative; margin-top: auto;">
+<summary class="acct" aria-label="Account menu for Atticus Finch" style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 8px; border-radius: 2px; border: 1px solid #3B5FC7; cursor: pointer">
+<span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; background: #FFFFFF; color: #1E40AF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px">A</span>
+<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 600">Atticus Finch</span>
+<span style="font-size: 12px; color: #D3E0FF">Parent</span>
+</span>
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg>
+</summary>
+<div style="position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid #CFDDF5; border-radius: 2px; background: #FFFFFF">
+<a href="MvpParentProfile.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 2px; color: #132C6B; font-size: 15px; font-weight: 600; text-decoration: none">Profile</a>
+<a href="MvpLogin.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 2px; color: #132C6B; font-size: 15px; font-weight: 600; text-decoration: none">Sign out</a>
+</div>
+</details>
+</aside>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 2rem 4%; display: flex; flex-direction: column; gap: 16px">
+<nav aria-label="Breadcrumb" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: #4A5F8A">
+<a href="MvpStudents.dc.html" style="min-height: 28px; display: flex; align-items: center; font-weight: 600">Students</a>
+<span aria-hidden="true">/</span>
+<span>Scout</span>
+<span aria-hidden="true">/</span>
+<a href="MvpTracksEmpty.dc.html" style="min-height: 28px; display: flex; align-items: center; font-weight: 600">Tracks</a>
+<span aria-hidden="true">/</span>
+<span>New track</span>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; border-bottom: 1.5px solid #132C6B">
+<h1 style="margin: 0; font-size: 2rem; font-weight: 600; letter-spacing: -0.02em">Create Scout's first track</h1>
+<div style="font-size: 15px; color: #4A5F8A">Tell the AI what the track should cover and attach textbook pages, a syllabus photo or a description.</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px 40px">
+<div style="flex: 999 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px">
+<div style="align-self: flex-start; max-width: 82%; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; font-weight: 700; color: #2563EB">owlrnd AI</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.5; text-wrap: pretty">Hi Atticus. Let's create Scout's first track.</p>
+<p style="margin: 0; font-size: 16px; line-height: 1.5; text-wrap: pretty">Tell me what he is studying: the subject, the chapter, and any test coming up with its date. If you have them, attach photos of the textbook pages or the syllabus. I will find the topics and suggest a goal for the track.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+<span style="font-size: 13px; color: #4A5F8A">Or start with one of these</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="min-height: 44px; padding: 0 16px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #132C6B; font: 500 15px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; text-align: left; cursor: pointer">A chapter for an upcoming unit test</button>
+<button type="button" style="min-height: 44px; padding: 0 16px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #132C6B; font: 500 15px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; text-align: left; cursor: pointer">Revision for the half-yearly exams</button>
+<button type="button" style="min-height: 44px; padding: 0 16px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #132C6B; font: 500 15px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; text-align: left; cursor: pointer">Practice from textbook pages I will attach</button>
+</div>
+</div>
+</div>
+<div style="box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid #132C6B; border-radius: 2px">
+<label for="chat-input" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message</label>
+<textarea id="chat-input" rows="2" placeholder="Describe the track: a subject, a chapter, a test date" style="box-sizing: border-box; width: 100%; padding: 0px; border: 0px; outline: 0px; resize: none; font: 400 16px / 1.45 Inter, system-ui, -apple-system, &quot;Segoe UI&quot;, sans-serif; color: rgb(19, 44, 107); background: rgb(255, 255, 255);"></textarea>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #132C6B; font: 500 14px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"></path></svg>
+Attach file
+</button>
+<button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #132C6B; font: 500 14px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+Take photo
+</button>
+</div>
+<button type="button" style="height: 44px; padding: 0 26px; border: 0; border-radius: 2px; background: #2563EB; color: #FFFFFF; font: 600 16px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer">Send</button>
+</div>
+</div>
+</div>
+<div style="flex: 1 1 260px; min-width: 0; align-self: flex-start; box-sizing: border-box; display: flex; flex-direction: column; padding: 18px 20px; border: 1px dashed #A9BCE0; border-radius: 2px; background: #FFFFFF">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 6px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">New track</h2>
+<span style="height: 24px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 2px; background: #E3ECFB; color: #4A5F8A; font-size: 12px; font-weight: 600">Draft</span>
+</div>
+<div style="font-size: 14px; line-height: 1.45; color: #4A5F8A; padding-bottom: 4px">Fills in as you chat.</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid #CFDDF5">
+<span style="font-size: 13px; color: #4A5F8A">Name</span>
+<span aria-label="Not set yet" style="display: block; width: 60%%; height: 12px; margin-top: 4px; background: #E3ECFB"></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid #CFDDF5">
+<span style="font-size: 13px; color: #4A5F8A">Topics found</span>
+<span aria-label="Not set yet" style="display: block; width: 60%%; height: 12px; margin-top: 4px; background: #E3ECFB"></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid #CFDDF5">
+<span style="font-size: 13px; color: #4A5F8A">Each exam</span>
+<span style="font-size: 15px; font-weight: 600; line-height: 1.4">Up to 10 questions, multiple choice and short answers</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid #CFDDF5">
+<span style="font-size: 13px; color: #4A5F8A">Test date</span>
+<span aria-label="Not set yet" style="display: block; width: 60%%; height: 12px; margin-top: 4px; background: #E3ECFB"></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid #CFDDF5">
+<span style="font-size: 13px; color: #4A5F8A">Goal</span>
+<span aria-label="Not set yet" style="display: block; width: 60%%; height: 12px; margin-top: 4px; background: #E3ECFB"></span>
+</div>
+<button type="button" disabled="" aria-disabled="true" style="margin-top: 14px; height: 46px; border: 1.5px solid #A9BCE0; border-radius: 2px; background: #FFFFFF; color: #4A5F8A; font: 600 15px Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: not-allowed">Create track</button>
+</div>
+</div>
+</main>
+</div>
+</div>
+
+
+
+</body></html>

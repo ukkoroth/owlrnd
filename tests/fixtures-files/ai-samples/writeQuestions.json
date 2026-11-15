@@ -1,0 +1,129 @@
+{
+  "questions": [
+    {
+      "topicKey": "T1",
+      "type": "multiple_choice",
+      "prompt": "An electric bulb draws a current of 0.25 A when connected to a 220 V supply. What is the resistance of the bulb?",
+      "options": [
+        "55 Ω",
+        "880 Ω",
+        "220.25 Ω",
+        "0.00114 Ω"
+      ],
+      "correctIndex": 1,
+      "expectedAnswer": null,
+      "explanation": "R = V / I = 220 V / 0.25 A = 880 Ω.",
+      "difficulty": 2
+    },
+    {
+      "topicKey": "T1",
+      "type": "multiple_choice",
+      "prompt": "Which of these is equal to 1 ohm (1 Ω)?",
+      "options": [
+        "1 V × 1 A",
+        "1 A / 1 V",
+        "1 V / 1 A",
+        "1 V + 1 A"
+      ],
+      "correctIndex": 2,
+      "expectedAnswer": null,
+      "explanation": "From R = V / I, 1 Ω = 1 V / 1 A.",
+      "difficulty": 1
+    },
+    {
+      "topicKey": "T2",
+      "type": "multiple_choice",
+      "prompt": "Three resistors of 2 Ω, 3 Ω and 5 Ω are connected in series. What is their equivalent resistance?",
+      "options": [
+        "0.97 Ω",
+        "30 Ω",
+        "3.3 Ω",
+        "10 Ω"
+      ],
+      "correctIndex": 3,
+      "expectedAnswer": null,
+      "explanation": "In series, Rs = R1 + R2 + R3 = 2 + 3 + 5 = 10 Ω.",
+      "difficulty": 1
+    },
+    {
+      "topicKey": "T2",
+      "type": "multiple_choice",
+      "prompt": "Resistors of 4 Ω and 8 Ω are connected in series to a 6 V battery. What current flows through the 4 Ω resistor?",
+      "options": [
+        "0.5 A",
+        "2.25 A",
+        "1.5 A",
+        "72 A"
+      ],
+      "correctIndex": 0,
+      "expectedAnswer": null,
+      "explanation": "Rs = 4 + 8 = 12 Ω, so I = 6 V / 12 Ω = 0.5 A, the same through each resistor.",
+      "difficulty": 3
+    },
+    {
+      "topicKey": "T3",
+      "type": "multiple_choice",
+      "prompt": "Two resistors of 3 Ω and 6 Ω are connected in parallel. What is their equivalent resistance?",
+      "options": [
+        "9 Ω",
+        "4.5 Ω",
+        "2 Ω",
+        "0.5 Ω"
+      ],
+      "correctIndex": 2,
+      "expectedAnswer": null,
+      "explanation": "1/Rp = 1/3 + 1/6 = 3/6 = 1/2, so Rp = 2 Ω.",
+      "difficulty": 2
+    },
+    {
+      "topicKey": "T1",
+      "type": "short",
+      "prompt": "A current of 0.3 A flows through a 20 Ω resistor. What is the potential difference across it?",
+      "options": [],
+      "correctIndex": null,
+      "expectedAnswer": "6 V",
+      "explanation": "V = I R = 0.3 A × 20 Ω = 6 V.",
+      "difficulty": 2
+    },
+    {
+      "topicKey": "T1",
+      "type": "short",
+      "prompt": "A potential difference of 12 V is applied across a wire of resistance 48 Ω. What current flows through it?",
+      "options": [],
+      "correctIndex": null,
+      "expectedAnswer": "0.25 A",
+      "explanation": "I = V / R = 12 V / 48 Ω = 0.25 A.",
+      "difficulty": 2
+    },
+    {
+      "topicKey": "T2",
+      "type": "short",
+      "prompt": "Three resistors are joined in series: 5 Ω, 10 Ω and an unknown resistor R3. The equivalent resistance is 30 Ω. What is R3?",
+      "options": [],
+      "correctIndex": null,
+      "expectedAnswer": "15 Ω",
+      "explanation": "Rs = R1 + R2 + R3, so R3 = 30 − 5 − 10 = 15 Ω.",
+      "difficulty": 3
+    },
+    {
+      "topicKey": "T3",
+      "type": "short",
+      "prompt": "Three resistors of 6 Ω, 12 Ω and 12 Ω are connected in parallel. Find their equivalent resistance.",
+      "options": [],
+      "correctIndex": null,
+      "expectedAnswer": "3 Ω",
+      "explanation": "1/Rp = 1/6 + 1/12 + 1/12 = 4/12 = 1/3, so Rp = 3 Ω.",
+      "difficulty": 3
+    },
+    {
+      "topicKey": "T3",
+      "type": "short",
+      "prompt": "Resistors of 20 Ω and 30 Ω are connected in parallel across a 12 V battery. Find the total current drawn from the battery.",
+      "options": [],
+      "correctIndex": null,
+      "expectedAnswer": "1 A",
+      "explanation": "1/Rp = 1/20 + 1/30 = 5/60, so Rp = 12 Ω and I = 12 V / 12 Ω = 1 A.",
+      "difficulty": 4
+    }
+  ]
+}

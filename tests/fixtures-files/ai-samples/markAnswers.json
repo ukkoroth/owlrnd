@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "key": "A1",
+      "correct": true,
+      "reason": ""
+    },
+    {
+      "key": "A2",
+      "correct": true,
+      "reason": ""
+    },
+    {
+      "key": "A3",
+      "correct": true,
+      "reason": ""
+    },
+    {
+      "key": "A4",
+      "correct": false,
+      "reason": "You added the resistances as if they were in series, but in parallel 1/R = 1/4 + 1/12, which gives 3 Ω."
+    },
+    {
+      "key": "A5",
+      "correct": false,
+      "reason": "Your value of 0.2 is right, but current is measured in amperes (A), not volts (V)."
+    }
+  ]
+}

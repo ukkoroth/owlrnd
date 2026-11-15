@@ -1,0 +1,59 @@
+import "server-only";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "../db";
+import { jobs } from "../db/schema";
+
+export type JobType = string;
+
+export async function enqueue(type: JobType, payload: unknown, opts: { runAt?: Date; maxAttempts?: number } = {}) {
+  const [row] = await db
+    .insert(jobs)
+    // Without an explicit runAt the database's now() is used, so app and DB clock skew can't delay a job.
+    .values({ type, payload, runAt: opts.runAt, maxAttempts: opts.maxAttempts ?? 3 })
+    .returning({ id: jobs.id });
+  return row!.id;
+}
+
+/** Claim the oldest ready job. SKIP LOCKED lets several workers share the table safely. */
+export async function claimNext() {
+  const result = await db.execute<{ id: string; type: string; payload: unknown; attempts: number; max_attempts: number }>(sql`
+    UPDATE jobs SET status = 'running', locked_at = now(), attempts = attempts + 1
+    WHERE id = (
+      SELECT id FROM jobs
+      WHERE status = 'queued' AND run_at <= now()
+      ORDER BY run_at
+      FOR UPDATE SKIP LOCKED
+      LIMIT 1
+    )
+    RETURNING id, type, payload, attempts, max_attempts
+  `);
+  return result.rows[0] ?? null;
+}
+
+export async function markDone(id: string) {
+  await db.update(jobs).set({ status: "done", finishedAt: new Date(), lastError: null }).where(eq(jobs.id, id));
+}
+
+/** Retry with backoff (10 s, 40 s, 90 s, …) until maxAttempts, then mark failed. */
+export async function markFailed(id: string, attempts: number, maxAttempts: number, error: unknown) {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  if (attempts >= maxAttempts) {
+    await db.update(jobs).set({ status: "failed", finishedAt: new Date(), lastError: message }).where(eq(jobs.id, id));
+  } else {
+    const runAt = new Date(Date.now() + 10_000 * attempts * attempts);
+    await db.update(jobs).set({ status: "queued", runAt, lockedAt: null, lastError: message }).where(eq(jobs.id, id));
+  }
+}
+
+/** Jobs left "running" by a crashed or restarted process go back to the queue. */
+export async function requeueStale(olderThanMinutes = 10) {
+  await db
+    .update(jobs)
+    .set({ status: "queued", lockedAt: null })
+    .where(and(eq(jobs.status, "running"), sql`${jobs.lockedAt} < now() - make_interval(mins => ${olderThanMinutes})`));
+}
+
+export async function jobStatus(id: string) {
+  const [row] = await db.select({ status: jobs.status, lastError: jobs.lastError }).from(jobs).where(eq(jobs.id, id));
+  return row ?? null;
+}

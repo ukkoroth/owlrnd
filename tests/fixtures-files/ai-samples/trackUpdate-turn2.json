@@ -1,0 +1,27 @@
+{
+  "reply": "Great. The track will add the three chapter 13 topics, keep Ohm's law and resistors in series and in parallel as revision at about 2 questions an exam, and aim for 8 / 10 or better in 3 exams in a row, with progress starting again at 0. Please press \"Start the track again\" to apply it.",
+  "extracted": [],
+  "update": {
+    "newTopics": [
+      {
+        "name": "Magnetic field and field lines",
+        "description": "Magnetic field around a bar magnet, compass deflection, field lines from north to south pole outside and south to north inside, field lines never cross, closer lines mean a stronger field."
+      },
+      {
+        "name": "Magnetic field around a straight current-carrying wire",
+        "description": "Concentric circular field lines around a straight wire, field stronger nearer the wire and with larger current, and the right-hand thumb rule for field direction."
+      },
+      {
+        "name": "Solenoid and electromagnet",
+        "description": "A long coil of many turns with a nearly uniform field inside like a bar magnet; a soft iron core makes an electromagnet that is magnetic only while current flows."
+      }
+    ],
+    "goal": {
+      "threshold": 8,
+      "runLength": 3
+    },
+    "testDate": null,
+    "testLabel": null
+  },
+  "ready": true
+}

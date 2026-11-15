@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply bg-page text-ink; }
+  body { @apply font-sans text-[15px] leading-normal antialiased; }
+  h1, h2, h3 { @apply font-semibold; }
+  :focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
+}
+
+@layer components {
+  .btn { @apply inline-flex min-h-touch items-center justify-center gap-2 rounded px-5 text-[15px] font-semibold disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-brand text-white hover:bg-sidebar disabled:bg-pale disabled:text-ink-muted; }
+  .btn-outline { @apply btn border border-ink bg-card text-ink hover:bg-pale-2 disabled:border-line disabled:text-ink-muted; }
+  .btn-danger { @apply btn border border-danger bg-card text-danger-text hover:bg-danger-fill; }
+  .card { @apply rounded border border-line bg-card p-5 md:p-6; }
+  .input { @apply min-h-touch w-full rounded border border-line-input bg-card px-3 text-[16px] text-ink placeholder:text-ink-muted; }
+  .label { @apply mb-1 block text-sm font-semibold text-ink; }
+  .link { @apply text-brand underline underline-offset-2 hover:text-sidebar; }
+
+  /* Landing hero: faint ruled lines every 40px, plus an amber margin line at 9% (hidden below 640px). */
+  .landing-hero {
+    background-color: #1E40AF;
+    background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 39px, rgba(255, 255, 255, 0.07) 39px, rgba(255, 255, 255, 0.07) 40px);
+  }
+  @media (min-width: 640px) {
+    .landing-hero {
+      background-image:
+        linear-gradient(to right, transparent calc(9% - 2px), rgba(255, 201, 77, 0.45) calc(9% - 2px), rgba(255, 201, 77, 0.45) 9%, transparent 9%),
+        repeating-linear-gradient(to bottom, transparent 0, transparent 39px, rgba(255, 255, 255, 0.07) 39px, rgba(255, 255, 255, 0.07) 40px);
+    }
+  }
+}
+
+/* Smooth in-page scrolling on the landing page only, and only when motion is welcome. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(#landing) { scroll-behavior: smooth; }
+}

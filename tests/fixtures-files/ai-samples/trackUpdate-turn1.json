@@ -1,0 +1,34 @@
+{
+  "reply": "From page 158 I found three new topics: magnetic field and field lines; magnetic field around a straight current-carrying wire, including the right-hand thumb rule; and the solenoid and electromagnet. Ohm's law and resistors in series and in parallel from chapter 12 will stay in as revision, about 2 questions an exam. For the new goal I suggest 8 / 10 or better in 3 exams in a row. Progress will start again at 0. The last goal was 9 / 10, so tell me if you would prefer to keep that. If chapter 13 has more pages, you can send them too. Does this look right?",
+  "extracted": [
+    {
+      "attachment": 1,
+      "label": "Page 158",
+      "readable": true,
+      "text": "Chapter 13 · Magnetic Effects of Electric Current (page 158)\n\n13.1 Magnetic field and field lines\nA compass needle is deflected when brought near a bar magnet. The region around a magnet in which its force can be detected is its magnetic field. Field lines emerge from the north pole and merge at the south pole; inside the magnet they go from south to north. No two field lines cross, and they are closer together where the field is stronger.\n\n13.2 Magnetic field due to a current-carrying conductor\nStraight wire. The field lines are concentric circles around the wire. The field is stronger nearer the wire and when the current is larger. Right-hand thumb rule: hold the wire in your right hand with the thumb pointing along the current; your fingers curl in the direction of the field lines.\n\nSolenoid. A long coil of many turns. The field inside is nearly uniform, like a bar magnet's. A soft iron core placed inside makes an electromagnet, which is magnetic only while current flows.\n\nQuestions\n1. Why don't two magnetic field lines ever cross?\n2. What is the direction of the field around a vertical wire with current flowing upwards?"
+    }
+  ],
+  "update": {
+    "newTopics": [
+      {
+        "name": "Magnetic field and field lines",
+        "description": "Magnetic field around a bar magnet, compass deflection, field lines from north to south pole outside and south to north inside, field lines never cross, closer lines mean a stronger field."
+      },
+      {
+        "name": "Magnetic field around a straight current-carrying wire",
+        "description": "Concentric circular field lines around a straight wire, field stronger nearer the wire and with larger current, and the right-hand thumb rule for field direction."
+      },
+      {
+        "name": "Solenoid and electromagnet",
+        "description": "A long coil of many turns with a nearly uniform field inside like a bar magnet; a soft iron core makes an electromagnet that is magnetic only while current flows."
+      }
+    ],
+    "goal": {
+      "threshold": 8,
+      "runLength": 3
+    },
+    "testDate": null,
+    "testLabel": null
+  },
+  "ready": false
+}
