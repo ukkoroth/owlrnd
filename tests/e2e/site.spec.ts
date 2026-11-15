@@ -31,3 +31,42 @@ test("the landing page explains the open-source project and links to the code", 
   await expect(page.getByRole("link", { name: "View the code on GitHub", exact: true })).toHaveAttribute("href", "https://github.com/ukkoroth/owlrnd");
   await expect(page.getByLabel("Commands to run owlrnd yourself")).toContainText("git clone https://github.com/ukkoroth/owlrnd.git");
 });
+
+test("pages send security headers and nothing breaks under the Content-Security-Policy", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (m) => {
+    if (/Content Security Policy|Refused to (load|execute|apply)/i.test(m.text())) violations.push(m.text());
+  });
+  for (const path of ["/", "/sign-in", "/get-access", "/privacy"]) {
+    const res = await page.goto(path);
+    const h = res!.headers();
+    expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
+    expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(h["x-content-type-options"]).toBe("nosniff");
+    expect(h["x-frame-options"]).toBe("DENY");
+    expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(h["x-powered-by"]).toBeUndefined();
+  }
+  // A form that only works with JavaScript: the client-side code ran under the policy.
+  await page.goto("/get-access");
+  await page.getByLabel("Email").fill("not-an-email@x");
+  await page.getByLabel("Your name").fill("Asha");
+  await page.getByRole("button", { name: "Get access" }).click();
+  await expect(page.locator("#f-email-err")).toBeVisible();
+  expect(violations).toEqual([]);
+});
+
+test("Get access is limited per network address", async ({ browser }) => {
+  // Requests carry a made-up proxy address, as Caddy adds in production.
+  const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `203.0.113.${Math.floor(Math.random() * 250)}` } });
+  const page = await ctx.newPage();
+  for (let i = 0; i < 6; i++) {
+    await page.goto("/get-access");
+    await page.getByLabel("Your name").fill("Asha");
+    await page.getByLabel("Email").fill("bad@x");
+    await page.getByRole("button", { name: "Get access" }).click();
+    await expect(page.locator("#f-email-err").or(page.getByRole("main").getByRole("alert"))).toBeVisible();
+  }
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Too many attempts from your network");
+  await ctx.close();
+});

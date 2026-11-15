@@ -108,6 +108,17 @@ export const signInFailures = pgTable(
   (t) => [index("sign_in_failures_idx").on(t.identifier, t.createdAt)],
 );
 
+/** Requests per client IP and action in fixed windows (rules.rateLimits). Old windows are pruned as new ones start. */
+export const rateLimitHits = pgTable(
+  "rate_limit_hits",
+  {
+    bucket: text("bucket").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.bucket, t.windowStart] })],
+);
+
 // ── Closed beta · access requests and invitations ──────────────────────────
 
 export const accessRequestStatus = pgEnum("access_request_status", ["pending", "invited"]);

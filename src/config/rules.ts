@@ -20,6 +20,20 @@ export const rules = {
     pendingStepMinutes: 30,
   },
 
+  /**
+   * Requests allowed per client IP address in a fixed window (release plan, Phase 1 item 5). These stop
+   * scripted guessing and email flooding; real families stay far below them. Per-account limits (code sends,
+   * wrong passwords) still apply on top.
+   */
+  rateLimits: {
+    signIn: { max: 30, windowMinutes: 15 },
+    codeEntry: { max: 30, windowMinutes: 15 },
+    codeSend: { max: 20, windowMinutes: 60 },
+    signUp: { max: 10, windowMinutes: 60 },
+    passwordReset: { max: 10, windowMinutes: 60 },
+    getAccess: { max: 5, windowMinutes: 60 },
+  },
+
   /** Closed beta (docs/release-plan.md, Phase 1 item 1). Set inviteOnly to false to open sign-up to everyone. */
   access: {
     inviteOnly: true,

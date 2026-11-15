@@ -1,14 +1,27 @@
 # owlrnd web server (Caddy). Installed as /etc/caddy/Caddyfile on the server.
 # Caddy gets and renews the HTTPS certificates (Let's Encrypt) itself and redirects http:// to https://.
 
+# Browsers use HTTPS only for a year (HSTS). The app sets the other security headers itself.
+# A snippet, because error responses (the holding page) skip the main route's header settings.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}
+
 owlrnd.com {
 	encode zstd gzip
+
+	import security_headers
 
 	# The Next.js app (landing page and app together).
 	reverse_proxy 127.0.0.1:3000
 
 	# While the app is not running (before the first deploy, or mid-restart), show a holding page.
 	handle_errors 502 503 504 {
+		import security_headers
 		root * /var/www/owlrnd-holding
 		rewrite * /index.html
 		file_server {

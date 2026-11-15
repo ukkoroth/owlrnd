@@ -13,6 +13,7 @@ import { db } from "@/server/db";
 import { parents, students } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { codeMessage, sendLimitMessage } from "@/lib/codeMessages";
+import { allowed, RATE_LIMITED } from "@/server/rateLimit";
 import { checkInvitation, claimInvitation, hasOpenClaim, consumeInvitation } from "@/server/access";
 
 const INVITE_NEEDED = "This invitation link has expired or has already been used. Ask for access again and we'll send you a new one.";
@@ -22,6 +23,7 @@ const BAD_SIGN_IN = "That username or email and password don't match.";
 // ── 3a Sign in ──────────────────────────────────────────────────────────────
 
 export async function signIn(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("signIn"))) return { error: RATE_LIMITED, values: { identifier: text(form, "identifier") } };
   const rawId = text(form, "identifier");
   const password = text(form, "password");
   const values = { identifier: rawId };
@@ -61,6 +63,7 @@ export async function signIn(_prev: FormState, form: FormData): Promise<FormStat
 // ── 3b / 5f Sign-in code ────────────────────────────────────────────────────
 
 export async function verifySignInCode(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("codeEntry"))) return { error: RATE_LIMITED };
   const pending = await getPending("sign_in");
   if (!pending) redirect("/sign-in?expired=1");
   const result = await verifyCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "sign_in" }, codeFrom(form));
@@ -72,6 +75,7 @@ export async function verifySignInCode(_prev: FormState, form: FormData): Promis
 }
 
 export async function resendSignInCode(): Promise<FormState> {
+  if (!(await allowed("codeSend"))) return { error: RATE_LIMITED };
   const pending = await getPending("sign_in");
   if (!pending) redirect("/sign-in?expired=1");
   return resendResult(await issueCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "sign_in" }));
@@ -80,6 +84,7 @@ export async function resendSignInCode(): Promise<FormState> {
 // ── 1a Sign up, 1b Verify email ─────────────────────────────────────────────
 
 export async function signUp(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("signUp"))) return { error: RATE_LIMITED };
   const name = text(form, "name").trim();
   const email = normalizeEmail(text(form, "email"));
   const password = text(form, "password");
@@ -115,6 +120,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
 }
 
 export async function verifyEmail(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("codeEntry"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
   if (!pending) redirect("/sign-in?expired=1");
   const result = await verifyCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }, codeFrom(form));
@@ -128,6 +134,7 @@ export async function verifyEmail(_prev: FormState, form: FormData): Promise<For
 }
 
 export async function resendVerifyCode(): Promise<FormState> {
+  if (!(await allowed("codeSend"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
   if (!pending) redirect("/sign-in?expired=1");
   return resendResult(await issueCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }));
@@ -136,6 +143,7 @@ export async function resendVerifyCode(): Promise<FormState> {
 // ── 5g Forgot password, 5h Reset password ──────────────────────────────────
 
 export async function forgotPassword(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("passwordReset"))) return { error: RATE_LIMITED, values: { identifier: text(form, "identifier") } };
   const rawId = text(form, "identifier");
   const id = parseIdentifier(rawId);
   if (!id) return { error: "Enter your username or email.", values: { identifier: rawId } };
@@ -155,6 +163,7 @@ export async function forgotPassword(_prev: FormState, form: FormData): Promise<
 }
 
 export async function resetPassword(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("codeEntry"))) return { error: RATE_LIMITED };
   const pending = await getPending("reset_password");
   if (!pending) redirect("/forgot-password?expired=1");
 
@@ -188,6 +197,7 @@ export async function resetPassword(_prev: FormState, form: FormData): Promise<F
 }
 
 export async function resendResetCode(): Promise<FormState> {
+  if (!(await allowed("codeSend"))) return { error: RATE_LIMITED };
   const pending = await getPending("reset_password");
   if (!pending) redirect("/forgot-password?expired=1");
   return resendResult(await issueCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "reset_password" }));

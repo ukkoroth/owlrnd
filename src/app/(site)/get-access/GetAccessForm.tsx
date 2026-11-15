@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Field, SubmitButton } from "@/components/forms";
+import { Field, FormError, SubmitButton } from "@/components/forms";
 import { emptyForm } from "@/lib/form";
 import { requestAccess } from "./actions";
 
@@ -13,6 +13,7 @@ export function GetAccessForm() {
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      <FormError>{state.error}</FormError>
       <Field label="Your name" name="name" autoComplete="name" required defaultValue={v?.name} key={`n-${v?.name}`} error={state.fieldErrors?.name} />
       <Field
         label="Email"

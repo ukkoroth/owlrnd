@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { normalizeEmail, validateEmail, validateName } from "@/domain/identity";
 import { text, type FormState } from "@/lib/form";
 import { recordAccessRequest } from "@/server/access";
+import { allowed, RATE_LIMITED } from "@/server/rateLimit";
 
 const NOTE_MAX = 1000;
 
@@ -16,6 +17,7 @@ export async function requestAccess(_prev: FormState, form: FormData): Promise<F
 
   // Hidden field that people never see or fill in; automated form fillers often do.
   if (text(form, "website")) redirect("/get-access?sent=1");
+  if (!(await allowed("getAccess"))) return { error: RATE_LIMITED, values };
 
   const fieldErrors: Record<string, string> = {};
   const nameErr = validateName(name);

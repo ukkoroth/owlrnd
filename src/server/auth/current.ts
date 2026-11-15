@@ -72,6 +72,20 @@ export async function clearPending() {
   (await cookies()).delete(PENDING_COOKIE);
 }
 
+/**
+ * The visitor's IP address. In production one proxy (Caddy) sits in front of the app and appends the address it
+ * saw to X-Forwarded-For, so the last entry is the one to trust; earlier entries can be forged by the client.
+ * Null when there is no proxy (local development and tests).
+ */
 export async function clientIp() {
-  return (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  return lastForwardedIp((await headers()).get("x-forwarded-for"));
+}
+
+/**
+ * Without a proxy, Next.js fills X-Forwarded-For with the connecting address, which is loopback when browsing or
+ * testing on the same machine; a real visitor never arrives from loopback, so it counts as no address.
+ */
+export function lastForwardedIp(forwarded: string | null) {
+  const ip = forwarded?.split(",").at(-1)?.trim() || null;
+  return ip && !/^(127\.|::1$|::ffff:127\.)/.test(ip) ? ip : null;
 }

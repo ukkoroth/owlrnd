@@ -50,6 +50,13 @@
       "when": 1794712238488,
       "tag": "0006_beta_access",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794720874325,
+      "tag": "0007_rate_limits",
+      "breakpoints": true
     }
   ]
 }

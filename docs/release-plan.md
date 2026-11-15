@@ -41,7 +41,7 @@ Claude is the main cost. Phase 1 measures the real cost per exam and adds a hard
    - **Limits per family per day** (configurable in `src/config/rules.ts`): for example 40 chat turns and 10 exams written. Over the limit, a friendly "come back tomorrow" message.
    - **Monthly budget:** a cap (for example $150). Near it, the owner gets an email. At it, new chats and exams pause with a clear message, while marking of already-submitted exams still finishes.
    - **Spend limit:** also set a hard spend limit on the API key in the Claude Console (Phase 2).
-5. **Production hardening.**
+5. **Production hardening.** *Done 2026-11-15: Caddy serves HTTPS with HSTS (`deploy/Caddyfile`); per-request nonce Content-Security-Policy and fixed security headers in the app; client IP from the last X-Forwarded-For entry; per-IP limits on sign-in, code entry, code sends, sign-up, password reset and Get access (`rules.rateLimits`); settings checked at start-up, with production-only checks under `DEPLOY_ENV=production`; background jobs run in parallel (`JOB_CONCURRENCY`, default 6).*
    - **HTTPS and headers:** HTTPS only, with security headers (HSTS, a Content-Security-Policy that allows only the app itself, frame-ancestors none).
    - **Requests:** the client IP is read correctly behind the proxy; per-IP rate limits on sign-in, code and sign-up requests.
    - **Configuration:** checked at start-up, so a missing setting stops the server with a clear error instead of failing later.
