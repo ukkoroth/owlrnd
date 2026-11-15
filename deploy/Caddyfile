@@ -1,0 +1,29 @@
+# owlrnd web server (Caddy). Installed as /etc/caddy/Caddyfile on the server.
+# Caddy gets and renews the HTTPS certificates (Let's Encrypt) itself and redirects http:// to https://.
+
+owlrnd.com {
+	encode zstd gzip
+
+	# The Next.js app (landing page and app together).
+	reverse_proxy 127.0.0.1:3000
+
+	# While the app is not running (before the first deploy, or mid-restart), show a holding page.
+	handle_errors 502 503 504 {
+		root * /var/www/owlrnd-holding
+		rewrite * /index.html
+		file_server {
+			status 503
+		}
+	}
+
+	log {
+		output file /var/log/caddy/owlrnd.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+	}
+}
+
+www.owlrnd.com {
+	redir https://owlrnd.com{uri} permanent
+}
