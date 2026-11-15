@@ -38,6 +38,29 @@ Short, paper-style practice exams that adapt between exams. A parent sets up pra
 
 These are the design screens (sample family: Atticus Finch, Scout and Jem). All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
 
+## What's coming
+
+owlrnd 0.1 covers the core loop: a parent sets up tracks, the child practises short adaptive exams, and both see progress. Here's what's planned next, roughly in order. The full roadmap is in [`docs/09-roadmap.md`](docs/09-roadmap.md).
+
+**Soon after the first release**
+
+- Exams in full screen
+- Photograph textbook pages from inside the chat
+- Safer email changes
+
+**Next versions**
+
+- Flashcards
+- Written answers on paper (0.15)
+- Camera capture (0.2)
+- Ready-made packages (CBSE, ICSE)
+- A whole term at once
+- Create a track from Claude
+- Progress views
+- owlrnd for college students
+
+Have an idea or want to help build one of these? Open an issue or a pull request.
+
 ## Run it locally
 
 Needs Node 20+ and Docker.
