@@ -228,3 +228,13 @@ test("signed-out visitors are sent to sign in", async ({ page }) => {
     await expect(page).toHaveURL(/\/sign-in/);
   }
 });
+
+test("sign-out works behind the HTTPS proxy and still refuses other sites (bug of 2026-11-15)", async ({ request }) => {
+  // As Caddy forwards it: the browser is on https://owlrnd.com, the app sees plain http internally.
+  const proxied = { "x-forwarded-proto": "https", "x-forwarded-host": "owlrnd.com" };
+  const ok = await request.post("/api/auth/sign-out", { headers: { ...proxied, origin: "https://owlrnd.com" }, maxRedirects: 0 });
+  expect(ok.status()).toBe(303);
+  expect(ok.headers()["location"]).toBe("/sign-in");
+  const evil = await request.post("/api/auth/sign-out", { headers: { ...proxied, origin: "https://evil.example" }, maxRedirects: 0 });
+  expect(evil.status()).toBe(403);
+});
