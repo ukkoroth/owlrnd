@@ -19,3 +19,8 @@ test("the privacy policy names the operator and the AI provider", async ({ page 
   await expect(page.getByText("owlrnd is run by Unni Koroth")).toBeVisible();
   await expect(page.getByRole("heading", { name: "How the AI uses your material" })).toBeVisible();
 });
+
+test("the header links to the open-source repository on GitHub", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: /open source: view the code on GitHub/ })).toHaveAttribute("href", "https://github.com/ukkoroth/owlrnd");
+});
