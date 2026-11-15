@@ -14,7 +14,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN DATABASE_URL=postgres://build:build@localhost:5432/build AUTH_SECRET=build-time-placeholder-not-a-secret-000 \
     npm run build \
  && node_modules/.bin/esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --format=cjs \
-      --external:pg-native --outfile=dist/migrate.cjs
+      --external:pg-native --outfile=dist/migrate.cjs \
+ && node_modules/.bin/esbuild scripts/access.ts --bundle --platform=node --target=node22 --format=esm \
+      --conditions=react-server --external:pg-native --outfile=dist/access.mjs \
+      "--banner:js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
 
 FROM node:22.20.0-bookworm-slim AS run
 WORKDIR /app
@@ -25,6 +28,8 @@ COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/dist/migrate.cjs ./migrate.cjs
+# Owner tool: access requests and invitations (scripts/access.ts), run with: node access.mjs list | invite <email>
+COPY --from=build --chown=node:node /app/dist/access.mjs ./access.mjs
 COPY --from=build --chown=node:node /app/src/server/db/migrations ./migrations
 USER node
 EXPOSE 3000
