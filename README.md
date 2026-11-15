@@ -5,6 +5,39 @@ Short, paper-style practice exams that adapt between exams. A parent sets up pra
 - **Brief and rules:** [`CLAUDE.md`](CLAUDE.md), [`docs/`](docs/) (`05-rules.md` is the source of truth), [`screens/`](screens/), [`mockups/`](mockups/)
 - **Build plan and progress:** [`PLAN.md`](PLAN.md)
 
+## Screenshots
+
+![The owlrnd landing page: "Exam-ready, every day."](docs/images/landing.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="screens/2f_create-the-first-track-agreed-with-a-goal.png" alt="A parent creates a track by chatting with the AI and attaching textbook pages"></td>
+    <td width="50%"><img src="screens/3c_dashboard-today.png" alt="The student's dashboard with three suggested practice exams and a 7-day chart"></td>
+  </tr>
+  <tr>
+    <td><b>1. The parent sets up a track.</b> Describe the chapter or test, attach photos of the textbook pages, and agree the topics and a goal with the AI.</td>
+    <td><b>2. The child sees what to do today.</b> Three suggested exams, and a record of practice over the week.</td>
+  </tr>
+  <tr>
+    <td><img src="screens/4-1b_exam-paper.png" alt="An exam paper with numbered multiple-choice questions in a serif typeface"></td>
+    <td><img src="screens/4-1e_exam-result.png" alt="An exam result with the score, points earned, strengths and topics that need work"></td>
+  </tr>
+  <tr>
+    <td><b>3. A short paper that fits the screen.</b> Up to 10 questions, laid out like a printed exam, with no scrolling.</td>
+    <td><b>4. The result shapes the next exam.</b> Score, points, strengths, what needs work, and what the next paper will focus on.</td>
+  </tr>
+  <tr>
+    <td><img src="screens/4-1f_marked-paper.png" alt="A marked paper with ticks, crosses, the right answers and a short reason for each miss"></td>
+    <td><img src="screens/2k_your-students.png" alt="The parent's page with each child's last exam, weak topic and activity charts"></td>
+  </tr>
+  <tr>
+    <td><b>5. Every miss is explained.</b> The marked paper shows the right answer and a one-line reason.</td>
+    <td><b>6. The parent sees effort and weak spots.</b> One page for all their children.</td>
+  </tr>
+</table>
+
+These are the design screens (sample family: Atticus Finch, Scout and Jem). All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
+
 ## Run it locally
 
 Needs Node 20+ and Docker.
