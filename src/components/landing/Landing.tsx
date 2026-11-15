@@ -229,8 +229,7 @@ function TheExam() {
             <H2>It feels like a real exam paper.</H2>
           </div>
           <p className="m-0 min-w-0 flex-[1_1_380px] text-[17px] leading-[1.55] text-ink-muted">
-            A white page, numbered questions in a printed-paper typeface, and one Submit button. Multiple choice, short
-            answers and a few sentences typed out. Every page fits the screen, so there is no scrolling.
+            A white page, numbered questions in a printed-paper typeface, and one Submit button. Multiple choice and short answers. Every page fits the screen, so there is no scrolling.
           </p>
         </div>
         <Shot shot={SHOTS.paper} border="border-paper-rule" />
