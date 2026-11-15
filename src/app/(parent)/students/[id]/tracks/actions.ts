@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireParent } from "@/server/auth/current";
+import { normalizeUpload } from "@/server/files/normalize";
 import * as tracks from "@/server/tracks";
 import type { ChatMessage, TurnResult } from "@/server/tracks";
 import type { StoredPreview } from "@/domain/tracks";
@@ -14,7 +15,8 @@ export async function sendTurn(studentId: string, form: FormData): Promise<TurnR
     form
       .getAll("files")
       .filter((f): f is File => f instanceof File && f.size > 0)
-      .map(async (f) => ({ name: f.name, type: f.type, data: Buffer.from(await f.arrayBuffer()) })),
+      // HEIC photos (which the browser can't resize) and oversized photos become JPEG here.
+      .map(async (f) => normalizeUpload({ name: f.name, type: f.type, data: Buffer.from(await f.arrayBuffer()) })),
   );
   return tracks.sendParentTurn(parent.id, studentId, text, files);
 }

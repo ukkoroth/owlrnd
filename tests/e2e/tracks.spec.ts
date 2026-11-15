@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeDb, createFamily, deleteParentByEmail } from "../fixtures";
+import { attachmentsFor, closeDb, createFamily, deleteParentByEmail } from "../fixtures";
 import { signInFully } from "./helpers";
 
 // Runs against the fake AI (OWLRND_FAKE_AI=1 in playwright.config.ts).
@@ -127,5 +127,26 @@ test("track pages belong to the student's parent only", async ({ page, browser }
   } finally {
     await deleteParentByEmail(a.parent.email);
     await deleteParentByEmail(b.parent.email);
+  }
+});
+
+test("iPhone HEIC photos and uploads over 10 MB reach the AI (bug of 2026-11-15)", async ({ page }) => {
+  const { parent, studentId } = await createFamily();
+  try {
+    await signInFully(page, parent.email, parent.password, parent.email, /\/students$/);
+    await page.goto(`/students/${studentId}/tracks/new`);
+    // Two 5.5 MB PDFs (browsers don't shrink PDFs) plus an HEIC photo: about 11 MB in one message.
+    const pdf = (n: number) => ({ name: `chapter-${n}.pdf`, mimeType: "application/pdf", buffer: Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(5_500_000, 32)]) });
+    await page.getByTestId("attach-file-input").setInputFiles(["tests/fixtures-files/sample-page.heic"]);
+    await page.getByTestId("attach-file-input").setInputFiles([pdf(1), pdf(2)]);
+    await chatSend(page, "Chemistry chapter, class 8 ICSE.");
+    await expect(page.getByText("I couldn't answer just now")).toHaveCount(0);
+    await expect(page.getByText(/I can create a track called/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("I couldn't answer just now")).toHaveCount(0);
+    const stored = await attachmentsFor(studentId);
+    expect(stored.map((a) => a.mediaType).sort()).toEqual(["application/pdf", "application/pdf", "image/jpeg"]);
+    expect(stored.find((a) => a.mediaType === "image/jpeg")?.name).toBe("sample-page.jpg");
+  } finally {
+    await deleteParentByEmail(parent.email);
   }
 });

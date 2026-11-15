@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireParent } from "@/server/auth/current";
+import { normalizeUpload } from "@/server/files/normalize";
 import type { StoredUpdate } from "@/domain/tracks";
 import type { ChatMessage } from "@/server/tracks";
 import * as updates from "@/server/trackUpdates";
@@ -13,7 +14,8 @@ export async function sendUpdate(trackId: string, form: FormData): Promise<updat
     form
       .getAll("files")
       .filter((f): f is File => f instanceof File && f.size > 0)
-      .map(async (f) => ({ name: f.name, type: f.type, data: Buffer.from(await f.arrayBuffer()) })),
+      // HEIC photos (which the browser can't resize) and oversized photos become JPEG here.
+      .map(async (f) => normalizeUpload({ name: f.name, type: f.type, data: Buffer.from(await f.arrayBuffer()) })),
   );
   return updates.sendUpdateTurn(parent.id, trackId, text, files);
 }

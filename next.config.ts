@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // A package-lock.json higher up (in the home folder) confuses Next.js root detection.
   outputFileTracingRoot: path.resolve(import.meta.dirname),
   // pg, postmark and nodemailer are Node-only; keep them out of the client bundle.
-  serverExternalPackages: ["pg", "postmark", "nodemailer"],
+  serverExternalPackages: ["pg", "postmark", "nodemailer", "sharp", "heic-decode", "libheif-js"],
   poweredByHeader: false,
   // Fixed security headers on every response (the per-request Content-Security-Policy is set in middleware.ts;
   // HSTS is set by Caddy, which terminates HTTPS).
@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: { bodySizeLimit: "40mb" }, // textbook photos and PDFs in the track chat (M3)
+    // With a middleware, Next.js cuts request bodies at 10 MB unless raised: keep it in step with bodySizeLimit,
+    // or uploads of several phone photos arrive truncated ("Unexpected end of form").
+    middlewareClientMaxBodySize: "40mb",
   },
 };
 

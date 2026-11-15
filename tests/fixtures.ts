@@ -59,6 +59,17 @@ export async function accessRequestFor(email: string): Promise<{ name: string; n
   return rows[0] ?? null;
 }
 
+/** The attachments stored in a student's track chats (name and type), oldest first. */
+export async function attachmentsFor(studentId: string): Promise<{ name: string; mediaType: string }[]> {
+  const { rows } = await pool.query(
+    `select a.original_name as name, a.media_type as "mediaType" from attachments a
+       join track_messages m on m.id = a.track_message_id join tracks t on t.id = m.track_id
+      where t.student_id = $1 order by a.created_at`,
+    [studentId],
+  );
+  return rows;
+}
+
 export async function closeDb() {
   const p = _pool;
   _pool = null;
