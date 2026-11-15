@@ -4,6 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { BetaContentBlockParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { z } from "zod";
 import { env } from "../env";
+import { recordUsage } from "./usage";
 
 let client: Anthropic | undefined;
 
@@ -58,6 +59,8 @@ export async function generateStructured<S extends z.ZodType>(opts: {
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
   });
+  // Recorded before any checks below: refused or cut-off replies are billed too.
+  await recordUsage(response.model, response.usage);
 
   if (response.stop_reason === "refusal") {
     throw new AiError(`Model declined the request (${response.stop_details?.category ?? "unknown"})`, "refusal");

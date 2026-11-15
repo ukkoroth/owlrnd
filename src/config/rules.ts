@@ -34,6 +34,21 @@ export const rules = {
     getAccess: { max: 5, windowMinutes: 60 },
   },
 
+  /**
+   * AI cost controls (release plan, Phase 1 item 4). Daily limits are per family, counted in the family's time zone.
+   * The monthly budget itself is the AI_MONTHLY_BUDGET_USD setting, so it can change without a release.
+   */
+  aiLimits: {
+    /** Messages a parent sends in track chats (new tracks and updates) per day. */
+    chatTurnsPerDay: 40,
+    /** Exams written for all of a family's children per day. */
+    examsWrittenPerDay: 20,
+    /** The owner is emailed when the month's spend reaches this share of the budget, and again at 100%. */
+    budgetWarnAt: 0.8,
+    /** While the monthly budget is used up, paused exam writing is retried this often (marking never pauses). */
+    budgetRetryMinutes: 60,
+  },
+
   /** Closed beta (docs/release-plan.md, Phase 1 item 1). Set inviteOnly to false to open sign-up to everyone. */
   access: {
     inviteOnly: true,

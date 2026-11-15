@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { StoredPreview, StoredUpdate } from "@/domain/tracks";
 
 // Tables from docs/06-data.md, added milestone by milestone.
@@ -106,6 +106,42 @@ export const signInFailures = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("sign_in_failures_idx").on(t.identifier, t.createdAt)],
+);
+
+// ── AI cost controls ────────────────────────────────────────────────────────
+
+export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers"]);
+
+/**
+ * One row per Claude call, with its estimated cost. The family link is cleared if the account is deleted, so the
+ * month's spend stays correct without keeping anything personal.
+ */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    parentId: uuid("parent_id").references(() => parents.id, { onDelete: "set null" }),
+    purpose: aiPurpose("purpose").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6, mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_usage_created_idx").on(t.createdAt), index("ai_usage_parent_idx").on(t.parentId, t.createdAt)],
+);
+
+/** Budget emails already sent, so each goes once per month ("2026-11", "warn" | "reached"). */
+export const aiBudgetAlerts = pgTable(
+  "ai_budget_alerts",
+  {
+    month: text("month").notNull(),
+    level: text("level").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.month, t.level] })],
 );
 
 /** Requests per client IP and action in fixed windows (rules.rateLimits). Old windows are pruned as new ones start. */

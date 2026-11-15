@@ -5,6 +5,8 @@ import { planWithRevision } from "@/domain/examMix";
 import { formatClass } from "@/domain/identity";
 import { rules } from "@/config/rules";
 import { ai } from "./ai";
+import { enqueue } from "./jobs/queue";
+import { examWriteBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { attachments, examQuestions, exams, marks, questions, students, topics, trackMessages, tracks } from "./db/schema";
 import type { JobContext } from "./jobs/worker";
@@ -101,19 +103,27 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       return;
     }
     const [student] = await db.select().from(students).where(eq(students.id, track.studentId));
+    // AI cost controls: over the family's daily limit or the monthly budget, try again later instead of writing.
+    const blocked = await examWriteBlocked(student!.parentId);
+    if (blocked) {
+      await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });
+      console.info(`[owlrnd ai] exam for track ${trackId} postponed (${blocked.reason}) until ${blocked.retryAt.toISOString()}`);
+      return;
+    }
     const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(asc(topics.position));
     const keyed = tps.map((t, i) => ({ key: `T${i + 1}`, id: t.id, name: t.name, description: t.description, revisionOnly: t.revisionOnly }));
     const { plan, avoid } = await planNextExam(trackId, track.studentId, keyed);
 
-    const written = await ai().writeQuestions({
+    const material = await trackMaterial(trackId);
+    const written = await withAiContext({ purpose: "write_exam", parentId: student!.parentId }, () => ai().writeQuestions({
       trackName: track.name ?? "",
       className: formatClass(student!.className),
       topics: keyed,
       focusNotes: track.focusNotes,
-      material: await trackMaterial(trackId),
+      material,
       plan,
       avoid,
-    });
+    }));
 
     await db.transaction(async (tx) => {
       const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(exams).where(eq(exams.trackId, trackId));

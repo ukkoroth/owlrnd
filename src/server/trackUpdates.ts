@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 import { formatClass } from "@/domain/identity";
 import { canApplyUpdate, emptyUpdate, goalLabel, sanitizeUpdate, todayIn, type StoredUpdate, type UpdateMode } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
+import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { discardFiles } from "./jobs/files";
 import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
@@ -69,6 +70,8 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
   if (!message && !files.length) return { ok: false, error: "Write a message or attach a file." };
   const fileError = checkFiles(files);
   if (fileError) return { ok: false, error: fileError };
+  const blocked = await chatBlocked(parentId);
+  if (blocked) return { ok: false, error: blocked };
 
   const [parent] = await db.select().from(parents).where(eq(parents.id, parentId));
   const { messages, update, atts } = await loadUpdateChat(trackId);
@@ -79,7 +82,7 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
 
   let out;
   try {
-    out = await ai().trackUpdate({
+    out = await withAiContext({ purpose: "track_update", parentId }, () => ai().trackUpdate({
       mode,
       parentName: parent!.name.split(" ")[0]!,
       studentName: student.name,
@@ -96,7 +99,7 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
       history: messages.map((m) => ({ author: m.author, text: m.text })),
       attachments: [...earlier, ...files.map((f): ChatAttachmentInput => ({ kind: "new", label: f.name, mediaType: f.type, data: f.data }))],
       message,
-    });
+    }));
   } catch (err) {
     console.error("[owlrnd ai] trackUpdate failed", err);
     return { ok: false, error: "I couldn't answer just now. Send it again?" };

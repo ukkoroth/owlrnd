@@ -20,6 +20,8 @@ const schema = z
     DEPLOY_ENV: z.enum(["development", "production"]).default("development"),
     ANTHROPIC_API_KEY: z.string().optional(),
     OWLRND_FAKE_AI: z.string().optional(),
+    /** Claude spend allowed per calendar month (UTC), in US dollars. At it, new chats and exam writing pause. */
+    AI_MONTHLY_BUDGET_USD: z.coerce.number().positive().default(150),
     JOB_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(6),
     /** Public address of the app, used in links inside emails (invitations). No trailing slash. */
     APP_URL: z.string().url().default("http://localhost:3000"),

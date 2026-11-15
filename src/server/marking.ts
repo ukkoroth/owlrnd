@@ -5,6 +5,7 @@ import { addDays, examPoints, streakDays } from "@/domain/points";
 import { exactMatch, scoreOutOf10 } from "@/domain/scoring";
 import { todayIn } from "@/domain/tracks";
 import { ai, type AnswerToMark } from "./ai";
+import { withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { answers, examQuestions, exams, marks, pointsEvents, questions, students, topicResults, tracks } from "./db/schema";
 import { enqueue } from "./jobs/queue";
@@ -45,7 +46,11 @@ export async function markExamJob(payload: unknown) {
     }
   }
   if (toAi.length) {
-    const marked = await ai().markAnswers(toAi.map(({ key, question, expected, given }) => ({ key, question, expected, given })));
+    // Never limited by the daily limits or the budget: a submitted exam is always marked.
+    const [owner] = await db.select({ parentId: students.parentId }).from(students).where(eq(students.id, exam.studentId));
+    const marked = await withAiContext({ purpose: "mark_answers", parentId: owner?.parentId ?? null }, () =>
+      ai().markAnswers(toAi.map(({ key, question, expected, given }) => ({ key, question, expected, given }))),
+    );
     for (const m of marked) {
       const src = toAi.find((t) => t.key === m.key)!;
       const q = rows.find((r) => r.q.id === src.questionId)!.q;

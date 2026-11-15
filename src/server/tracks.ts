@@ -4,6 +4,7 @@ import { rules } from "@/config/rules";
 import { formatClass } from "@/domain/identity";
 import { canCreateTrack, emptyPreview, goalLabel, sanitizePreview, todayIn, type StoredPreview } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
+import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { discardFiles } from "./jobs/files";
 import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
@@ -94,6 +95,8 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
   if (!message && !files.length) return { ok: false, error: "Write a message or attach a file." };
   const fileError = checkFiles(files);
   if (fileError) return { ok: false, error: fileError };
+  const blocked = await chatBlocked(parentId);
+  if (blocked) return { ok: false, error: blocked };
 
   const [parent] = await db.select().from(parents).where(eq(parents.id, parentId));
   let draft: Track | null = await findDraft(studentId);
@@ -109,7 +112,7 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
 
   let out;
   try {
-    out = await ai().trackChat({
+    out = await withAiContext({ purpose: "track_chat", parentId }, () => ai().trackChat({
       parentName: parent!.name.split(" ")[0]!,
       studentName: student.name,
       className: formatClass(student.className),
@@ -119,7 +122,7 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
       history: messages.map((m) => ({ author: m.author, text: m.text })),
       attachments: [...earlier, ...fresh],
       message,
-    });
+    }));
   } catch (err) {
     console.error("[owlrnd ai] trackChat failed", err);
     return { ok: false, error: "I couldn't answer just now. Send it again?" };

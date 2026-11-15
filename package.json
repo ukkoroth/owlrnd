@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "ai:smoke": "tsx --conditions=react-server scripts/ai-smoke.ts",
+    "ai:usage": "tsx --conditions=react-server scripts/ai-usage.ts",
     "s3:check": "tsx --conditions=react-server scripts/s3-check.ts",
     "access": "tsx --conditions=react-server scripts/access.ts",
     "invite": "tsx --conditions=react-server scripts/access.ts invite"

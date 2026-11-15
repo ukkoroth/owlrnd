@@ -131,6 +131,16 @@ The largest share is the model's reasoning while writing each paper, because out
 
 Whatever you choose, check a batch of real papers and marked answers before relying on it: a wrong answer key teaches a child the wrong thing.
 
+### Built-in limits
+
+owlrnd records the cost of every Claude call and enforces limits so a bill can't run away:
+
+- **Monthly budget:** `AI_MONTHLY_BUDGET_USD` (default $150). The address in `OWNER_EMAIL` gets an email at 80% and at 100%. At 100%, new track chats and new exams pause until the next month or until you raise the budget; exams already submitted are still marked.
+- **Per family per day:** 40 track-chat messages and 20 exams written (`aiLimits` in `src/config/rules.ts`). Over the exam limit, the next exam is written after the family's midnight.
+- **See the spend:** `npm run ai:usage` shows this month's total, the cost per kind of call, and the families using the most.
+
+Also set a spend limit on the API key itself in the Claude Console, as a last safety net.
+
 ### Hosting
 
 Hosting is separate from the AI cost. The reference setup (one 2 GB server for the app and background worker, managed PostgreSQL, private object storage for photos, and an email service for sign-in codes) costs about **$30 a month** on AWS Lightsail, S3 and SES, for a small group of families.
