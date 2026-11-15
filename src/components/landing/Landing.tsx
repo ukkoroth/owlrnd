@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { rules } from "@/config/rules";
-import { CapIcon, PeopleIcon, SparkleIcon, StarIcon, Swash } from "./icons";
+import { site } from "@/config/site";
+import { CapIcon, GitHubIcon, PeopleIcon, SparkleIcon, StarIcon, Swash } from "./icons";
 import chatImg from "./img/chat.png";
 import dashImg from "./img/dash.png";
 import paperImg from "./img/paper.png";
@@ -82,6 +83,7 @@ export function Landing() {
         <ForParents />
         <Motivation />
         <ComingSoon />
+        {site.sourceUrl && <OpenSource repoUrl={site.sourceUrl} />}
         <FinalCta />
       </main>
       <SiteFooter />
@@ -339,6 +341,77 @@ function Motivation() {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+const OPEN_POINTS = [
+  ["Nothing hidden", "The instructions that write and mark every exam are in the code. Anyone can read exactly how a child's paper is made."],
+  ["Run your own", "A school, a tutor or a group of parents can host owlrnd for their own children. The README lists what it costs to run."],
+  ["Improvements stay open", "Under the AGPL licence, anyone who changes owlrnd and offers it to others must share their changes too."],
+];
+
+/** Shown only once the repository is public (site.sourceUrl). The commands match the README's "Run it locally". */
+function OpenSource({ repoUrl }: { repoUrl: string }) {
+  const lines: [string, string?][] = [
+    [`git clone ${repoUrl}.git`],
+    ["cd owlrnd && npm install"],
+    ["cp .env.example .env.local", "set AUTH_SECRET"],
+    ["npm run db:up && npm run db:migrate"],
+    ["npm run dev", "http://localhost:3000"],
+  ];
+  return (
+    <section aria-labelledby="open" className="border-y border-line bg-white px-6 py-20">
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-16 gap-y-10">
+        <div className="flex min-w-0 flex-[1_1_440px] flex-col gap-4">
+          <Eyebrow>Open source</Eyebrow>
+          <h2 id="open" className="m-0 text-balance text-[clamp(2rem,4vw,2.75rem)] font-bold leading-[1.1] tracking-[-0.02em]">
+            Learning should be open. So is owlrnd.
+          </h2>
+          <p className="m-0 text-[17px] leading-[1.55] text-ink-muted">
+            Every line of owlrnd is free and open source. Parents, teachers and schools can see how it works, run it
+            themselves, and make it better for every child.
+          </p>
+          <ul className="m-0 mt-2 flex list-none flex-col gap-4 p-0">
+            {OPEN_POINTS.map(([title, body]) => (
+              <li key={title} className="flex flex-col gap-1">
+                <h3 className="m-0 text-lg font-semibold">{title}</h3>
+                <p className="m-0 text-[15px] leading-[1.55] text-ink-muted">{body}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <a href={repoUrl} className="btn-primary h-[52px] px-6 text-base no-underline">
+              <GitHubIcon size={20} />
+              View the code on GitHub
+            </a>
+            <span className="text-sm text-ink-muted">Licensed AGPL-3.0</span>
+          </div>
+        </div>
+
+        <figure className="m-0 min-w-0 flex-[1_1_440px] overflow-hidden rounded bg-ink text-[#D3E0FF]">
+          <div aria-hidden="true" className="flex items-center gap-1.5 border-b border-[#2A4DBF] px-4 py-3">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="h-2.5 w-2.5 rounded-full bg-[#2A4DBF]" />
+            ))}
+            <span className="ml-3 text-xs text-[#A9C4FF]">Run owlrnd yourself</span>
+          </div>
+          <pre tabIndex={0} aria-label="Commands to run owlrnd yourself" className="m-0 overflow-x-auto p-5 font-mono text-[13px] leading-[1.9] focus-visible:outline-white sm:text-sm">
+            <code>
+              {lines.map(([cmd, note]) => (
+                <span key={cmd} className="block whitespace-pre">
+                  <span className="select-none text-[#7AA2FF]">$ </span>
+                  <span className="text-white">{cmd}</span>
+                  {note && <span className="text-[#A9C4FF]">{`   # ${note}`}</span>}
+                </span>
+              ))}
+            </code>
+          </pre>
+          <figcaption className="border-t border-[#2A4DBF] px-5 py-3 text-xs text-[#A9C4FF]">
+            Needs Node 20 and Docker. Full steps in the README.
+          </figcaption>
+        </figure>
       </div>
     </section>
   );
