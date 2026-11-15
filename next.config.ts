@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // A self-contained server (.next/standalone) for the Docker image.
+  output: "standalone",
   // A package-lock.json higher up (in the home folder) confuses Next.js root detection.
   outputFileTracingRoot: path.resolve(import.meta.dirname),
   // pg, postmark and nodemailer are Node-only; keep them out of the client bundle.

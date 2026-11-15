@@ -1,0 +1,11 @@
+# owlrnd on the server (/opt/owlrnd/compose.yml). Caddy (on the host) proxies owlrnd.com to 127.0.0.1:3000.
+# The image tag comes from tag.env, written by deploy.sh; secrets come from .env (never in git).
+services:
+  app:
+    image: owlrnd:${OWLRND_TAG:?set by deploy.sh}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3000:3000"
+    # Give running jobs a moment to finish; any left over are picked up again after a restart.
+    stop_grace_period: 30s

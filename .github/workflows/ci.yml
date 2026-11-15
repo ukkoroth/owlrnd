@@ -1,0 +1,98 @@
+# Tests on every push and pull request; on main (or when run by hand) also deploys to owlrnd.com.
+name: CI and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: owlrnd
+          POSTGRES_PASSWORD: owlrnd
+          POSTGRES_DB: owlrnd
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U owlrnd" --health-interval 2s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.27
+        ports: ["1025:1025", "8025:8025"]
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: "1"
+          MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Test settings
+        run: |
+          cp .env.example .env.local
+          echo "AUTH_SECRET=$(openssl rand -hex 32)" >> .env.local
+      - run: npm run db:migrate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  deploy:
+    needs: test
+    # DEPLOY_ENABLED (a repository variable) switches deploys on once the server is ready.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t "owlrnd:$TAG" .
+      - name: SSH access
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: Copy the image and deploy files to the server
+        run: |
+          docker save "owlrnd:$TAG" | gzip -1 | ssh -i ~/.ssh/deploy "ubuntu@${{ vars.DEPLOY_HOST }}" 'gunzip | docker load'
+          scp -i ~/.ssh/deploy deploy/compose.yml deploy/server/deploy.sh deploy/server/rollback.sh "ubuntu@${{ vars.DEPLOY_HOST }}:/opt/owlrnd/"
+      - name: Migrate and switch to the new version
+        run: ssh -i ~/.ssh/deploy "ubuntu@${{ vars.DEPLOY_HOST }}" "bash /opt/owlrnd/deploy.sh $TAG"
+      - name: Check the live site
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS https://owlrnd.com/api/health; then echo; exit 0; fi
+            sleep 5
+          done
+          exit 1
