@@ -15,7 +15,8 @@ The earlier "All-rounder" prototype (single student, θ/3PL engine, follow-up ch
 | M4 Exams | ✅ done |
 | M5 Marking and results | ✅ done |
 | M6 Goals, history, points | ✅ done |
-| Release: closed beta on AWS Lightsail ([docs/release-plan.md](docs/release-plan.md)) | next |
+| Release: closed beta on AWS Lightsail ([docs/release-plan.md](docs/release-plan.md)) | ✅ live at owlrnd.com |
+| Version 0.2: two kinds of account ([docs/plan-0.2.md](docs/plan-0.2.md)) | planned |
 
 Source-of-truth order: `docs/05-rules.md` → `docs/04-screens.md` / `docs/03-flows.md` → `screens/*.png` → `mockups/*.html`.
 

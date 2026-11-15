@@ -6,10 +6,11 @@ This package is the complete brief. Read it before writing code.
 
 ## Read in this order
 
+0. `docs/11-editions.md`: **read first.** owlrnd now has two kinds of learner on one site: self-managed learners (the priority) and parent-managed children. It overrides the older documents wherever they assume every learner is a parent-managed child; read the rest of this file and `01-product.md` as "the For my child path".
 1. `docs/01-product.md`: what owlrnd is, who it is for, and the principles behind it.
 2. `docs/02-scope-0.1.md`: exactly what is in and out of version 0.1.
 3. `docs/03-flows.md`: the user journeys, step by step, with screen codes.
-4. `docs/04-screens.md`: every screen, what it does, and where each action leads. Each row links to a screenshot in `screens/` and a static HTML snapshot in `mockups/`.
+4. `docs/04-screens.md`: every screen, what it does, and where each action leads. Each row links to a screenshot in `screens/` and a static HTML snapshot in `mockups/`. `docs/04b-screens-self-managed.md` does the same for self-managed learners (files prefixed `sm-`).
 5. `docs/05-rules.md`: the business rules (sign-in codes, tracks, goals, exam building, paging, marking, suggestions, points). **These are the source of truth.**
 6. `docs/06-data.md`: the things the app stores and how they relate.
 7. `docs/07-ai.md`: what the AI does, its inputs and outputs, and its limits.
@@ -21,10 +22,11 @@ This package is the complete brief. Read it before writing code.
 
 When documents disagree, follow this order:
 
-1. `docs/05-rules.md`
-2. `docs/04-screens.md` and `docs/03-flows.md`
-3. The screenshots in `screens/`
-4. The HTML snapshots in `mockups/`
+1. `docs/11-editions.md` (except `05-rules.md` details it doesn't mention)
+2. `docs/05-rules.md`
+3. `docs/04-screens.md`, `docs/04b-screens-self-managed.md` and `docs/03-flows.md`
+4. The screenshots in `screens/`
+5. The HTML snapshots in `mockups/`
 
 The HTML snapshots are reference only: use them for exact wording, layout and colours. They use inline styles and sample data; do not copy them as production code.
 
@@ -43,11 +45,11 @@ The HTML snapshots are reference only: use them for exact wording, layout and co
 
 ## Non-negotiables
 
-- **Every sign-in needs a 6-digit code sent to the parent's email**, for parents and students alike (rules §1).
+- **Every sign-in needs a 6-digit code sent to the email of whoever controls the account**: the learner's own email for self-managed learners, the parent's email for a parent and their children (rules §1, editions §2.3).
 - **An exam page never scrolls.** It fits the browser window; extra questions go to the next page (rules §5).
 - **Adaptivity happens between exams, never inside one.** The whole paper is shown at once (rules §4).
 - **Tracks stop at their goal** and only restart when the parent adds topics (rules §3).
-- **The parent controls everything; the student can only practise and view their own results.**
+- **Whoever controls the account controls everything.** Self-managed learners control their own tracks; for parent-managed learners the parent controls everything and the learner can only practise and view their own results. Enforce this through one permission policy (editions §2.3).
 - **The AI stays inside the track's topics and the material the parent provided** (AI §6).
 - Accessible controls: real buttons, links and labelled inputs; touch targets at least 44px; text contrast at least 4.5:1.
 
