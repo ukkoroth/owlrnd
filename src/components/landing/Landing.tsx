@@ -367,7 +367,7 @@ function OpenSource({ repoUrl }: { repoUrl: string }) {
         <div className="flex min-w-0 flex-[1_1_440px] flex-col gap-4">
           <Eyebrow>Open source</Eyebrow>
           <h2 id="open" className="m-0 text-balance text-[clamp(2rem,4vw,2.75rem)] font-bold leading-[1.1] tracking-[-0.02em]">
-            Learning should be open. So is owlrnd.
+            Built in the open.
           </h2>
           <p className="m-0 text-[17px] leading-[1.55] text-ink-muted">
             Every line of owlrnd is free and open source. Parents, teachers and schools can see how it works, run it
