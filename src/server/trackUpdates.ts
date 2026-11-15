@@ -4,6 +4,7 @@ import { formatClass } from "@/domain/identity";
 import { canApplyUpdate, emptyUpdate, goalLabel, sanitizeUpdate, todayIn, type StoredUpdate, type UpdateMode } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
 import { db } from "./db";
+import { discardFiles } from "./jobs/files";
 import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
@@ -129,7 +130,7 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
       await tx.insert(trackMessages).values({ trackId, author: "ai", kind: "extend", text: out.reply.trim(), update: stored, createdAt: new Date(sentAt.getTime() + 1) });
     });
   } catch (err) {
-    await Promise.all(keys.map((k) => fileStore().delete(k).catch(() => {})));
+    await fileStore().delete(keys).catch(() => {}); // nothing references these files yet
     throw err;
   }
   const chat = await loadUpdateChat(trackId);
@@ -241,8 +242,10 @@ export async function discardUpdateChat(parentId: string, trackId: string) {
   const ids = msgs.slice(lastApplied + 1).map((m) => m.id);
   if (!ids.length) return;
   const atts = await db.select().from(attachments).where(inArray(attachments.trackMessageId, ids));
-  await db.delete(trackMessages).where(inArray(trackMessages.id, ids));
-  await Promise.all(atts.map((a) => fileStore().delete(a.fileKey).catch(() => {})));
+  await db.transaction(async (tx) => {
+    await tx.delete(trackMessages).where(inArray(trackMessages.id, ids));
+    await discardFiles(atts.map((a) => a.fileKey), tx);
+  });
 }
 
 /** Rules §2: Archive is for goal-reached tracks; it hides the track from the student and keeps its history. */

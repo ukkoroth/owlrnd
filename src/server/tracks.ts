@@ -5,6 +5,7 @@ import { formatClass } from "@/domain/identity";
 import { canCreateTrack, emptyPreview, goalLabel, sanitizePreview, todayIn, type StoredPreview } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
 import { db } from "./db";
+import { discardFiles } from "./jobs/files";
 import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
@@ -157,7 +158,7 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
       await tx.insert(trackMessages).values({ trackId: draft!.id, author: "ai", text: out.reply.trim(), preview: stored, createdAt: new Date(sentAt.getTime() + 1) });
     });
   } catch (err) {
-    await Promise.all(keys.map((k) => fileStore().delete(k).catch(() => {})));
+    await fileStore().delete(keys).catch(() => {}); // nothing references these files yet
     throw err;
   }
 
@@ -171,8 +172,10 @@ export async function discardDraft(parentId: string, studentId: string) {
   const draft = await findDraft(studentId);
   if (!draft) return;
   const { rows } = await loadChat(draft.id);
-  await db.delete(tracks).where(eq(tracks.id, draft.id)); // messages and attachment rows cascade
-  await Promise.all(rows.atts.map((a) => fileStore().delete(a.fileKey).catch(() => {})));
+  await db.transaction(async (tx) => {
+    await tx.delete(tracks).where(eq(tracks.id, draft.id)); // messages and attachment rows cascade
+    await discardFiles(rows.atts.map((a) => a.fileKey), tx);
+  });
 }
 
 // ── Making a track live ────────────────────────────────────────────────────

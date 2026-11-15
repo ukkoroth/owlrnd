@@ -28,6 +28,6 @@ test("the header links to the open-source repository on GitHub", async ({ page }
 test("the landing page explains the open-source project and links to the code", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 2, name: "Built in the open." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "View the code on GitHub" })).toHaveAttribute("href", "https://github.com/ukkoroth/owlrnd");
+  await expect(page.getByRole("link", { name: "View the code on GitHub", exact: true })).toHaveAttribute("href", "https://github.com/ukkoroth/owlrnd");
   await expect(page.getByLabel("Commands to run owlrnd yourself")).toContainText("git clone https://github.com/ukkoroth/owlrnd.git");
 });

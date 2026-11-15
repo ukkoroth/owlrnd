@@ -5,8 +5,11 @@ import { jobs } from "../db/schema";
 
 export type JobType = string;
 
-export async function enqueue(type: JobType, payload: unknown, opts: { runAt?: Date; maxAttempts?: number } = {}) {
-  const [row] = await db
+/** Anything that can insert: the db itself or an open transaction (so a job is queued only if the change commits). */
+type Executor = Pick<typeof db, "insert">;
+
+export async function enqueue(type: JobType, payload: unknown, opts: { runAt?: Date; maxAttempts?: number; tx?: Executor } = {}) {
+  const [row] = await (opts.tx ?? db)
     .insert(jobs)
     // Without an explicit runAt the database's now() is used, so app and DB clock skew can't delay a job.
     .values({ type, payload, runAt: opts.runAt, maxAttempts: opts.maxAttempts ?? 3 })

@@ -3,6 +3,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { hashPassword } from "./auth/passwords";
 import { revokeAllSessions } from "./auth/sessions";
 import { db } from "./db";
+import { discardFiles, fileKeysForStudent } from "./jobs/files";
 import { parents, students } from "./db/schema";
 
 // Every function is scoped to the parent: the parent id always comes from the session, never from a form.
@@ -96,10 +97,16 @@ export async function setStudentPassword(parentId: string, studentId: string, pa
 }
 
 /** 5e: removes the student's account; codes, sessions (and later tracks, exams, points) go by FK cascade. */
+/** Removes a child and, by cascade, their tracks, exams and attachment rows; their files are queued for deletion. */
 export async function removeStudent(parentId: string, studentId: string) {
-  const removed = await db
-    .delete(students)
-    .where(and(eq(students.id, studentId), eq(students.parentId, parentId)))
-    .returning({ id: students.id });
-  return removed.length > 0;
+  return db.transaction(async (tx) => {
+    const keys = await fileKeysForStudent(tx, studentId);
+    const removed = await tx
+      .delete(students)
+      .where(and(eq(students.id, studentId), eq(students.parentId, parentId)))
+      .returning({ id: students.id });
+    if (!removed.length) return false;
+    await discardFiles(keys, tx);
+    return true;
+  });
 }

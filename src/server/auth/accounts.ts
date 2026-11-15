@@ -3,6 +3,7 @@ import { and, count, eq, gt, isNotNull, ne, sql } from "drizzle-orm";
 import type { Identifier } from "@/domain/identity";
 import { rules } from "@/config/rules";
 import { db } from "../db";
+import { discardFiles, fileKeysForParent } from "../jobs/files";
 import { parents, signInFailures, students } from "../db/schema";
 
 export type Parent = typeof parents.$inferSelect;
@@ -95,8 +96,13 @@ export async function tooManySignInFailures(identifier: string, now = new Date()
 }
 
 /** 5d "Delete my account": students, their codes and sessions go with it (FK cascades). */
+/** Deletes the parent and, by cascade, every child, track, exam and attachment row; their files are queued for deletion. */
 export async function deleteParent(parentId: string) {
-  await db.delete(parents).where(eq(parents.id, parentId));
+  await db.transaction(async (tx) => {
+    const keys = await fileKeysForParent(tx, parentId);
+    await tx.delete(parents).where(eq(parents.id, parentId));
+    await discardFiles(keys, tx);
+  });
 }
 
 /**
