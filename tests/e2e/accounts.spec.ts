@@ -17,6 +17,7 @@ test("M1 done-when: a parent signs up, verifies, signs out and signs back in wit
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill("parentpass1");
     const before = await inboxCount(email);
+    await page.getByLabel(/parent or legal guardian/).check();
     await page.getByRole("button", { name: "Create account" }).click();
 
     await expect(page).toHaveURL(/\/sign-up\/verify$/);

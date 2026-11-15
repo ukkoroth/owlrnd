@@ -35,6 +35,10 @@ export const parents = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     passwordHash: text("password_hash").notNull(),
     timeZone: text("time_zone").notNull().default("UTC"),
+    /** Sign-up consent: the parent confirmed they are the children's parent or guardian and agreed to the policies. */
+    consentedAt: timestamp("consented_at", { withTimezone: true }),
+    /** Which version of the terms and privacy policy they agreed to (config/legal.ts). */
+    consentVersion: text("consent_version"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("parents_email_unique").on(sql`lower(${t.email})`)],

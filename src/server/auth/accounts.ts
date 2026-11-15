@@ -54,7 +54,7 @@ export async function emailTakenByVerified(email: string, exceptId?: string) {
  * unverified sign-up for the same email: until verified, an account belongs to whoever can read the inbox.
  */
 export async function upsertUnverifiedParent(
-  input: { name: string; email: string; passwordHash: string; timeZone: string },
+  input: { name: string; email: string; passwordHash: string; timeZone: string; consentedAt?: Date; consentVersion?: string },
   pendingParentId: string | null,
 ): Promise<{ ok: true; parentId: string } | { ok: false; reason: "email_taken" }> {
   return db.transaction(async (tx) => {

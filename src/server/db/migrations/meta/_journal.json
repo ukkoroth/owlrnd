@@ -64,6 +64,13 @@
       "when": 1794721502870,
       "tag": "0008_ai_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794726149549,
+      "tag": "0009_consent",
+      "breakpoints": true
     }
   ]
 }

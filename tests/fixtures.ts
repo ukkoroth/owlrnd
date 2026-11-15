@@ -49,6 +49,11 @@ export async function createInvitation(email: string, { expiresInDays = 14 } = {
   return `/sign-up?invite=${token}`;
 }
 
+export async function consentFor(email: string): Promise<{ consentedAt: Date | null; consentVersion: string | null } | null> {
+  const { rows } = await pool.query(`select consented_at as "consentedAt", consent_version as "consentVersion" from parents where lower(email) = lower($1)`, [email]);
+  return rows[0] ?? null;
+}
+
 export async function accessRequestFor(email: string): Promise<{ name: string; note: string | null; status: string } | null> {
   const { rows } = await pool.query(`select name, note, status from access_requests where lower(email) = lower($1)`, [email]);
   return rows[0] ?? null;

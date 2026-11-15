@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { POLICIES_VERSION } from "@/config/legal";
 import { rules } from "@/config/rules";
 import { parseIdentifier, normalizeEmail, validateEmail, validateName, validatePassword } from "@/domain/identity";
 import { codeFrom, text, type FormState } from "@/lib/form";
@@ -98,6 +99,8 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
   if (nameErr) fieldErrors.name = nameErr;
   if (emailErr) fieldErrors.email = emailErr;
   if (pwErr) fieldErrors.password = pwErr;
+  // Consent (release plan, Phase 1 item 7): required, and recorded with the policy version on the account.
+  if (text(form, "consent") !== "yes") fieldErrors.consent = "Please confirm you are the parent or guardian and agree to the terms and privacy policy.";
   if (Object.keys(fieldErrors).length) return { fieldErrors, values };
 
   const pending = await getPending("verify_email");
@@ -110,7 +113,10 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
     invitationId = invitation.id;
   }
 
-  const res = await upsertUnverifiedParent({ name, email, passwordHash: await hashPassword(password), timeZone }, pending?.parentId ?? null);
+  const res = await upsertUnverifiedParent(
+    { name, email, passwordHash: await hashPassword(password), timeZone, consentedAt: new Date(), consentVersion: POLICIES_VERSION },
+    pending?.parentId ?? null,
+  );
   if (!res.ok) return { fieldErrors: { email: "An account with this email already exists. Sign in instead." }, values };
   if (invitationId) await claimInvitation(invitationId, res.parentId);
 

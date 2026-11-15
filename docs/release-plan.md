@@ -52,7 +52,7 @@ Claude is the main cost. Phase 1 measures the real cost per exam and adds a hard
    - **Alerts:** an email when a job fails for good or the health check fails.
 7. **Privacy and consent** (not legal advice; worth a review by someone who knows India's DPDP Act):
    - **Policy pages:** *Done 2026-11-15 (`/privacy`, `/terms`, `/contact`; operator Unni Koroth, contact hello@owlrnd.com, Indian law, courts of Kerala). Not yet reviewed by a lawyer.* A short privacy policy and terms page, covering what is stored, that photos and answers are sent to Anthropic's API to write and mark exams (API data isn't used to train models by default), how to delete everything, and contact details.
-   - **Consent at sign-up:** a checkbox where the parent confirms they are the child's parent or guardian and consent to processing their child's data.
+   - **Consent at sign-up:** *Done 2026-11-15: required checkbox, checked on the server, recorded on the parent (`consented_at`, `consent_version` from `src/config/legal.ts`).* a checkbox where the parent confirms they are the child's parent or guardian and consent to processing their child's data.
    - **Deletion:** "Delete my account" already deletes everything; after item 3 it includes the photos.
 8. **Security and accessibility checks.**
    - **Security review:** a full security review of the code (`/security-review`), plus `npm audit` with high and critical issues fixed.

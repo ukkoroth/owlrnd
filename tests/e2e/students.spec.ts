@@ -24,6 +24,7 @@ test("M2 done-when: a parent adds two students and each signs in with the parent
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill("parentpass1");
     const before = await inboxCount(email);
+    await page.getByLabel(/parent or legal guardian/).check();
     await page.getByRole("button", { name: "Create account" }).click();
     await enterCode(page, await nextCode(email, before));
     await page.getByRole("button", { name: "Verify email" }).click();

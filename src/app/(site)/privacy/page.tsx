@@ -31,8 +31,9 @@ export default function PrivacyPage() {
       <Section title="Parents set up every account">
         <P>
           A parent or guardian creates their own account and then adds each child. Children never give us an email address
-          or phone number. By adding a child, the parent confirms they are the child&apos;s parent or legal guardian and agrees
-          to us processing the child&apos;s data as described here. Every sign-in, the child&apos;s included, needs a code
+          or phone number. When creating their account, the parent confirms they are the parent or legal guardian of the
+          children they will add and agrees to us processing the children&apos;s data as described here. We record when this
+          consent was given and which version of this policy it covered. Every sign-in, the child&apos;s included, needs a code
           sent to the parent&apos;s email, so the parent knows whenever the account is used.
         </P>
       </Section>

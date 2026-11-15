@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { accessRequestFor, closeDb, createInvitation, deleteParentByEmail, uid } from "../fixtures";
+import { accessRequestFor, closeDb, consentFor, createInvitation, deleteParentByEmail, uid } from "../fixtures";
 import { inboxCount, nextCode } from "../mailpit";
 import { enterCode, formAlert } from "./helpers";
 
@@ -59,6 +59,7 @@ test("an invitation link signs up once; afterwards it no longer works", async ({
     await page.getByLabel("Your name").fill("Asha Menon");
     await page.getByLabel("Password").fill("parentpass1");
     const before = await inboxCount(email);
+    await page.getByLabel(/parent or legal guardian/).check();
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page).toHaveURL(/\/sign-up\/verify$/);
     await enterCode(page, await nextCode(email, before));
@@ -80,6 +81,35 @@ test("an expired invitation link is refused", async ({ page }) => {
     await page.goto(await createInvitation(email, { expiresInDays: -1 }));
     await expect(page.getByRole("heading", { name: "This invitation link has expired" })).toBeVisible();
     await expect(formAlert(page)).toHaveCount(0);
+  } finally {
+    await deleteParentByEmail(email);
+  }
+});
+
+test("sign-up needs the parent's consent, checked on the server too, and records it", async ({ page }) => {
+  const email = `consent-${uid()}@test.owlrnd`;
+  try {
+    await page.goto(await createInvitation(email));
+    await page.getByLabel("Your name").fill("Atticus Finch");
+    await page.getByLabel("Password").fill("parentpass1");
+    const box = page.getByLabel(/parent or legal guardian/);
+    await expect(box).toHaveAttribute("required", "");
+    await expect(page.getByRole("link", { name: "privacy policy" })).toHaveAttribute("href", "/privacy");
+
+    // Bypass the browser's check: the server still refuses.
+    await box.evaluate((el) => el.removeAttribute("required"));
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.locator("#f-consent-err")).toContainText("parent or guardian");
+    await expect(page).toHaveURL(/\/sign-up/);
+    expect(await consentFor(email)).toBeNull(); // no account was created
+
+    await page.getByLabel("Password").fill("parentpass1");
+    await page.getByLabel(/parent or legal guardian/).check();
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/sign-up\/verify$/);
+    const consent = await consentFor(email);
+    expect(consent?.consentVersion).toBe("2026-11-15");
+    expect(Date.now() - new Date(consent!.consentedAt!).getTime()).toBeLessThan(60_000);
   } finally {
     await deleteParentByEmail(email);
   }

@@ -51,20 +51,37 @@ export function SignUpForm({ initialName, initialEmail, invite, changingEmail }:
         hint={`At least ${rules.accounts.passwordMinLength} characters.`}
         error={state.fieldErrors?.password}
       />
+      <div>
+        <label htmlFor="f-consent" className="flex min-h-touch cursor-pointer items-start gap-3 text-[14px] leading-snug text-ink">
+          <input
+            id="f-consent"
+            name="consent"
+            type="checkbox"
+            value="yes"
+            required
+            aria-invalid={state.fieldErrors?.consent ? true : undefined}
+            aria-describedby={state.fieldErrors?.consent ? "f-consent-err" : undefined}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-brand"
+          />
+          <span>
+            I am the parent or legal guardian of the children I will add, and I agree to the{" "}
+            <Link href="/terms" className="link" target="_blank">
+              terms of use
+            </Link>{" "}
+            and the{" "}
+            <Link href="/privacy" className="link" target="_blank">
+              privacy policy
+            </Link>
+            , including how owlrnd uses my children&apos;s data.
+          </span>
+        </label>
+        {state.fieldErrors?.consent && (
+          <p id="f-consent-err" className="mt-1 text-[13px] font-semibold text-danger-text">
+            {state.fieldErrors.consent}
+          </p>
+        )}
+      </div>
       <SubmitButton>{changingEmail ? "Send a new code" : "Create account"}</SubmitButton>
-      {!changingEmail && (
-        <p className="m-0 text-[13px] text-ink-muted">
-          By creating an account you agree to the{" "}
-          <Link href="/terms" className="link">
-            terms of use
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="link">
-            privacy policy
-          </Link>
-          .
-        </p>
-      )}
       <p className="mt-2 text-center text-sm text-ink-muted">
         Already have an account?{" "}
         <Link href="/sign-in" className="link font-semibold">
