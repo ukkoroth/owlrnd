@@ -57,7 +57,7 @@ Claude is the main cost. Phase 1 measures the real cost per exam and adds a hard
 8. **Security and accessibility checks.**
    - **Security review:** a full security review of the code (`/security-review`), plus `npm audit` with high and critical issues fixed.
    - **Accessibility:** automated accessibility checks (axe) on every main screen in the browser tests, and a keyboard-only pass.
-9. **Deployment pipeline.**
+9. **Deployment pipeline.** *Done 2026-11-15, without ECR: GitHub Actions builds the image and copies it to the server over SSH (`.github/workflows/ci.yml`, `deploy/`); deploys run while the repository variable `DEPLOY_ENABLED` is `true`; `npm run deploy` and `npm run rollback`.*
    - **Docker:** a Dockerfile (Next.js standalone build) and Docker Compose on the server, with Caddy in front for automatic HTTPS (Let's Encrypt).
    - **Deploy:** GitHub Actions runs the tests, builds the image, pushes it to Amazon ECR, then over SSH runs the database migrations and restarts the app.
    - **One-command deploy and rollback:** `npm run deploy` and `npm run rollback`, which goes back to the previous image.
