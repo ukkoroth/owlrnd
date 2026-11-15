@@ -14,9 +14,12 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
   return (
     <header className="bg-sidebar text-white">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3.5">
-        <Link href={`${base}#top`} className="flex min-h-touch items-center gap-2.5 text-white no-underline focus-visible:outline-white">
-          <Logo />
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href={`${base}#top`} className="flex min-h-touch items-center gap-2.5 text-white no-underline focus-visible:outline-white">
+            <Logo />
+          </Link>
+          {site.sourceUrl && <GitHubBadge href={site.sourceUrl} />}
+        </div>
         <nav aria-label="Main" className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <Link href={`${base}#how`} className={navLink}>
             How it works
@@ -24,7 +27,6 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
           <Link href={`${base}#parents`} className={navLink}>
             For parents
           </Link>
-          {site.sourceUrl && <GitHubBadge href={site.sourceUrl} />}
           <Link href="/sign-in" className={navLink}>
             Sign in
           </Link>
