@@ -97,7 +97,7 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 
 - [ ] **Website** (`src/app/(site)`, landing page): add flashcards to the features (learn between exams, spaced repetition, no marks), with an HD screenshot of a session (fc-3) and the Practise button (fc-1); check the FAQ and the For parents section mention it; privacy page already covers flashcards ("Your material").
 - [ ] **README on GitHub:** flashcards in the feature list and screenshots (HD, deviceScaleFactor 2), the `write_flashcards` job, and the new routes.
-- [ ] **AI usage estimate (README "Running costs", `docs/release-plan.md`):** add flashcards: the starter deck per track (~6 cards per topic, up to 60), up to 3 cards per marked exam, top-ups of 10, and the longer exam prompt (the deck's fronts). Measure from `ai_usage` (`npm run ai:usage`, purpose `write_flashcards`) on real tracks during local testing, then update the per-exam, per-learner-per-month and $10 demo allowance figures (how many exams and sessions it covers).
+- [x] **AI usage estimate** *(done 2026-11-16 from the owner's test track: starter deck of 60 cards $0.21, top-up of 10 cards $0.04–0.06, exam $0.09, chat $0.04–0.16; missed-question cards and marking still estimated)* (README "Running costs", `docs/release-plan.md`): add flashcards: the starter deck per track (~6 cards per topic, up to 60), up to 3 cards per marked exam, top-ups of 10, and the longer exam prompt (the deck's fronts). Measure from `ai_usage` (`npm run ai:usage`, purpose `write_flashcards`) on real tracks during local testing, then update the per-exam, per-learner-per-month and $10 demo allowance figures (how many exams and sessions it covers).
 - [ ] Release notes for v0.3.0.
 
 ## Tests

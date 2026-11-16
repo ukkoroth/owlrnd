@@ -115,9 +115,9 @@ In development, `/dev/shell?role=student` and `/dev/shell?role=parent` preview t
 
 ## Running costs: plan an AI budget
 
-owlrnd uses the Claude API to read textbook pages, agree tracks with the parent, write each exam and mark typed answers. You pay Anthropic for that by usage, so set a monthly spend limit on your API key in the [Claude Console](https://console.anthropic.com) before you invite families.
+owlrnd uses the Claude API to read textbook pages, agree tracks with the parent, write each exam, mark typed answers and write flashcards. You pay Anthropic for that by usage, so set a monthly spend limit on your API key in the [Claude Console](https://console.anthropic.com) before you invite families.
 
-The figures below are **estimates** from the app's prompt sizes and recorded outputs, at Claude Opus 5.5 list prices of November 2026 ($4 per million input tokens, $20 per million output tokens). They are not measurements; check current prices on Anthropic's pricing page.
+The figures below are **estimates** from the app's prompt sizes and recorded outputs, at Claude Opus 5.5 list prices of November 2026 ($4 per million input tokens, $20 per million output tokens), checked against one real test track in November 2026 (see *Measured* below). Check current prices on Anthropic's pricing page.
 
 ### Per exam
 
@@ -125,9 +125,25 @@ The figures below are **estimates** from the app's prompt sizes and recorded out
 |---|---|---|
 | Writing the paper (effort `high`) | In: ~5,000 (instructions, topics, text read from the textbook pages, recent questions to avoid). Out: ~1,000 of questions plus ~3,000–8,000 of reasoning | $0.10–0.20 |
 | Marking typed answers (effort `medium`) | In: ~1,500. Out: ~1,000–1,500 | $0–0.03 |
-| **Per exam** | | **~$0.12–0.23** |
+| Flashcards from missed questions (up to 3 cards, after marking) *(0.3)* | In: ~5,000. Out: ~600–1,000 | $0.03 |
+| The deck's card fronts in the paper's prompt, so exams rarely repeat them *(0.3)* | In: up to ~3,000 more | $0–0.01 |
+| **Per exam** | | **~$0.13–0.27** |
 
 Multiple-choice answers, blank answers and answers that exactly match the expected answer are marked by owlrnd itself, with no AI call. A paper that fails validation is rewritten once, which adds about 5–10% overall.
+
+### Flashcards *(0.3)*
+
+Practising flashcards makes **no AI calls**; only writing cards does.
+
+| Step | Tokens | Cost |
+|---|---|---|
+| Starter deck when a track is created: about 6 cards per topic, up to 60 | In: ~4,700. Out: ~9,300 for 60 cards | ~$0.20 (measured, 60 cards) |
+| Top-up of 10 cards, when a learner practises with none due | In: ~5,100. Out: ~1,100–1,900 | $0.04–0.06 (measured) |
+| **Most a track can ever cost in cards** (a deck stops at 200) | | **~$0.70–1.15** |
+
+### Measured (one test track, 16 November 2026)
+
+A parent set up a 10-topic Physics track in two chat turns ($0.16 and $0.04), the first exam was written for $0.09, the starter deck of 60 cards for $0.21, and two top-ups of 10 cards for $0.04 and $0.06: **$0.60 in all** before any exam was marked. The first chat turn costs the most, because it carries the instructions and the parent's material.
 
 ### Per child per month
 
@@ -135,12 +151,16 @@ One child taking 3 exams a day for 30 days (90 exams), with about 4 new chapters
 
 | | Cost |
 |---|---|
-| 90 exams | $11–21 |
-| Setting up tracks (chat turns with textbook photos, ~$0.05–0.10 each) | $1–2 |
+| 90 exams, including their missed-question cards | $12–24 |
+| Setting up 4 tracks (2–3 chat turns each, ~$0.20–0.35 a track) | $1–1.5 |
+| Starter decks for 4 tracks | ~$0.80 |
+| Flashcard top-ups (a few a week) | $0.50–2 |
 | Rewritten papers | ~$1 |
-| **Total** | **~$12–25 per child per month** |
+| **Total** | **~$15–29 per child per month** |
 
-Scale this by the number of active children and how often they practise. A child doing one exam a day costs roughly a third of this.
+Scale this by the number of active children and how often they practise. A child doing one exam a day costs roughly a third of this. Flashcards add about $2–4 of this; practising them is free.
+
+**The $10 demo allowance per account** (`rules.aiLimits.perAccountUsd`) covers setting up a track or two and roughly **35–70 exams**, with all the flashcard practice the learner wants on top.
 
 ### Bringing the cost down
 
