@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>fc-2</title>
+<!-- owlrnd 0.3 "Flashcards": preview for review, not production code. Sample data. -->
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;color:#132C6B;background:#F3F7FF}
+a{color:#2563EB}
+.shell{min-height:100vh;display:flex}
+.side{width:220px;flex:none;background:#1E40AF;color:#fff;padding:28px 20px;display:flex;flex-direction:column;gap:28px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px;font-size:20px;font-weight:700}
+.nav a{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:2px;color:#fff;text-decoration:none;font-weight:600}
+.nav a.on{background:#fff;color:#1E40AF}
+.side .bottom{margin-top:auto;display:flex;flex-direction:column;gap:20px}
+.box{border:1px solid rgba(255,255,255,.7);border-radius:2px;padding:10px 12px;font-size:13px;color:#D3E0FF}
+.box b{display:block;color:#fff;font-size:22px}
+.main{flex:1;padding:48px 64px}
+.date{font-size:14px;color:#4A5F8A}
+h1{font-size:32px;margin:4px 0 0}
+.tabs{display:flex;gap:32px;border-bottom:1px solid #CFDDF5;margin-top:28px}
+.tabs span{padding:10px 4px;font-weight:600;color:#4A5F8A}.tabs span.on{color:#132C6B;border-bottom:3px solid #2563EB}
+.row{display:flex;justify-content:space-between;align-items:baseline;margin:32px 0 16px}
+h2{font-size:20px;margin:0}
+.muted{color:#4A5F8A}
+.done{font-weight:600;color:#4A5F8A;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{position:relative;overflow:hidden;background:#fff;border:1px solid #CFDDF5;border-radius:2px;padding:24px 24px 24px 28px;display:flex;flex-direction:column}
+.edge{position:absolute;left:0;top:0;bottom:0;width:6px;display:flex;flex-direction:column;justify-content:flex-end}
+.tag{display:inline-block;align-self:flex-start;padding:2px 8px;border-radius:2px;font-size:13px;font-weight:600}
+.small{font-size:14px;color:#4A5F8A;margin-top:16px}
+.title{font-size:21px;font-weight:700;margin:2px 0 4px;line-height:1.3}
+.btn{display:flex;align-items:center;justify-content:center;height:52px;border-radius:2px;font-weight:600;font-size:16px;text-decoration:none}
+.primary{background:#2563EB;color:#fff}.outline{border:1.5px solid #2563EB;color:#2563EB;background:#fff}
+.ghost{color:#2563EB;background:transparent;border:1.5px dashed #A9BCE0}
+.stack{display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:20px}
+.hint{font-size:13px;color:#4A5F8A;text-align:center}
+.new{display:inline-block;margin-left:8px;padding:1px 6px;border-radius:2px;background:#DCE9FF;color:#1E40AF;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:2px}
+/* Session (focus mode, no sidebar, like the exam paper) */
+.top{height:64px;background:#fff;border-bottom:1px solid #CFDDF5;display:flex;align-items:center;justify-content:space-between;padding:0 40px}
+.top .left{display:flex;align-items:center;gap:14px;font-weight:600}
+.prog{display:flex;align-items:center;gap:12px;color:#4A5F8A;font-size:14px;font-weight:600}
+.bar{width:220px;height:8px;border-radius:9px;background:#E3ECFB;overflow:hidden}.bar i{display:block;height:100%;background:#2563EB}
+.stage{min-height:calc(100vh - 64px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+.fc{width:720px;max-width:100%;min-height:380px;background:#fff;border:1px solid #CFDDF5;border-radius:6px;box-shadow:0 10px 30px rgba(19,44,107,.08);padding:40px 48px;display:flex;flex-direction:column}
+.fc .kind{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4A5F8A}
+.fc .front{font-family:'STIX Two Text','Times New Roman',serif;font-size:30px;line-height:1.35;margin:auto 0;text-align:center}
+.fc .q{font-family:'STIX Two Text','Times New Roman',serif;font-size:19px;color:#4A5F8A;line-height:1.4;text-align:center}
+.fc .a{font-family:'STIX Two Text','Times New Roman',serif;font-size:32px;font-weight:600;text-align:center;margin:28px 0 12px}
+.fc .why{font-size:16px;line-height:1.55;text-align:center;color:#132C6B;max-width:520px;margin:0 auto}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:720px;max-width:100%;margin-top:24px}
+.answers .btn{height:60px;font-size:18px}
+.keys{margin-top:14px;font-size:13px;color:#4A5F8A}
+kbd{font-family:inherit;border:1px solid #A9BCE0;border-bottom-width:2px;border-radius:3px;padding:0 6px;background:#fff;font-size:12px}
+.sum{width:720px;max-width:100%;background:#fff;border:1px solid #CFDDF5;border-radius:6px;padding:36px 44px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
+.stat{background:#F3F7FF;border-radius:4px;padding:16px;text-align:center}.stat b{display:block;font-size:30px}
+.list{margin:0;padding:0;list-style:none;border-top:1px solid #CFDDF5}.list li{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #CFDDF5;font-size:15px}
+.chip{font-size:12px;font-weight:700;padding:2px 8px;border-radius:2px}
+.again{background:#FDF2E3;color:#7A4508}.got{background:#E3F1E0;color:#22531C}
+.track{background:#fff;border:1px solid #CFDDF5;border-radius:2px;padding:24px 24px 24px 28px;position:relative;overflow:hidden}
+.fcrow{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;align-items:center;margin-top:16px;padding:12px 14px;background:#F3F7FF;border-radius:2px;font-size:14px}
+.links{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-weight:600;font-size:15px}
+@media (max-width:600px){.top{padding:0 16px}.top .left>span:not(.tag){display:none}.bar{width:72px}.fc{padding:28px 20px}.note{display:none}.answers .btn{height:56px}}
+.note{position:fixed;right:16px;bottom:16px;max-width:300px;background:#132C6B;color:#fff;font-size:12px;line-height:1.45;padding:10px 12px;border-radius:4px;opacity:.92}
+</style></head><body><div class="top"><div class="left"><span class="tag" style="background:#ECE4FB;color:#45288A">Chemical reactions</span><span>Flashcards</span></div>
+<div class="prog">Card 4 of 8<span class="bar"><i style="width:50%"></i></span></div><a style="font-weight:600">Leave</a></div>
+<div class="stage"><div class="fc"><div class="kind">Topic · Balancing equations <span class="new">From a missed exam question</span></div>
+<p class="front">In a balanced equation, what must be the same on both sides?</p>
+</div>
+<div class="answers" style="grid-template-columns:1fr"><a class="btn primary">Show answer</a></div>
+<p class="keys"><kbd>Space</kbd> shows the answer</p></div>
+<div class="note">fc-2 · Focus mode like the exam paper: no sidebar, never scrolls. Front of the card, in the paper typeface. Cards from missed exam questions are marked.</div></body></html>
