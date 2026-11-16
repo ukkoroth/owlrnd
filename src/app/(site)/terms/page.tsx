@@ -58,8 +58,10 @@ export default function TermsPage() {
         <P>
           You keep all rights to what you upload. You confirm you are allowed to use it for your own or your child&apos;s
           personal study, for example pages of textbooks you own, notes you made, or material your school or coaching
-          provided. You give us permission to store and process it,
-          including with our AI provider, only to run owlrnd for you.
+          provided. You give us permission to store and process it, including with our AI provider, only to run owlrnd for
+          you. Exams and flashcards created from your material are used only for practice in the account it was uploaded
+          to: your own, or your child&apos;s if you set it up for them. We don&apos;t show them to other users or reuse them
+          anywhere else.
         </P>
       </Section>
 
