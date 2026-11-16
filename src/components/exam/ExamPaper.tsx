@@ -11,6 +11,34 @@ const TEXT_SAVE_DELAY = 600;
 type Answers = Record<string, AnswerValue>;
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// ── Local copy (0.2: the answer sheet survives the Back button) ─────────────
+// Every change is also kept in sessionStorage for this tab, with its time. Reads and writes are wrapped, so the
+// paper works when storage is blocked (private windows, previews).
+type LocalCopy = Record<string, { v: AnswerValue; at: number }>;
+const storageKey = (examId: string) => `owlrnd:exam:${examId}`;
+
+function readLocal(examId: string): LocalCopy {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(storageKey(examId)) ?? "{}") as LocalCopy;
+  } catch {
+    return {};
+  }
+}
+
+function writeLocal(examId: string, questionId: string, v: AnswerValue) {
+  try {
+    const copy = readLocal(examId);
+    copy[questionId] = { v, at: Date.now() };
+    window.sessionStorage.setItem(storageKey(examId), JSON.stringify(copy));
+  } catch {}
+}
+
+function clearLocal(examId: string) {
+  try {
+    window.sessionStorage.removeItem(storageKey(examId));
+  } catch {}
+}
+
 /**
  * The exam paper (4.1b, 4.2b). Rules §5: the page never scrolls. Every question is rendered once, out of sight, at
  * the real column width; the heights go to `paginate`, and one page at a time is shown in a container that is exactly
@@ -72,15 +100,64 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   const answersRef = useRef(answers);
   answersRef.current = answers;
 
+  // On opening: an answer kept in this tab that is newer than the server's copy (typed just before Back, say)
+  // wins, and is saved now.
+  useEffect(() => {
+    const local = readLocal(paper.id);
+    const newer = Object.entries(local).filter(([id, { at }]) => qs.some((q) => q.id === id) && at > (paper.answerSavedAt[id] ?? 0));
+    if (!newer.length) return;
+    setAnswers((a) => ({ ...a, ...Object.fromEntries(newer.map(([id, { v }]) => [id, v])) }));
+    for (const [id, { v }] of newer) persist(id, v);
+    // Only on first render: later changes are saved as they happen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaving the paper (Back, another tab, closing it): send every answer still waiting for its pause at once.
+  // sendBeacon is delivered even as the page goes away.
+  const sendPending = useCallback(() => {
+    if (!timers.current.size) return;
+    const pending: Answers = {};
+    for (const [id, t] of timers.current) {
+      clearTimeout(t);
+      pending[id] = answersRef.current[id]!;
+    }
+    timers.current.clear();
+    const body = new Blob([JSON.stringify({ answers: pending })], { type: "application/json" });
+    if (!navigator.sendBeacon?.(`/api/exam/${paper.id}/answers`, body)) {
+      for (const [id, v] of Object.entries(pending)) persist(id, v);
+    }
+  }, [paper.id, persist]);
+
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") sendPending();
+    };
+    // Restored from the back-forward cache: show the answers as saved now, not as they were.
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pagehide", sendPending);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pageshow", onShow);
+    return () => {
+      window.removeEventListener("pagehide", sendPending);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pageshow", onShow);
+      sendPending(); // client-side navigation away (Back) unmounts the paper without a pagehide
+    };
+  }, [sendPending]);
+
   const choose = (q: PaperQuestion, option: number) => {
     const value = { chosenOption: option, text: null };
     setAnswers((a) => ({ ...a, [q.id]: value }));
+    writeLocal(paper.id, q.id, value);
     persist(q.id, value);
   };
 
   const type = (q: PaperQuestion, text: string) => {
     const value = { chosenOption: null, text };
     setAnswers((a) => ({ ...a, [q.id]: value }));
+    writeLocal(paper.id, q.id, value);
     clearTimeout(timers.current.get(q.id));
     timers.current.set(
       q.id,
@@ -113,6 +190,7 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   const doSubmit = () =>
     startSubmit(async () => {
       await flush();
+      clearLocal(paper.id);
       await submitExam(paper.id);
     });
 

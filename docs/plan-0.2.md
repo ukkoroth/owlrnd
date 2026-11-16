@@ -104,7 +104,9 @@ The original M11 notes, kept for the roadmap:
 - The parent chooses "Let Scout manage their own practice" on 5e, or the learner turns 18 and the parent is prompted. The learner adds and verifies their own email; `type` becomes `self_managed`; the `manages` link ends; codes now go to the learner. History, tracks and points stay.
 - The parent's view of that learner ends unless the learner keeps it on (that switch is built later along with the read-only view).
 
-### Also in 0.2 · Answer sheet survives the Back button (owner, 2026-11-15)
+### Also in 0.2 · Answer sheet survives the Back button (owner, 2026-11-15) · ✅ done 2026-11-16
+
+Built as below: answers waiting to save are sent with `navigator.sendBeacon` to `/api/exam/[id]/answers` when the paper is left; a copy per answer is kept in `sessionStorage` and the newer of it and the server's wins on opening; a page restored from the back-forward cache reloads. The exam page is dynamic, so it is never cached.
 
 Every recorded answer is kept automatically, so pressing the browser's Back (or Forward, or reloading) never loses work or shows an older copy of the paper. This applies to both paths and doesn't change rules §4–§5.
 

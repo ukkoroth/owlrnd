@@ -180,6 +180,54 @@ test("leaving keeps the answers; the dashboard offers Continue", async ({ page }
   }
 });
 
+test("0.2: answers survive Back, Forward and reload, on every page; Back after submit goes to the result side", async ({ page }) => {
+  const { parent, student, studentId } = await createFamily();
+  try {
+    const { examId } = await createTrackWithExam(studentId);
+    await page.setViewportSize({ width: 390, height: 844 }); // several pages on a phone
+    await signInFully(page, student.username, student.password, parent.email, /\/today$/);
+    await page.getByRole("link", { name: /Start exam 1/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/exam/${examId}$`));
+
+    // Page 1: a choice. Then the last page: type and press Back at once, before the save pause.
+    await pick(page, 0, "B");
+    while (await page.getByRole("button", { name: "Next page" }).isVisible()) await page.getByRole("button", { name: "Next page" }).click();
+    const last = page.locator('[data-question="9"]').getByRole("textbox");
+    await last.fill("Ohm's law");
+    await page.goBack();
+    await expect(page).toHaveURL(/\/today$/);
+    await page.goForward();
+    await expect(page).toHaveURL(new RegExp(`/exam/${examId}$`));
+    await expect(page.locator('[data-question="0"]').getByRole("radio").nth(1)).toBeChecked();
+    while (await page.getByRole("button", { name: "Next page" }).isVisible()) await page.getByRole("button", { name: "Next page" }).click();
+    await expect(page.locator('[data-question="9"]').getByRole("textbox")).toHaveValue("Ohm's law");
+
+    // Reload mid-exam, straight after typing.
+    await page.locator('[data-question="9"]').getByRole("textbox").fill("Ohm's law again");
+    await page.reload();
+    while (await page.getByRole("button", { name: "Next page" }).isVisible()) await page.getByRole("button", { name: "Next page" }).click();
+    await expect(page.locator('[data-question="9"]').getByRole("textbox")).toHaveValue("Ohm's law again");
+
+    // Another learner's exam can't be written through the leaving route.
+    const other = await createFamily();
+    const { examId: otherExam } = await createTrackWithExam(other.studentId);
+    const res = await page.request.post(`/api/exam/${otherExam}/answers`, { data: { answers: { x: { text: "hi" } } } });
+    expect((await res.json()).saved).toBe(0);
+    await deleteParentByEmail(other.parent.email);
+
+    // Submit, then Back: never an editable paper again.
+    await page.getByRole("button", { name: "Submit exam" }).click();
+    const submitAnyway = page.getByRole("button", { name: "Submit anyway" });
+    if (await submitAnyway.isVisible().catch(() => false)) await submitAnyway.click();
+    await expect(page).toHaveURL(/\/(marking|result)$/, { timeout: 20_000 });
+    await page.goBack();
+    await expect(page).toHaveURL(/\/(marking|result)$|\/today$/);
+    await expect(page.getByRole("button", { name: "Submit exam" })).toHaveCount(0);
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});
+
 test("Your tracks (4.1a) and the caught-up state (3g)", async ({ page }) => {
   const { parent, student, studentId } = await createFamily();
   try {

@@ -122,6 +122,8 @@ export type Paper = {
   trackName: string;
   questions: PaperQuestion[];
   answers: Record<string, { chosenOption: number | null; text: string | null }>;
+  /** When each answer was last saved (ms), so the paper can keep a newer copy from the browser (0.2). */
+  answerSavedAt: Record<string, number>;
 };
 
 /**
@@ -148,6 +150,7 @@ export async function getPaper(studentId: string, examId: string): Promise<Paper
     trackName: exam.trackName ?? "",
     questions: qs,
     answers: Object.fromEntries(ans.map((a) => [a.questionId, { chosenOption: a.chosenOption, text: a.text }])),
+    answerSavedAt: Object.fromEntries(ans.map((a) => [a.questionId, a.savedAt.getTime()])),
   };
 }
 
@@ -173,6 +176,8 @@ export const MAX_ANSWER_LENGTH = 300;
 
 /** Saved as the student works (rules §5). Only while the exam is in progress, only for its own questions. */
 export async function saveAnswer(studentId: string, examId: string, questionId: string, value: { chosenOption: number | null; text: string | null }) {
+  const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (!isUuid(examId) || !isUuid(questionId)) return false;
   const [ok] = await db
     .select({ type: questions.type, options: questions.options })
     .from(examQuestions)
