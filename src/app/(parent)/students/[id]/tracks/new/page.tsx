@@ -29,8 +29,8 @@ export default async function NewTrackPage({ params }: { params: Promise<{ id: s
       />
       <TrackChat
         studentId={id}
-        studentName={student.name}
-        parentFirstName={parent.name.split(" ")[0]!}
+        audience={{ kind: "parent", studentId: id, studentName: student.name }}
+        firstName={parent.name.split(" ")[0]!}
         isFirst={isFirst}
         initialMessages={chat.messages}
         initialPreview={chat.preview}

@@ -121,7 +121,9 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     const material = await trackMaterial(trackId);
     const written = await withAiContext({ purpose: "write_exam", holder: holderRef(holder), studentId: student.id }, () => ai().writeQuestions({
       trackName: track.name ?? "",
-      className: formatClass(student.className),
+      // A child's class, or (self-managed) the exam they are preparing for, which the track's name and material give.
+      audience: student.type === "self_managed" ? "learner" : "parent",
+      level: student.type === "self_managed" ? `a learner preparing on their own for the exam in "${track.name ?? ""}"` : formatClass(student.className),
       topics: keyed,
       focusNotes: track.focusNotes,
       material,

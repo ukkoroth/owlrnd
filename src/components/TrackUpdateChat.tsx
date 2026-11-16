@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { applyUpdate, sendUpdate, startOverUpdate } from "@/app/(parent)/students/[id]/tracks/[trackId]/actions";
+import { applyUpdate, sendUpdate, startOverUpdate } from "@/app/_actions/tracks";
 import { canApplyUpdate, formatTestDate, goalLabel, type Goal, type StoredUpdate, type UpdateMode } from "@/domain/tracks";
 import type { ChatMessage } from "@/server/tracks";
+import { tracksHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import { ChatThread, PanelRows } from "./chat/ChatThread";
 
 type Props = {
   mode: UpdateMode;
   trackId: string;
-  studentId: string;
-  studentName: string;
+  audience: TrackAudience;
   trackName: string;
   currentTopics: string[];
   goal: Goal;
@@ -25,7 +25,7 @@ const list = (xs: string[]) => xs.join(", ");
 
 /**
  * 2j (restart a goal-reached track) and Add material (an active track). The AI explains how the plan changes;
- * nothing changes until the parent presses the button in the "Track update" panel.
+ * nothing changes until whoever controls the track presses the button in the "Track update" panel.
  */
 export function TrackUpdateChat(p: Props) {
   const [messages, setMessages] = useState(p.initialMessages);
@@ -73,12 +73,12 @@ export function TrackUpdateChat(p: Props) {
         greeting={
           restart ? (
             <p>
-              {p.studentName} reached the goal{p.goalReachedOn ? ` on ${p.goalReachedOn}` : ""}: {goalLabel(p.goal)}. What should this track cover next?
+              {trackWords(p.audience).who} reached the goal{p.goalReachedOn ? ` on ${p.goalReachedOn}` : ""}: {goalLabel(p.goal)}. What should this track cover next?
             </p>
           ) : (
             <p>
-              What would you like to add to {p.trackName}? Attach more textbook pages, or tell me the topics. I&apos;ll explain how the plan changes before
-              anything is applied.
+              What would you like to add to {p.trackName}? Attach more {p.audience.kind === "parent" ? "textbook pages" : "pages or notes"}, or tell me the
+              topics. I&apos;ll explain how the plan changes before anything is applied.
             </p>
           )
         }
@@ -104,8 +104,8 @@ export function TrackUpdateChat(p: Props) {
         </div>
         <PanelRows rows={rows} />
         {applied ? (
-          <Link href={`/students/${p.studentId}/tracks`} className="btn-primary mt-4 w-full">
-            Back to {p.studentName}&apos;s tracks
+          <Link href={tracksHref(p.audience)} className="btn-primary mt-4 w-full">
+            {trackWords(p.audience).backToTracks}
           </Link>
         ) : (
           <>

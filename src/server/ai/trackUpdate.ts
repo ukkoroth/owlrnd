@@ -4,9 +4,12 @@ import { goalLabel, type Goal, type TrackUpdate, type UpdateMode } from "@/domai
 import { generateStructured, imageBlock, pdfBlock, type ContentBlock } from "./client";
 import { trackUpdateSchema, type TrackUpdateOutput } from "./schemas";
 import type { ChatAttachmentInput } from "./trackChat";
+import { inVoice, speaker, type Audience } from "./voice";
 
 export type TrackUpdateInput = {
   mode: UpdateMode;
+  /** A parent changing a child's track, or a self-managed learner changing their own (M9). */
+  audience: Audience;
   parentName: string;
   studentName: string;
   className: string;
@@ -51,6 +54,9 @@ How to chat:
 
 For each NEW attachment, transcribe its study content into "extracted.text" and give a short label such as "Page 158".`;
 
+/** The system prompt for a mode and audience (exported for tests). */
+export const updateSystem = (mode: UpdateMode, audience: Audience) => inVoice(SYSTEM(mode), audience);
+
 export async function trackUpdateChat(input: TrackUpdateInput): Promise<TrackUpdateOutput> {
   const blocks: ContentBlock[] = [];
   const earlier = input.attachments.filter((a) => a.kind === "earlier");
@@ -60,8 +66,9 @@ export async function trackUpdateChat(input: TrackUpdateInput): Promise<TrackUpd
     type: "text",
     text: [
       `<context>`,
-      `Parent: ${input.parentName}`,
-      `Child: ${input.studentName}, ${input.className}`,
+      ...(input.audience === "parent"
+        ? [`Parent: ${input.parentName}`, `Child: ${input.studentName}, ${input.className}`]
+        : [`Learner: ${input.parentName}, preparing on their own`]),
       `Today: ${input.today}`,
       `</context>`,
       `<track>`,
@@ -71,7 +78,7 @@ export async function trackUpdateChat(input: TrackUpdateInput): Promise<TrackUpd
       `</track>`,
       `<current_update>${JSON.stringify(input.update)}</current_update>`,
       `<conversation_so_far>`,
-      ...input.history.map((m) => `${m.author === "parent" ? "Parent" : "You"}: ${m.text}`),
+      ...input.history.map((m) => `${m.author === "parent" ? speaker(input.audience) : "You"}: ${m.text}`),
       `</conversation_so_far>`,
       ...(earlier.length
         ? ["<material_from_earlier_messages>", ...earlier.map((a) => (a.kind === "earlier" ? `<attachment label="${a.label}">${a.unreadable ? "(unreadable)" : (a.text ?? "")}</attachment>` : "")), "</material_from_earlier_messages>"]
@@ -83,6 +90,9 @@ export async function trackUpdateChat(input: TrackUpdateInput): Promise<TrackUpd
     blocks.push({ type: "text", text: `New attachment ${i + 1} (${a.label}):` });
     blocks.push(a.mediaType === "application/pdf" ? pdfBlock(a.data, a.label) : imageBlock(a.data, a.mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/gif"));
   });
-  blocks.push({ type: "text", text: `<latest_parent_message>${input.message || "(no text, only attachments)"}</latest_parent_message>\nReply to the parent and return the updated proposal.` });
-  return generateStructured({ system: SYSTEM(input.mode), messages: [{ role: "user", content: blocks }], schema: trackUpdateSchema, effort: "medium" });
+  blocks.push({
+    type: "text",
+    text: inVoice(`<latest_parent_message>${input.message || "(no text, only attachments)"}</latest_parent_message>\nReply to the parent and return the updated proposal.`, input.audience),
+  });
+  return generateStructured({ system: updateSystem(input.mode, input.audience), messages: [{ role: "user", content: blocks }], schema: trackUpdateSchema, effort: "medium" });
 }

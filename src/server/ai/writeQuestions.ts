@@ -3,10 +3,14 @@ import type { PlanSlot, WrittenQuestion } from "@/domain/examPlan";
 import { validateWrittenExam } from "@/domain/examPlan";
 import { AiError, generateStructured } from "./client";
 import { writtenExamSchema } from "./schemas";
+import type { Audience } from "./voice";
 
 export type WriteQuestionsInput = {
+  /** For a child (school class) or a self-managed learner preparing on their own (M9). */
+  audience: Audience;
   trackName: string;
-  className: string;
+  /** "Class 10" for a child; for a learner, a line describing their exam preparation. */
+  level: string;
   topics: { key: string; name: string; description: string }[];
   focusNotes: string | null;
   /** Text of the parent's material (from the track chat attachments) plus their messages. */
@@ -16,7 +20,7 @@ export type WriteQuestionsInput = {
   avoid: string[];
 };
 
-const SYSTEM = `You write short practice exams for school students, like a printed exam paper. Each exam follows a plan that says, for every question in order, which topic it covers and whether it is multiple choice or a short answer.
+const PARENT_SYSTEM = `You write short practice exams for school students, like a printed exam paper. Each exam follows a plan that says, for every question in order, which topic it covers and whether it is multiple choice or a short answer.
 
 Rules:
 - Stay strictly within the given topics and the parent's material, at the student's class level. Do not introduce other topics.
@@ -31,14 +35,22 @@ Rules:
 - A plan line marked "harder" needs a question a step harder than usual for this class (more steps, less familiar context), still within the topic.
 - A plan line marked "retry" gives a question the student got wrong recently: ask the same idea again in new words and with different numbers, so it is not the identical question.`;
 
+/** For a self-managed learner: their own material, at the level of the exam they are preparing for. */
+const LEARNER_SYSTEM = PARENT_SYSTEM.replace("for school students,", "for learners preparing for an exam,")
+  .replace("the parent's material, at the student's class level", "the learner's own material, at the level of the exam they are preparing for")
+  .replace("Write clearly for a school-age child; content must be suitable for children.", "Write clearly, in the style of the exam they are preparing for; content must be suitable for students.")
+  .replace("harder than usual for this class", "harder than usual for this exam");
+
+export const systemFor = (audience: Audience) => (audience === "parent" ? PARENT_SYSTEM : LEARNER_SYSTEM);
+
 function prompt(input: WriteQuestionsInput, previousErrors: string[] = []) {
   return [
     `<track>${input.trackName}</track>`,
-    `<class>${input.className}</class>`,
+    input.audience === "parent" ? `<class>${input.level}</class>` : `<level>${input.level}</level>`,
     `<topics>`,
     ...input.topics.map((t) => `${t.key}: ${t.name}${t.description ? ` (${t.description})` : ""}`),
     `</topics>`,
-    input.focusNotes ? `<parent_preferences>${input.focusNotes}</parent_preferences>` : "",
+    input.focusNotes ? (input.audience === "parent" ? `<parent_preferences>${input.focusNotes}</parent_preferences>` : `<learner_preferences>${input.focusNotes}</learner_preferences>`) : "",
     `<material>`,
     input.material || "(no material beyond the topic list)",
     `</material>`,
@@ -58,7 +70,7 @@ export async function writeQuestions(input: WriteQuestionsInput): Promise<Writte
   let errors: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     const out = await generateStructured({
-      system: SYSTEM,
+      system: systemFor(input.audience),
       messages: [{ role: "user", content: prompt(input, errors) }],
       schema: writtenExamSchema,
       effort: "high",

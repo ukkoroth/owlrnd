@@ -84,6 +84,7 @@ export async function sendUpdateTurn(actor: Actor, trackId: string, text: string
   try {
     out = await withAiContext({ purpose: "track_update", holder: holderRef(holder), studentId: student.id }, () => ai().trackUpdate({
       mode,
+      audience: holder.kind === "parent" ? "parent" : "learner",
       parentName: holder.name.split(" ")[0]!,
       studentName: student.name,
       className: formatClass(student.className),
@@ -96,7 +97,7 @@ export async function sendUpdateTurn(actor: Actor, trackId: string, text: string
         goalReachedOn: track.goalReachedAt ? fmtDay(track.goalReachedAt, student.timeZone) : null,
       },
       update,
-      // The account holder's turns, parent or learner (AI wording for learners comes in M9).
+      // The account holder's turns: the parent's, or the learner's own.
       history: messages.map((m) => ({ author: m.author === "ai" ? ("ai" as const) : ("parent" as const), text: m.text })),
       attachments: [...earlier, ...files.map((f): ChatAttachmentInput => ({ kind: "new", label: f.name, mediaType: f.type, data: f.data }))],
       message,
@@ -146,7 +147,8 @@ export async function sendUpdateTurn(actor: Actor, trackId: string, text: string
  * reuse it). Restart (rules §3): earlier topics become revision, new topics and goal, progress 0, active again.
  * Add material: new topics join as normal topics; the goal and its progress stay unless the goal changes.
  */
-export async function updateTrack(input: { trackId: string; mode: UpdateMode; update: StoredUpdate; studentName: string }) {
+/** `studentName` null: a self-managed learner's own track, so the confirmation speaks to them ("your"). */
+export async function updateTrack(input: { trackId: string; mode: UpdateMode; update: StoredUpdate; studentName: string | null }) {
   const { trackId, mode, update: u } = input;
   if (!canApplyUpdate(mode, u)) throw new Error("updateTrack: update is incomplete");
   let writeNext = false;
@@ -180,7 +182,7 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
     const goal = u.goal ?? { threshold: t!.goalThreshold ?? 8, runLength: t!.goalRunLength ?? 3 };
     const text =
       mode === "restart"
-        ? `Done. ${t!.name} is active again with the new topics and the goal ${goalLabel(goal)}. The next exam will be on ${input.studentName}'s dashboard in a minute or two.`
+        ? `Done. ${t!.name} is active again with the new topics and the goal ${goalLabel(goal)}. The next exam will be on ${input.studentName ? `${input.studentName}'s` : "your"} dashboard in a minute or two.`
         : `Done. ${u.newTopics.length ? `${u.newTopics.map((n) => n.name).join(", ")} ${u.newTopics.length === 1 ? "is" : "are"} now part of ${t!.name}, from the next exam on.` : `The new material is saved for ${t!.name}'s next exams.`} ${u.goal ? `The goal is now ${goalLabel(goal)}, and progress starts again at 0.` : "The goal and its progress stay as they were."}`;
     const [lastMsg] = await tx.select({ at: trackMessages.createdAt }).from(trackMessages).where(eq(trackMessages.trackId, trackId)).orderBy(desc(trackMessages.createdAt)).limit(1);
     await tx.insert(trackMessages).values({
@@ -207,7 +209,7 @@ export async function applyTrackUpdate(actor: Actor, trackId: string) {
   if (mode === "restart" && !(await ownLiveTrack(actor, trackId, "addTopics"))) return { ok: false as const, error: "Track not found." };
   const { update } = await loadUpdateChat(trackId);
   if (!update.ready || !canApplyUpdate(mode, update)) return { ok: false as const, error: "Agree the change in the chat first." };
-  await updateTrack({ trackId, mode, update, studentName: own.student.name });
+  await updateTrack({ trackId, mode, update, studentName: own.student.type === "self_managed" ? null : own.student.name });
   const chat = await loadUpdateChatIncludingApplied(trackId);
   return { ok: true as const, ...chat };
 }

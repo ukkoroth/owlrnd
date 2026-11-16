@@ -2,29 +2,40 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { createTrack, sendTurn, startOver } from "@/app/(parent)/students/[id]/tracks/actions";
+import { createTrack, sendTurn, startOver } from "@/app/_actions/tracks";
 import { rules } from "@/config/rules";
 import { canCreateTrack, formatTestDate, goalLabel, type StoredPreview } from "@/domain/tracks";
+import { tracksHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { ChatMessage } from "@/server/tracks";
 import { ChatThread, PanelRows } from "./chat/ChatThread";
 
 type Props = {
+  /** The learner the track is for (the learner themselves, when self-managed). */
   studentId: string;
-  studentName: string;
-  parentFirstName: string;
+  audience: TrackAudience;
+  /** First name of whoever is chatting: the parent, or the learner. */
+  firstName: string;
   isFirst: boolean;
   initialMessages: ChatMessage[];
   initialPreview: StoredPreview;
 };
 
-const STARTERS = [
+const PARENT_STARTERS = [
   ["A chapter for an upcoming unit test", "Unit test on <date>. Subject: <subject>. Chapter: <chapter and its topics>."],
   ["Revision for the half-yearly exams", "Half-yearly exams start on <date>. Subject: <subject>. Revise: <chapters>."],
   ["Practice from textbook pages I will attach", "Subject: <subject>. Practice from the attached textbook pages."],
 ] as const;
 
+/** sm-2d. */
+const LEARNER_STARTERS = [
+  ["A chapter from my exam syllabus", "Exam: <exam and date>. Subject: <subject>. Chapter: <chapter and its topics>."],
+  ["Revision before a mock test", "Mock test on <date>. Subject: <subject>. Revise: <chapters>."],
+  ["Practice from notes I will attach", "Exam: <exam>. Subject: <subject>. Practice from the attached notes."],
+] as const;
+
 /** The track chat (2e start, 2f agreed): messages on the left, the track preview on the right. */
-export function TrackChat({ studentId, studentName, parentFirstName, isFirst: isFirstProp, initialMessages, initialPreview }: Props) {
+export function TrackChat({ studentId, audience, firstName, isFirst: isFirstProp, initialMessages, initialPreview }: Props) {
+  const words = trackWords(audience);
   // Fixed at first render: once this track is created the student has a track, but this chat was still the first.
   const [isFirst] = useState(isFirstProp);
   const [messages, setMessages] = useState(initialMessages);
@@ -51,15 +62,22 @@ export function TrackChat({ studentId, studentName, parentFirstName, isFirst: is
         greeting={
           <>
             <p className="font-semibold">
-              Hi {parentFirstName}. Let&apos;s create {isFirst ? `${studentName}'s first track` : `a new track for ${studentName}`}.
+              Hi {firstName}. Let&apos;s create {isFirst ? words.firstTrack : words.newTrack}.
             </p>
-            <p className="mt-2">
-              Tell me what {studentName} is studying: the subject, the chapter, and any test coming up with its date. If you have them, attach photos of the
-              textbook pages or the syllabus. I will find the topics and suggest a goal for the track.
-            </p>
+            {audience.kind === "parent" ? (
+              <p className="mt-2">
+                Tell me what {audience.studentName} is studying: the subject, the chapter, and any test coming up with its date. If you have them, attach
+                photos of the textbook pages or the syllabus. I will find the topics and suggest a goal for the track.
+              </p>
+            ) : (
+              <p className="mt-2">
+                Tell me which exam you are preparing for, the subject and chapters to start with, and your exam date. If you have them, attach the syllabus,
+                your notes or a past paper. I will find the topics and suggest a goal for the track.
+              </p>
+            )}
           </>
         }
-        starters={STARTERS}
+        starters={audience.kind === "parent" ? PARENT_STARTERS : LEARNER_STARTERS}
         placeholder="Describe the track: a subject, a chapter, a test date"
         messages={messages}
         closed={!!createdTrackId}
@@ -79,7 +97,7 @@ export function TrackChat({ studentId, studentName, parentFirstName, isFirst: is
         created={!!createdTrackId}
         creating={creating}
         studentId={studentId}
-        studentName={studentName}
+        audience={audience}
         hasDraft={messages.length > 0}
         onCreate={create}
       />
@@ -93,7 +111,7 @@ function PreviewPanel(props: {
   created: boolean;
   creating: boolean;
   studentId: string;
-  studentName: string;
+  audience: TrackAudience;
   hasDraft: boolean;
   onCreate: () => void;
 }) {
@@ -103,7 +121,7 @@ function PreviewPanel(props: {
     ["Name", p.name],
     ["Topics found", p.topics.length ? p.topics.map((t) => t.name).join(", ") : null],
     ["Each exam", `Up to ${rules.exam.maxQuestions} questions, multiple choice and short answers`],
-    ["Test date", p.testDate ? formatTestDate(p.testDate) : null],
+    [props.audience.kind === "parent" ? "Test date" : "Exam date", p.testDate ? formatTestDate(p.testDate) : null],
     ["Goal", p.goal ? `${goalLabel(p.goal)}. The track stops when it is reached.` : null],
   ];
   return (
@@ -117,8 +135,8 @@ function PreviewPanel(props: {
       {!props.hasDraft && <p className="mb-2 text-sm text-ink-muted">Fills in as you chat.</p>}
       <PanelRows rows={rows} />
       {created ? (
-        <Link href={`/students/${props.studentId}/tracks?created=1`} className="btn-primary mt-4 w-full">
-          Open {props.studentName}&apos;s tracks
+        <Link href={`${tracksHref(props.audience)}?created=1`} className="btn-primary mt-4 w-full">
+          {trackWords(props.audience).openTracks}
         </Link>
       ) : (
         <>

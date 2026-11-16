@@ -28,6 +28,16 @@ export function ExamsIcon() {
   );
 }
 
+/** Stacked layers: "Tracks" in a self-managed learner's sidebar (sm-3c). */
+export function TracksIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 3 2.5 8 12 13l9.5-5L12 3Z" />
+      <path d="m2.5 12.5 9.5 5 9.5-5" />
+    </svg>
+  );
+}
+
 export function StarIcon() {
   return (
     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

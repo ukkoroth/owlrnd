@@ -3,7 +3,8 @@ import { and, count, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Identifier } from "@/domain/identity";
 import { rules } from "@/config/rules";
 import { db } from "../db";
-import { discardFiles, fileKeysForParent } from "../jobs/files";
+import { discardFiles, fileKeysForParent, fileKeysForStudent } from "../jobs/files";
+import { can, type Actor } from "@/domain/permissions";
 import { parents, signInFailures, students } from "../db/schema";
 
 export type Parent = typeof parents.$inferSelect;
@@ -222,4 +223,79 @@ export async function changeParentEmail(parentId: string, newEmail: string) {
     await tx.update(parents).set({ email: newEmail, emailVerifiedAt: new Date() }).where(eq(parents.id, parentId));
     return true;
   });
+}
+
+/** Finish a self-managed learner's email change, like `changeParentEmail` (one email, one account). */
+export async function changeLearnerEmail(studentId: string, newEmail: string) {
+  return db.transaction(async (tx) => {
+    if (await emailTakenByLearner(newEmail, tx, studentId)) return false;
+    const [parent] = await tx.select({ verified: parents.emailVerifiedAt }).from(parents).where(sameEmail(parents.email, newEmail));
+    if (parent?.verified) return false;
+    await dropUnverifiedParent(newEmail, tx);
+    await dropUnverifiedLearner(newEmail, tx, studentId);
+    await tx.update(students).set({ email: newEmail, emailVerifiedAt: new Date() }).where(and(eq(students.id, studentId), eq(students.type, "self_managed")));
+    return true;
+  });
+}
+
+// ── The account holder's own account (5d for parents, sm-5b for self-managed learners) ──
+
+/**
+ * The account the signed-in actor holds, if they hold one: a parent, or a self-managed learner. A parent-managed
+ * learner holds none (their parent does), so they can't change their password or delete their account (§2.3).
+ */
+export type OwnAccount =
+  | { kind: "parent"; id: string; name: string; email: string; passwordHash: string; codeOwner: { parentId: string; studentId: null } }
+  | { kind: "learner"; id: string; name: string; email: string; passwordHash: string; codeOwner: { parentId: null; studentId: string } };
+
+export async function ownAccount(actor: Actor): Promise<OwnAccount | null> {
+  if (!can(actor, "changeOwnPassword")) return null;
+  if (actor.kind === "parent") {
+    const p = await getParent(actor.parentId);
+    return p ? { kind: "parent", id: p.id, name: p.name, email: p.email, passwordHash: p.passwordHash, codeOwner: { parentId: p.id, studentId: null } } : null;
+  }
+  const s = await getLearner(actor.studentId);
+  if (!s || s.type !== "self_managed" || !s.email) return null;
+  return { kind: "learner", id: s.id, name: s.name, email: s.email, passwordHash: s.passwordHash, codeOwner: { parentId: null, studentId: s.id } };
+}
+
+export async function renameAccount(account: OwnAccount, name: string) {
+  if (account.kind === "parent") await db.update(parents).set({ name }).where(eq(parents.id, account.id));
+  else await db.update(students).set({ name }).where(eq(students.id, account.id));
+}
+
+/** True if another verified account (or any self-managed learner but this one) already uses the email. */
+export async function emailInUseByOther(account: OwnAccount, email: string) {
+  if (await emailTakenByLearner(email, db, account.kind === "learner" ? account.id : undefined)) return true;
+  const [p] = await db
+    .select({ id: parents.id })
+    .from(parents)
+    .where(and(sameEmail(parents.email, email), isNotNull(parents.emailVerifiedAt), account.kind === "parent" ? ne(parents.id, account.id) : undefined));
+  return !!p;
+}
+
+export const changeAccountEmail = (account: OwnAccount, newEmail: string) =>
+  account.kind === "parent" ? changeParentEmail(account.id, newEmail) : changeLearnerEmail(account.id, newEmail);
+
+export async function setAccountPassword(account: OwnAccount, passwordHash: string) {
+  if (account.kind === "parent") await db.update(parents).set({ passwordHash }).where(eq(parents.id, account.id));
+  else await db.update(students).set({ passwordHash }).where(eq(students.id, account.id));
+}
+
+/**
+ * Delete the account and its data (§2.3). A parent's goes with every child; a self-managed learner's with their
+ * tracks, exams and points. Codes and sessions cascade; files are queued for deletion.
+ */
+export async function deleteOwnAccount(actor: Actor, account: OwnAccount) {
+  if (!can(actor, "deleteAccount")) return false;
+  if (account.kind === "parent") {
+    await deleteParent(account.id);
+    return true;
+  }
+  await db.transaction(async (tx) => {
+    const keys = await fileKeysForStudent(tx, account.id);
+    await tx.delete(students).where(and(eq(students.id, account.id), eq(students.type, "self_managed")));
+    await discardFiles(keys, tx);
+  });
+  return true;
 }

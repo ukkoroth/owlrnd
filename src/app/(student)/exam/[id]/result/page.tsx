@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { learnerWords } from "@/domain/trackView";
 import { requireShell } from "@/server/auth/current";
 import { getPaper } from "@/server/exams";
 import { getResult } from "@/server/results";
@@ -128,7 +129,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
             </h2>
             <p className="mt-2 max-w-[760px] text-[16px] leading-relaxed">
               You scored {r.track.goalThreshold} / 10 or better in {r.track.goalRunLength} {r.track.goalRunLength === 1 ? "exam" : "exams in a row"}. This track stops
-              here until your parent adds new topics.
+              here {learnerWords(student.type === "self_managed").untilTopics}.
             </p>
           </>
         ) : (

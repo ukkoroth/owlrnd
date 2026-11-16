@@ -3,8 +3,10 @@ import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress, NeedsWork, ScoreBars, StrengthLegend, TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
+import { TracksOverview } from "@/components/tracks/TracksOverview";
 import { requireShell } from "@/server/auth/current";
 import { getStudentTracks, type StudentTrack } from "@/server/exams";
+import { getDraftChat, listTracks } from "@/server/tracks";
 
 export const metadata: Metadata = { title: "Your tracks · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -16,9 +18,25 @@ const statusLine = (t: StudentTrack) => {
   return (t.exam ? (t.exam.status === "in_progress" ? "Exam in progress" : "Next exam ready") : "Next exam being prepared") + test;
 };
 
-// 4.1a. Score bars and needs-work come with marking (M5).
-export default async function YourTracksPage() {
-  const { user: { student } } = await requireShell("learner");
+// 4.1a. A self-managed learner practises and manages here (sm-4.1a); a child whose parent manages their tracks
+// sees them read-only.
+export default async function YourTracksPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
+  const { user: { student }, actor } = await requireShell("learner");
+  if (student.type === "self_managed") {
+    const tracks = (await listTracks(actor, student.id)) ?? [];
+    const draft = (await getDraftChat(actor, student.id))?.draft;
+    const { created } = await searchParams;
+    return (
+      <>
+        <TracksOverview audience={{ kind: "learner" }} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} />
+        {tracks.length > 0 && (
+          <div className="mt-3">
+            <StrengthLegend />
+          </div>
+        )}
+      </>
+    );
+  }
   const list = await getStudentTracks(student.id);
 
   return (

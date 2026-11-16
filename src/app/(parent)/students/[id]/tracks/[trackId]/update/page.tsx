@@ -43,8 +43,7 @@ export default async function UpdateTrackPage({ params }: { params: Promise<{ id
       <TrackUpdateChat
         mode={mode}
         trackId={trackId}
-        studentId={id}
-        studentName={student.name}
+        audience={{ kind: "parent", studentId: id, studentName: student.name }}
         trackName={track.name ?? ""}
         currentTopics={chat.topics.map((t) => t.name)}
         goal={{ threshold: track.goalThreshold ?? 8, runLength: track.goalRunLength ?? 3 }}

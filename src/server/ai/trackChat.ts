@@ -3,12 +3,16 @@ import { rules } from "@/config/rules";
 import { goalLabel, type TrackPreview } from "@/domain/tracks";
 import { generateStructured, imageBlock, pdfBlock, type ContentBlock } from "./client";
 import { trackChatSchema, type TrackChatOutput } from "./schemas";
+import { inVoice, speaker, type Audience } from "./voice";
 
 export type ChatAttachmentInput =
   | { kind: "new"; label: string; mediaType: string; data: Buffer }
   | { kind: "earlier"; label: string; text: string | null; unreadable: boolean };
 
 export type TrackChatInput = {
+  /** A parent setting up a child's track, or a self-managed learner setting up their own (M9). */
+  audience: Audience;
+  /** The name of whoever is chatting: the parent, or the learner. */
   parentName: string;
   studentName: string;
   className: string;
@@ -16,6 +20,7 @@ export type TrackChatInput = {
   /** "first" for 2e/2f; "new" for later tracks. */
   mode: "first" | "new";
   preview: TrackPreview;
+  /** "parent": the person chatting (the parent, or the learner). */
   history: { author: "parent" | "ai"; text: string }[];
   /** Material from earlier turns (as text) and this turn (as files). */
   attachments: ChatAttachmentInput[];
@@ -49,16 +54,20 @@ export function buildTrackChatRequest(input: TrackChatInput): { system: string; 
   const earlier = input.attachments.filter((a) => a.kind === "earlier");
   const fresh = input.attachments.filter((a) => a.kind === "new");
 
+  const who = speaker(input.audience);
   const header = [
     `<context>`,
-    `Parent: ${input.parentName}`,
-    `Child: ${input.studentName}, ${input.className}`,
+    ...(input.audience === "parent"
+      ? [`Parent: ${input.parentName}`, `Child: ${input.studentName}, ${input.className}`]
+      : [`Learner: ${input.parentName}, preparing on their own (no class; the level comes from the exam and material they describe)`]),
     `Today: ${input.today}`,
-    `This is ${input.mode === "first" ? `${input.studentName}'s first track` : `a new track for ${input.studentName}`}.`,
+    input.audience === "parent"
+      ? `This is ${input.mode === "first" ? `${input.studentName}'s first track` : `a new track for ${input.studentName}`}.`
+      : `This is ${input.mode === "first" ? "the learner's first track" : "a new track for the learner"}.`,
     `</context>`,
     `<current_preview>${JSON.stringify(input.preview)}</current_preview>`,
     `<conversation_so_far>`,
-    ...input.history.map((m) => `${m.author === "parent" ? "Parent" : "You"}: ${m.text}`),
+    ...input.history.map((m) => `${m.author === "parent" ? who : "You"}: ${m.text}`),
     `</conversation_so_far>`,
   ];
   if (earlier.length) {
@@ -79,9 +88,9 @@ export function buildTrackChatRequest(input: TrackChatInput): { system: string; 
 
   blocks.push({
     type: "text",
-    text: `<latest_parent_message>${input.message || "(no text, only attachments)"}</latest_parent_message>\nReply to the parent and return the updated preview.`,
+    text: inVoice(`<latest_parent_message>${input.message || "(no text, only attachments)"}</latest_parent_message>\nReply to the parent and return the updated preview.`, input.audience),
   });
-  return { system: SYSTEM, content: blocks };
+  return { system: inVoice(SYSTEM, input.audience), content: blocks };
 }
 
 export async function trackChat(input: TrackChatInput): Promise<TrackChatOutput> {

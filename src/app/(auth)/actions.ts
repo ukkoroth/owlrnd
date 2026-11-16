@@ -193,13 +193,13 @@ export async function verifyEmail(_prev: FormState, form: FormData): Promise<For
   const result = await verifyCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "verify_email" }, codeFrom(form));
   if (result.result !== "ok") return codeMessage(result);
 
-  // A self-managed learner (sm-1c) goes to their Exams dashboard; choosing an exam (sm-2a) arrives in M9.
+  // A self-managed learner (sm-1c) goes on to choose their exam or build a track (sm-2a).
   if (pending.studentId) {
     await markLearnerEmailVerified(pending.studentId);
     await consumeInvitation({ studentId: pending.studentId });
     await clearPending();
     await startSession({ studentId: pending.studentId });
-    redirect("/today");
+    redirect("/tracks/setup");
   }
   if (!pending.parentId) redirect("/sign-in?expired=1");
 

@@ -2,11 +2,15 @@ import { trackStatusLine } from "@/domain/tracks";
 import { GoalProgress, NeedsWork, ScoreBars, TopicStrength } from "./TrackBars";
 import type { TrackSummary } from "@/server/tracks";
 import Link from "next/link";
-import { pauseTrack, resumeTrack, retryExam } from "@/app/(parent)/students/[id]/tracks/actions";
+import { pauseTrack, resumeTrack, retryExam } from "@/app/_actions/tracks";
 import { ArchiveButton } from "./ArchiveButton";
+import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
 
-/** A track on the parent's tracks page (2g). Score bars and needs-work arrive with exams (M4/M5). */
-export function TrackCard({ track: t, highlight, studentName, timeZone }: { track: TrackSummary; highlight?: boolean; studentName: string; timeZone: string }) {
+/**
+ * A track on the parent's tracks page (2g) or the learner's Your tracks (sm-4.1a). A self-managed learner also gets
+ * "Start exam N" when an exam is ready, since they practise and manage on the same page.
+ */
+export function TrackCard({ track: t, highlight, audience, timeZone }: { track: TrackSummary; highlight?: boolean; audience: TrackAudience; timeZone: string }) {
   const runLength = t.goalRunLength ?? 3;
   const next = t.examsTaken === 0 ? "first exam" : "next exam";
   const examBox =
@@ -59,23 +63,31 @@ export function TrackCard({ track: t, highlight, studentName, timeZone }: { trac
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-4">
+      {audience.kind === "learner" && t.readyExam && t.status === "active" && (
+        <div className="mt-5 border-t border-line pt-4">
+          <Link href={`/exam/${t.readyExam.id}`} className="btn-primary h-12 px-5" aria-label={`${t.readyExam.started ? "Continue" : "Start"} exam ${t.readyExam.number} in ${t.name}`}>
+            {t.readyExam.started ? "Continue" : "Start"} exam {t.readyExam.number}
+          </Link>
+        </div>
+      )}
+
+      <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${audience.kind === "learner" && t.readyExam && t.status === "active" ? "mt-3" : "mt-5 border-t border-line pt-4"}`}>
         {t.status === "goal_reached" ? (
           <>
-            <Link href={`/students/${t.studentId}/tracks/${t.id}/update`} className="btn-primary">
+            <Link href={updateHref(audience, t.id)} className="btn-primary">
               Add topics to continue
             </Link>
-            <ArchiveButton trackId={t.id} studentId={t.studentId} trackName={t.name ?? ""} studentName={studentName} />
+            <ArchiveButton trackId={t.id} studentId={t.studentId} trackName={t.name ?? ""} question={trackWords(audience).archiveQuestion} />
           </>
         ) : (
           <>
             {t.examsTaken > 0 && (
-              <Link href={`/students/${t.studentId}/tracks/${t.id}`} className="link flex min-h-touch items-center font-semibold" aria-label={`Exam history of ${t.name}`}>
+              <Link href={trackHref(audience, t.id)} className="link flex min-h-touch items-center font-semibold" aria-label={`Exam history of ${t.name}`}>
                 Exam history
               </Link>
             )}
             {t.status !== "archived" && (
-              <Link href={`/students/${t.studentId}/tracks/${t.id}/update`} className="link flex min-h-touch items-center font-semibold" aria-label={`Add material to ${t.name}`}>
+              <Link href={updateHref(audience, t.id)} className="link flex min-h-touch items-center font-semibold" aria-label={`Add material to ${t.name}`}>
                 Add material
               </Link>
             )}

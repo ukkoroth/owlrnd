@@ -4,7 +4,7 @@ import { holderForParent } from "@/domain/accounts";
 import { cleanup, learnerActor, makeParent, makeSelfLearner, makeStudent, makeTrackWithExam, parentActor, uniqueEmail } from "../../tests/db-helpers";
 import { latestCode } from "../../tests/mailpit";
 import { allowanceOf, ALLOWANCE_USED_UP, chatBlocked, examWriteBlocked, withAiContext, recordUsage } from "./ai/usage";
-import { findAccount, upsertUnverifiedLearner, upsertUnverifiedParent } from "./auth/accounts";
+import { changeAccountEmail, deleteOwnAccount, emailInUseByOther, findAccount, ownAccount, upsertUnverifiedLearner, upsertUnverifiedParent } from "./auth/accounts";
 import { issueCode, verifyCode, type CodeOwner } from "./auth/codes";
 import { db } from "./db";
 import { aiUsage, parents, students, trackMessages, tracks } from "./db/schema";
@@ -220,5 +220,50 @@ describe("sign-up For me: one email, one account (owner, 2026-11-16)", () => {
     expect(res.ok).toBe(true);
     expect(await db.select().from(students).where(eq(students.id, pendingLearner.id))).toHaveLength(0);
     if (res.ok) await db.delete(parents).where(eq(parents.id, res.parentId));
+  });
+});
+
+describe("M9: a learner's own tracks and account", () => {
+  it("listTracks gives the exam waiting to be taken, for 'Start exam N'", async () => {
+    const learner = await makeSelfLearner();
+    const me = learnerActor(learner);
+    const { trackId, examId } = await makeTrackWithExam(me, learner.id);
+    const [t] = (await listTracks(me, learner.id))!;
+    expect(t).toMatchObject({ id: trackId, readyExam: { id: examId, number: 1, started: false } });
+  });
+
+  it("a parent-managed learner holds no account of their own", async () => {
+    const parent = await makeParent();
+    const child = await makeStudent(parent.id);
+    expect(await ownAccount(learnerActor(child))).toBeNull();
+    expect(await ownAccount(parentActor(parent.id))).toMatchObject({ kind: "parent", id: parent.id });
+  });
+
+  it("a learner changes their email, but not to one another account uses", async () => {
+    const learner = await makeSelfLearner();
+    const account = (await ownAccount(learnerActor(learner)))!;
+    const parent = await makeParent();
+    expect(await emailInUseByOther(account, parent.email)).toBe(true);
+    expect(await changeAccountEmail(account, parent.email)).toBe(false);
+
+    const fresh = uniqueEmail("l");
+    expect(await emailInUseByOther(account, fresh)).toBe(false);
+    expect(await changeAccountEmail(account, fresh)).toBe(true);
+    expect(await findAccount({ kind: "email", value: fresh })).toMatchObject({ kind: "student", student: { id: learner.id } });
+  });
+
+  it("deleting a learner's account removes them and their tracks; a child can't delete theirs", async () => {
+    const learner = await makeSelfLearner();
+    const me = learnerActor(learner);
+    const { trackId } = await makeTrackWithExam(me, learner.id);
+    expect(await deleteOwnAccount(me, (await ownAccount(me))!)).toBe(true);
+    expect(await db.select().from(students).where(eq(students.id, learner.id))).toHaveLength(0);
+    expect(await db.select().from(tracks).where(eq(tracks.id, trackId))).toHaveLength(0);
+
+    const parent = await makeParent();
+    const child = await makeStudent(parent.id);
+    const fakeAccount = { kind: "learner" as const, id: child.id, name: "x", email: "x", passwordHash: "x", codeOwner: { parentId: null, studentId: child.id } };
+    expect(await deleteOwnAccount(learnerActor(child), fakeAccount)).toBe(false);
+    expect(await db.select().from(students).where(eq(students.id, child.id))).toHaveLength(1);
   });
 });

@@ -12,7 +12,14 @@ Screen codes refer to `04-screens.md` and the files in `screens/`.
 1. **sm-1b Create your account:** name, email, password, date of birth, agreement to the terms and privacy policy.
 2. Under 18: no account is made; the page says "Ask a parent to help you sign up" and links to flow 1. (From M10 an under-18 learner signs up and a parent consents, editions §2.4.)
 3. **sm-1c Verify email:** a 6-digit code goes to the learner's own email. Wrong or expired codes behave as in rules §1.
-4. On success, the learner lands on the **Exams** dashboard (3c). Choosing an exam or building a track (sm-2a) arrives in M9.
+4. On success, **sm-2a Which exam are you preparing for?**: **Build your own** (the packages below are Coming soon in 0.2).
+
+## 0b · A learner sets up and practises their own tracks *(0.2)*
+
+1. **sm-2c/2d/2e** Build your own: the AI chat, as the parent's 2e/2f, speaking to the learner ("your first track"). Attach the syllabus, notes or a past paper; agree the name, topics and goal; **Create track**.
+2. **sm-4.1a Your tracks** (sidebar **Tracks**): each card has **Start exam N** when an exam is ready, then History, Add material, Pause / Resume, and once the goal is reached **Add topics to continue** and Archive.
+3. The **Exams** dashboard (3c–3g), exams, results and points work as for a parent-managed student, with no parent wording.
+4. **sm-5b Your profile:** change name, email (code to the new address) and password; delete the account and its data.
 
 ## 1 · Parent signs up
 

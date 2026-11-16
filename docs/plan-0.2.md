@@ -64,7 +64,9 @@ Built as planned, with the landing page from the owner's hand-off (`landing-hand
 - **Landing page** becomes the **Rank-ready** page for learners. Nothing in the header or first screen mentions parents. A **For parents** section lower down (`#parents`, "Setting this up for your child?") and a footer link go to sign-up with For my child chosen. owlrnd.com/#parents is the link to share with parents (editions §2.2).
 - **Account menu** shows who is signed in on both paths: for a learner, their name and "Learner" (5a shows "JEE Main 2027", which came from a package; without packages, show the role); for a parent, as in P·5c.
 
-### M9 · Learners set up their own tracks
+### M9 · Learners set up their own tracks · ✅ done 2026-11-16
+
+Built as planned. The parent and learner track screens are the same components (`src/components/tracks/`, `TrackChat`, `TrackUpdateChat`, `TrackCard`) with a `TrackAudience` (`src/domain/trackView.ts`) for links and wording; the server actions are shared (`src/app/_actions/tracks.ts`, `profile.ts`). The AI prompts take an audience; for a learner they are the parent prompts with fixed phrase swaps (`src/server/ai/voice.ts`), tested to contain no "parent" or "child".
 
 - Reuse the 0.1 track chat, tracks pages and update chat, with the self-managed learner as the actor. Move them behind routes that both shells use, so the same components serve `/students/[id]/tracks/...` (parent) and `/tracks/...` (learner).
 - **Set-up choice (2a), without packages (owner, 2026-11-15):** two sections, in this order (the reverse of the sm-2a mockup):

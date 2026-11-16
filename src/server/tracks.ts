@@ -116,13 +116,14 @@ export async function sendChatTurn(actor: Actor, studentId: string, text: string
   let out;
   try {
     out = await withAiContext({ purpose: "track_chat", holder: holderRef(holder), studentId }, () => ai().trackChat({
+      audience: holder.kind === "parent" ? "parent" : "learner",
       parentName: holder.name.split(" ")[0]!,
       studentName: student.name,
       className: formatClass(student.className),
       today,
       mode: liveTracks === 0 ? "first" : "new",
       preview: { ...preview },
-      // The account holder's turns, parent or learner (AI wording for learners comes in M9).
+      // The account holder's turns: the parent's, or the learner's own.
       history: messages.map((m) => ({ author: m.author === "ai" ? ("ai" as const) : ("parent" as const), text: m.text })),
       attachments: [...earlier, ...fresh],
       message,
@@ -194,7 +195,8 @@ export async function discardDraft(actor: Actor, studentId: string) {
  * The one internal operation that makes a track live (PLAN.md: a future Claude connector reuses it).
  * Writes the agreed fields and topics, activates the track and starts writing its first exam.
  */
-export async function createTrack(input: { trackId: string; studentName: string; isFirst: boolean; preview: StoredPreview }) {
+/** `studentName` null: a self-managed learner's own track, so the confirmation speaks to them ("your"). */
+export async function createTrack(input: { trackId: string; studentName: string | null; isFirst: boolean; preview: StoredPreview }) {
   const p = input.preview;
   if (!canCreateTrack(p)) throw new Error("createTrack: preview is incomplete");
   await db.transaction(async (tx) => {
@@ -224,7 +226,11 @@ export async function createTrack(input: { trackId: string; studentName: string;
       trackId: input.trackId,
       author: "ai",
       createdAt: new Date(Math.max(Date.now(), (last?.at.getTime() ?? 0) + 1)),
-      text: `Done. "${p.name}" is ${input.isFirst ? `${input.studentName}'s first track` : `a new track for ${input.studentName}`}, with the goal ${goalLabel(p.goal!)}. I'm writing the first exam now; it will be on ${input.studentName}'s dashboard in a minute or two.`,
+      text: (() => {
+        const n = input.studentName;
+        const which = input.isFirst ? (n ? `${n}'s first track` : "your first track") : n ? `a new track for ${n}` : "a new track";
+        return `Done. "${p.name}" is ${which}, with the goal ${goalLabel(p.goal!)}. I'm writing the first exam now; it will be on ${n ? `${n}'s` : "your"} dashboard in a minute or two.`;
+      })(),
     });
   });
   await enqueue("write_exam", { trackId: input.trackId });
@@ -243,7 +249,7 @@ export async function createTrackFromDraft(actor: Actor, studentId: string) {
     .select({ n: count() })
     .from(tracks)
     .where(and(eq(tracks.studentId, studentId), ne(tracks.status, "draft")));
-  await createTrack({ trackId: draft.id, studentName: student.name, isFirst: n === 0, preview });
+  await createTrack({ trackId: draft.id, studentName: student.type === "self_managed" ? null : student.name, isFirst: n === 0, preview });
   return { ok: true as const, trackId: draft.id };
 }
 
@@ -260,7 +266,15 @@ export async function getTrackChat(actor: Actor, studentId: string, trackId: str
 
 // ── Tracks page (2d, 2g) ───────────────────────────────────────────────────
 
-export type TrackSummary = Track & { topicNames: string[]; topics: TopicWithStrength[]; scores: number[]; examsTaken: number; examReady: boolean };
+export type TrackSummary = Track & {
+  topicNames: string[];
+  topics: TopicWithStrength[];
+  scores: number[];
+  examsTaken: number;
+  examReady: boolean;
+  /** The exam waiting to be taken (ready, or started and left), for the learner's "Start exam N" (sm-4.1a). */
+  readyExam: { id: string; number: number; started: boolean } | null;
+};
 
 export async function listTracks(actor: Actor, studentId: string): Promise<TrackSummary[] | null> {
   if (!(await authorizeLearner(actor, "viewProgress", studentId))) return null;
@@ -272,7 +286,7 @@ export async function listTracks(actor: Actor, studentId: string): Promise<Track
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
   const tps = await db.select().from(topics).where(inArray(topics.trackId, ids)).orderBy(asc(topics.position));
-  const ex = await db.select({ trackId: exams.trackId, status: exams.status }).from(exams).where(inArray(exams.trackId, ids));
+  const ex = await db.select({ id: exams.id, number: exams.number, trackId: exams.trackId, status: exams.status }).from(exams).where(inArray(exams.trackId, ids));
   const strengths = await topicStrengths(studentId, ids);
   const scores = await recentScores(ids);
   return rows.map((t) => ({
@@ -282,6 +296,10 @@ export async function listTracks(actor: Actor, studentId: string): Promise<Track
     scores: scores.get(t.id) ?? [],
     examsTaken: ex.filter((e) => e.trackId === t.id && e.status === "marked").length,
     examReady: ex.some((e) => e.trackId === t.id && e.status === "ready"),
+    readyExam: (() => {
+      const open = ex.find((e) => e.trackId === t.id && (e.status === "ready" || e.status === "in_progress"));
+      return open ? { id: open.id, number: open.number, started: open.status === "in_progress" } : null;
+    })(),
   }));
 }
 

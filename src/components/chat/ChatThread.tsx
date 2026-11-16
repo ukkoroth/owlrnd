@@ -92,7 +92,8 @@ export function ChatThread({ greeting, messages, onSend, placeholder, starters, 
         )}
 
         {messages.map((m) =>
-          m.author === "parent" ? (
+          // The account holder's own messages (a parent's, or a learner's on their own track).
+          m.author !== "ai" ? (
             <ParentMessage key={m.id} text={m.text} labels={m.attachments.map((a) => (a.unreadable ? `${a.label} (unreadable)` : a.label))} />
           ) : (
             <AiMessage key={m.id}>

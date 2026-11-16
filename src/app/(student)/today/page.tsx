@@ -4,6 +4,7 @@ import { TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
 import { completedToday } from "@/domain/suggestions";
 import { inSentence } from "@/domain/examMix";
+import { learnerWords } from "@/domain/trackView";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examTopicLines, practiceTimes } from "@/server/results";
@@ -28,6 +29,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const tz = student.timeZone;
   const dateLine = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date());
   const firstDay = dash.firstDay && dash.suggestions.length > 0;
+  // Self-managed learners set up their own tracks; children are told their parent does (3c–3g, sm-3c–3g).
+  const selfManaged = student.type === "self_managed";
+  const w = learnerWords(selfManaged);
 
   return (
     <>
@@ -53,10 +57,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-8">
         {firstDay ? (
-          <FirstDay suggestion={dash.suggestions[0]!} />
+          <FirstDay suggestion={dash.suggestions[0]!} w={w} />
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={student.type === "self_managed"} />
+            <Today suggestions={dash.suggestions} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
             {dash.recent.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
@@ -66,7 +70,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : tab === "recent" ? (
           <Recent recent={dash.recent} tz={tz} lines={await examTopicLines(dash.recent.filter((r) => r.status === "marked").map((r) => r.id))} />
         ) : (
-          <AllTracks tracks={dash.tracks} />
+          <AllTracks tracks={dash.tracks} w={w} />
         )}
       </div>
     </>
@@ -85,12 +89,14 @@ function StartLink({ t, primary }: { t: StudentTrack; primary: boolean }) {
   );
 }
 
-function FirstDay({ suggestion: t }: { suggestion: StudentTrack }) {
+type Words = ReturnType<typeof learnerWords>;
+
+function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) {
   return (
     <div className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <section className="card">
         <p className="text-ink-muted">
-          Your parent has set up your first track. Your first exam is ready: {t.exam?.questionCount ?? 10} questions, about 10 minutes.
+          {w.firstTrackReady} Your first exam is ready: {t.exam?.questionCount ?? 10} questions, about 10 minutes.
         </p>
         <p className="mt-5 text-sm text-ink-muted">Exam {t.exam!.number}</p>
         <h2 className="text-2xl">{t.name}</h2>
@@ -110,21 +116,21 @@ function FirstDay({ suggestion: t }: { suggestion: StudentTrack }) {
   );
 }
 
-function Today({ suggestions, tracks, done, selfManaged }: { suggestions: StudentTrack[]; tracks: StudentTrack[]; done: number; selfManaged: boolean }) {
+function Today({ suggestions, tracks, done, selfManaged, w }: { suggestions: StudentTrack[]; tracks: StudentTrack[]; done: number; selfManaged: boolean; w: Words }) {
   if (tracks.length === 0) {
-    // A self-managed learner sets up their own tracks (sm-2a, M9); a parent-managed one waits for their parent.
     return (
       <section className="card max-w-xl">
         <h2 className="text-xl">No tracks yet</h2>
-        <p className="mt-1 text-ink-muted">
-          {selfManaged
-            ? "You set up what you practise. Your first exam will appear here as soon as you create a track."
-            : "Your parent sets up what you practise. Your first exam will appear here as soon as they do."}
-        </p>
+        <p className="mt-1 text-ink-muted">{w.noTracks}</p>
+        {selfManaged && (
+          <Link href="/tracks/setup" className="btn-primary mt-4 h-12 px-5">
+            Set up your first track
+          </Link>
+        )}
       </section>
     );
   }
-  if (suggestions.length === 0) return <CaughtUp tracks={tracks} />;
+  if (suggestions.length === 0) return <CaughtUp tracks={tracks} selfManaged={selfManaged} w={w} />;
   return (
     <section aria-labelledby="suggested">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -160,18 +166,29 @@ function Today({ suggestions, tracks, done, selfManaged }: { suggestions: Studen
   );
 }
 
-const statusOf = (t: StudentTrack) =>
-  t.status === "paused" ? "Paused by your parent" : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : "Your next exam is being prepared";
+const statusOf = (t: StudentTrack, w: Words) =>
+  t.status === "paused" ? w.paused : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : "Your next exam is being prepared";
 
-function CaughtUp({ tracks }: { tracks: StudentTrack[] }) {
+function CaughtUp({ tracks, selfManaged, w }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words }) {
   return (
     <section className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <div className="card">
         <h2 className="text-2xl">You are all caught up</h2>
         <p className="mt-2 text-ink-muted">
           There are no exams to suggest right now.{" "}
-          {tracks.some((t) => t.status !== "active") ? "Your parent can add new topics or resume a track to start it again." : "Your next exam will appear here when it is ready."}
+          {tracks.some((t) => t.status !== "active") ? w.caughtUp : "Your next exam will appear here when it is ready."}
         </p>
+        {/* sm-3g: the learner can act on it straight away. */}
+        {selfManaged && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/tracks" className="btn-outline h-11 px-4">
+              Your tracks
+            </Link>
+            <Link href="/tracks/new" className="btn-primary h-11 px-4">
+              New track
+            </Link>
+          </div>
+        )}
       </div>
       <div className="card bg-transparent">
         <h2 className="mb-3 text-lg">Your tracks</h2>
@@ -179,7 +196,7 @@ function CaughtUp({ tracks }: { tracks: StudentTrack[] }) {
           {tracks.map((t) => (
             <li key={t.id} className="py-2.5">
               <p className="font-semibold">{t.name}</p>
-              <p className="text-sm text-ink-muted">{statusOf(t)}</p>
+              <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
             </li>
           ))}
         </ul>
@@ -242,7 +259,7 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
   );
 }
 
-function AllTracks({ tracks }: { tracks: StudentTrack[] }) {
+function AllTracks({ tracks, w }: { tracks: StudentTrack[]; w: Words }) {
   const ready = tracks.filter((t) => t.status === "active" && t.exam);
   return (
     <div className="flex flex-col gap-8">
@@ -315,7 +332,7 @@ function AllTracks({ tracks }: { tracks: StudentTrack[] }) {
                 <span className="block font-semibold">{t.name}</span>
                 <span className="mb-3 block text-sm text-ink-muted">
                   {t.status === "paused"
-                    ? "Paused by your parent"
+                    ? w.paused
                     : `${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"}${t.scores.length ? ` · last score ${t.scores[t.scores.length - 1]} / 10` : ""}`}
                 </span>
                 <TopicStrength topics={t.topics} compact />

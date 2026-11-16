@@ -19,7 +19,7 @@ import { canApplyUpdate, emptyUpdate, sanitizeUpdate } from "@/domain/tracks";
 const out = "tests/fixtures-files/ai-samples";
 const today = todayIn("Asia/Kolkata");
 const page = readFileSync("tests/fixtures-files/sample-textbook-page.png");
-const base = { parentName: "Atticus", studentName: "Scout", className: "Class 10", today, mode: "first" as const };
+const base = { audience: "parent" as const, parentName: "Atticus", studentName: "Scout", className: "Class 10", today, mode: "first" as const };
 
 async function main() {
   const t0 = Date.now();
@@ -53,7 +53,8 @@ async function main() {
   const plan = firstExamPlan(topics.map((t) => t.key));
   const questions = await writeQuestions({
     trackName: p2.name!,
-    className: base.className,
+    audience: "parent",
+    level: base.className,
     topics,
     focusNotes: p2.focusNotes,
     material: `Parent: ${message1}\nParent: ${message2}\n\n[${turn1.extracted[0]?.label}]\n${turn1.extracted[0]?.text}`,
@@ -104,7 +105,7 @@ async function main() {
     goalReachedOn: "28 Nov",
   };
   const r1 = await trackUpdateChat({
-    mode: "restart", parentName: "Atticus", studentName: "Scout", className: "Class 10", today, track: trackNow, update: emptyUpdate, history: [],
+    mode: "restart", audience: "parent" as const, parentName: "Atticus", studentName: "Scout", className: "Class 10", today, track: trackNow, update: emptyUpdate, history: [],
     attachments: [{ kind: "new", label: "page-158.png", mediaType: "image/png", data: page13 }],
     message: "Add chapter 13, magnetic effects of current. Keep some revision of chapter 12.",
   });
@@ -112,7 +113,7 @@ async function main() {
   const u1 = sanitizeUpdate(r1.update, trackNow.topics.map((t) => t.name), today);
   console.log(`\n── Restart, turn 1 (${((Date.now() - t4) / 1000).toFixed(1)} s) ──\nAI: ${r1.reply}\nNew topics: ${u1.newTopics.map((t) => t.name).join(", ")}\nGoal: ${JSON.stringify(u1.goal)} ready: ${r1.ready}`);
   const r2 = await trackUpdateChat({
-    mode: "restart", parentName: "Atticus", studentName: "Scout", className: "Class 10", today, track: trackNow, update: u1,
+    mode: "restart", audience: "parent" as const, parentName: "Atticus", studentName: "Scout", className: "Class 10", today, track: trackNow, update: u1,
     history: [
       { author: "parent", text: "Add chapter 13, magnetic effects of current. Keep some revision of chapter 12." },
       { author: "ai", text: r1.reply },

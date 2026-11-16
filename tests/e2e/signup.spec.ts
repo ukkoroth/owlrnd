@@ -27,7 +27,7 @@ test("landing → Get started → Who is this account for?, with both choices", 
   await expect(page.getByLabel("Password")).toHaveCount(0); // nothing is asked before the choice
 });
 
-test("M8 done-when, For me: sign up, verify at your own email, land on Exams; sign out and back in", async ({ page }) => {
+test("M8 done-when, For me: sign up, verify at your own email, land in the learner shell; sign out and back in", async ({ page }) => {
   const me = { name: "Rancho", email: `rancho-${uid()}@test.owlrnd`, password: "learnerpass1", dob: ["12", "March", "2000"] as [string, string, string] };
   try {
     await page.goto("/sign-up");
@@ -42,8 +42,11 @@ test("M8 done-when, For me: sign up, verify at your own email, land on Exams; si
     await enterCode(page, await nextCode(me.email, before));
     await page.getByRole("button", { name: "Verify email" }).click();
 
-    await expect(page).toHaveURL(/\/today$/);
+    // M9: a new learner chooses their exam or builds a track first (sm-2a); the dashboard says what to do.
+    await expect(page).toHaveURL(/\/tracks\/setup$/);
+    await page.goto("/today");
     await expect(page.getByText("You set up what you practise.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Set up your first track" })).toHaveAttribute("href", "/tracks/setup");
     await expect(page.getByRole("button", { name: "Account menu for Rancho" })).toContainText("Learner");
     expect(await learnerByEmail(me.email)).toMatchObject({ type: "self_managed", dateOfBirth: "2000-03-12", consentVersion: expect.any(String) });
 

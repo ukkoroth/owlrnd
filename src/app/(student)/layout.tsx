@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { ExamsIcon } from "@/components/icons";
+import { ExamsIcon, TracksIcon } from "@/components/icons";
 import { levelFor } from "@/domain/levels";
 import { allowanceOf } from "@/server/ai/usage";
 import { requireShell } from "@/server/auth/current";
@@ -16,7 +16,15 @@ export default async function StudentLayout({ children }: { children: React.Reac
     <AppShell
       // A self-managed learner is a "Learner"; a child a parent manages is a "Student" (sm-5a, editions §2.7).
       user={{ name: student.name, role: "student", roleLabel: student.type === "self_managed" ? "Learner" : "Student" }}
-      nav={[{ href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/tracks", "/exam"] }]}
+      // A self-managed learner manages their tracks too, so the sidebar has Exams and Tracks (sm-3c).
+      nav={
+        student.type === "self_managed"
+          ? [
+              { href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/exam", "/points"] },
+              { href: "/tracks", label: "Tracks", icon: <TracksIcon />, match: ["/tracks"] },
+            ]
+          : [{ href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/tracks", "/exam"] }]
+      }
       points={{ total, levelName: levelFor(total).current, href: "/points" }}
       allowance={allowance}
     >
