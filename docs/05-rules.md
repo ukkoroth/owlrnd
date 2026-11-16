@@ -151,6 +151,7 @@ The sidebar shows the total and current level on every student screen. The paren
 - **7-day bar chart:** the last 7 days ending today; the count above each bar; today highlighted.
 - **26-week activity grid:** one square per day for the last 26 weeks, weeks as columns, days as rows, today outlined. Five shades for 0, 1, 2, 3 and 4 or more exams.
 - Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data.
+- *(0.3)* Flashcard sessions (with at least one card answered) show on the 7-day chart as a separate, narrower teal series with a legend, only when there were any that week. They are never counted as exams: not in the 26-week grid, "exams completed", streaks or exam numbers.
 
 ## §9a Flashcards *(0.3)*
 
@@ -162,6 +163,7 @@ Practice, not assessment: flashcards never change an exam score, topic strength,
 - **Practise · N flashcards:** N = cards due now, up to 10; with none due, the top-up size, shown as "N new flashcards"; no button when nothing is due and the deck is full.
 - **Exams and cards rarely repeat each other's wording** (at most one near-copy per paper or batch after one rewrite; AI §7).
 - **Points:** see §8.
+- **The parent sees** a child's flashcard activity, not the cards: sessions in the last 7 days and cards known, on 2k and per track.
 
 ## §10 Permissions
 

@@ -7,6 +7,8 @@ import { requireShell } from "@/server/auth/current";
 import { listStudents } from "@/server/students";
 import { lastExamSummary, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
+import { flashcardActivity } from "@/server/flashcards";
+import { cardsLine } from "@/domain/flashcards";
 import { db } from "@/server/db";
 import { tracks } from "@/server/db/schema";
 import { and, count, inArray, ne } from "drizzle-orm";
@@ -34,6 +36,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const tracksOf = (id: string) => trackCounts.find((t) => t.studentId === id)?.n ?? 0;
   const lastExams = new Map(await Promise.all(kids.map(async (k) => [k.id, await lastExamSummary(k.id)] as const)));
   const times = new Map(await Promise.all(kids.map(async (k) => [k.id, await practiceTimes(k.id)] as const)));
+  const cards = new Map(await Promise.all(kids.map(async (k) => [k.id, await flashcardActivity(k.id)] as const)));
 
   return (
     <>
@@ -89,9 +92,15 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     : `No exams taken yet · ${tracksOf(k.id)} ${tracksOf(k.id) === 1 ? "track" : "tracks"}.`}
                 </p>
               )}
-              {(times.get(k.id)?.length ?? 0) > 0 && (
+              {/* fc-7: the child's flashcard practice, without card content. */}
+              {cards.get(k.id)!.times.length > 0 && (
+                <p className="border-b border-line py-3 text-[15px] text-ink-muted">
+                  <strong className="text-ink">Flashcards:</strong> {cardsLine(cards.get(k.id)!.sessionsWeek, cards.get(k.id)!.known)}
+                </p>
+              )}
+              {(times.get(k.id)?.length ?? 0) + cards.get(k.id)!.times.length > 0 && (
                 <div className="border-b border-line py-5">
-                  <ActivityCharts times={times.get(k.id)!} timeZone={k.timeZone} size="sm" />
+                  <ActivityCharts times={times.get(k.id)!} timeZone={k.timeZone} size="sm" flashcards={cards.get(k.id)!.times} />
                 </div>
               )}
               <nav aria-label={`${k.name}`} className="mt-auto flex gap-6 pt-5 font-semibold">

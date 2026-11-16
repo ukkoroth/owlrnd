@@ -13,7 +13,7 @@ import { examTopicLines, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
 import { PractiseButton } from "@/components/flashcards/Practise";
 import { PRACTISE_STATUSES } from "@/domain/flashcards";
-import { deckCounts, type DeckCount } from "@/server/flashcards";
+import { deckCounts, flashcardActivity, type DeckCount } from "@/server/flashcards";
 
 export const metadata: Metadata = { title: "Today · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -39,6 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const w = learnerWords(selfManaged);
   // 0.3 flashcards (fc-1): the Practise button's count per track that can be practised.
   const decks = await deckCounts(dash.tracks.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
+  const cardTimes = (await flashcardActivity(student.id)).times;
 
   return (
     <>
@@ -68,9 +69,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : tab === "today" ? (
           <>
             <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} decks={decks} />
-            {dash.recent.length > 0 && (
+            {(dash.recent.length > 0 || cardTimes.length > 0) && (
               <div className="mt-6">
-                <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
+                <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" flashcards={cardTimes} />
               </div>
             )}
           </>
@@ -114,7 +115,7 @@ function FirstDay({ suggestion: t, w, deck }: { suggestion: StudentTrack; w: Wor
         <p className="mt-1 text-ink-muted">{examLine(t)}</p>
         <div className="mt-5 flex max-w-[260px] flex-col gap-2.5">
           <StartLink t={t} primary />
-          <PractiseButton trackId={t.id} trackName={t.name} deck={deck} className="h-[52px] w-full text-base" />
+          <PractiseButton trackId={t.id} trackName={t.name} deck={deck} className="h-[52px] w-full px-3 text-base" />
         </div>
       </section>
       <section className="card bg-transparent">
@@ -188,7 +189,7 @@ function Today({
             <p className="mb-5 mt-1 text-ink-muted">{examLine(t)}</p>
             <div className="mt-auto flex flex-col gap-2.5">
               <StartLink t={t} primary={i === 0} />
-              <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="h-[52px] w-full text-base" />
+              <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="h-[52px] w-full px-3 text-base" />
             </div>
           </li>
         ))}

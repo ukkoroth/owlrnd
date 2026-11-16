@@ -5,7 +5,9 @@ import { cleanup, learnerActor, makeParent, parentActor, makeSelfLearner, makeSt
 import { db } from "./db";
 import { aiUsage, consentRequests, jobs, parents, pointsEvents, questions, tracks } from "./db/schema";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
-import { deckCounts, deckOf, deckPage, finishSession, reviewCard, startSession, writeDeck } from "./flashcards";
+import { deckCounts, deckOf, deckPage, finishSession, flashcardActivity, reviewCard, startSession, writeDeck } from "./flashcards";
+import { getStudentDashboard } from "./exams";
+import { practiceTimes } from "./results";
 import { markExamJob } from "./marking";
 import { requestConsent } from "./consent";
 
@@ -244,5 +246,35 @@ describe("counts and the deck page", () => {
     expect(await startSession(me, trackId)).toBeNull();
     await db.update(tracks).set({ status: "goal_reached" }).where(eq(tracks.id, trackId));
     expect((await startSession(me, trackId))!.cards.length).toBeGreaterThan(0);
+  });
+});
+
+// F4: activity for the charts and the parent's line; never counted as exams.
+describe("flashcard activity", () => {
+  it("counts sessions with answers this week, per track, and cards known; nothing counts as an exam", async () => {
+    const { student, trackId } = await family();
+    const me = learnerActor(student);
+    await writeDeck(trackId, "starter");
+    await practise(me, trackId, 10, new Date());
+    await startSession(me, trackId); // opened, nothing answered: not a session to count
+
+    const a = await flashcardActivity(student.id);
+    expect(a.times).toHaveLength(1);
+    expect(a.sessionsWeek).toBe(1);
+    expect(a.perTrack.get(trackId)).toMatchObject({ sessionsWeek: 1, known: 0 });
+    expect(a.perTrack.get(trackId)!.total).toBeGreaterThan(0);
+
+    expect(await practiceTimes(student.id)).toHaveLength(0);
+    const dash = await getStudentDashboard(student.id);
+    expect(dash.completed).toBe(0);
+    expect(dash.recent).toHaveLength(0);
+  });
+
+  it("a session more than 7 days ago is in the chart's times but not this week's count", async () => {
+    const { student, trackId } = await family();
+    await writeDeck(trackId, "starter");
+    await practise(learnerActor(student), trackId, 8, new Date(Date.now() - 9 * DAY));
+    const a = await flashcardActivity(student.id);
+    expect([a.times.length, a.sessionsWeek]).toEqual([1, 0]);
   });
 });

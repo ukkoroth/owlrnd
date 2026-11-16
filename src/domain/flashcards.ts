@@ -129,6 +129,12 @@ export function sessionPoints(cardsSeen: number, awardedTodayOnTrack: number): n
   return cardsSeen >= p.minCards && awardedTodayOnTrack < p.maxSessionsPerDay ? p.perSession : 0;
 }
 
+/** The parent's line (fc-7), on 2k and per track: "3 sessions in the last 7 days · 41 cards known". */
+export function cardsLine(sessionsWeek: number, known: number, total?: number) {
+  const sessions = `${sessionsWeek} ${sessionsWeek === 1 ? "session" : "sessions"} in the last 7 days`;
+  return `${sessions} · ${total === undefined ? `${known} ${known === 1 ? "card" : "cards"}` : `${known} of ${total} cards`} known`;
+}
+
 /** Spaced repetition (Leitner boxes): "Got it" moves a card up a box (at most 5); "Not yet" sends it back to 1. */
 export function nextBox(box: number, result: "got_it" | "not_yet"): number {
   return result === "got_it" ? Math.min(F.boxDays.length, box + 1) : 1;

@@ -392,3 +392,40 @@ async function finishAndAward(s: typeof flashcardSessions.$inferSelect, now: Dat
     await tx.insert(pointsEvents).values({ studentId: s.studentId, flashcardSessionId: s.id, kind: "flashcards", points, label: `Flashcards: ${track?.name ?? "practice"}`, createdAt: now });
   });
 }
+
+// ── F4 · Activity, for charts and a parent's line (fc-7) ────────────────────
+
+export type FlashcardActivity = {
+  /** When each session with at least one answer happened (finished, or started if left part-way). */
+  times: Date[];
+  /** Sessions in the last 7 days, all tracks and per track. */
+  sessionsWeek: number;
+  perTrack: Map<string, { sessionsWeek: number; known: number; total: number }>;
+  /** Cards known (box 4+) across the learner's tracks. */
+  known: number;
+};
+
+/**
+ * A learner's flashcard practice: for the activity charts (a separate series, never counted as exams) and the
+ * parent's line on 2k and the tracks page (fc-7). No card content. Callers have already authorised the learner.
+ */
+export async function flashcardActivity(studentId: string, now = new Date()): Promise<FlashcardActivity> {
+  const sessions = await db
+    .select({ trackId: flashcardSessions.trackId, startedAt: flashcardSessions.startedAt, finishedAt: flashcardSessions.finishedAt })
+    .from(flashcardSessions)
+    .where(and(eq(flashcardSessions.studentId, studentId), gt(flashcardSessions.cardsSeen, 0)));
+  const ids = (await db.select({ id: tracks.id }).from(tracks).where(eq(tracks.studentId, studentId))).map((t) => t.id);
+  const decks = await deckCounts(ids, now);
+  const weekAgo = now.getTime() - 7 * 24 * 60 * 60_000;
+  const perTrack = new Map(ids.map((id) => [id, { sessionsWeek: 0, known: decks.get(id)!.known, total: decks.get(id)!.total }]));
+  const times = sessions.map((s) => s.finishedAt ?? s.startedAt);
+  sessions.forEach((s, i) => {
+    if (times[i]!.getTime() > weekAgo) perTrack.get(s.trackId)!.sessionsWeek++;
+  });
+  return {
+    times,
+    sessionsWeek: [...perTrack.values()].reduce((n, t) => n + t.sessionsWeek, 0),
+    perTrack,
+    known: [...perTrack.values()].reduce((n, t) => n + t.known, 0),
+  };
+}

@@ -120,3 +120,31 @@ test("F3: a self-managed learner's track card has the deck line, Start, Practise
     await deleteSelfLearner(studentId);
   }
 });
+
+test("F4 done-when: a parent sees a child's flashcard activity; it doesn't count as an exam", async ({ page, browser }) => {
+  const { parent, student, studentId } = await createFamily();
+  try {
+    await createTrackWithExam(studentId, { name: "Physics: Current electricity", questions: paper, topicNames: ["Ohm's law", "Resistors"] });
+    const kidCtx = await browser.newContext();
+    const kid = await kidCtx.newPage();
+    await signInFully(kid, student.username, student.password, parent.email, /\/today$/);
+    await kid.getByRole("link", { name: /^Practise 10 new flashcards/ }).click();
+    await practiseTen(kid);
+    await kid.getByRole("link", { name: "Back to Exams" }).click();
+    // Still the first-day dashboard: a flashcard session isn't an exam.
+    await expect(kid.getByRole("heading", { name: `Welcome, ${student.name}` })).toBeVisible();
+    await expect(kid.getByText(/exams? completed/)).toHaveCount(0);
+    await kidCtx.close();
+
+    await signInFully(page, parent.email, parent.password, parent.email, /\/students$/);
+    await expect(page.getByText("Flashcards: 1 session in the last 7 days · 0 cards known")).toBeVisible();
+    await expect(page.getByText("0 exams · 1 flashcard session")).toBeVisible();
+    await expect(page.getByText("No exams taken yet · 1 track.")).toBeVisible();
+    await page.goto(`/students/${studentId}/tracks`);
+    await expect(page.getByRole("article").getByText("1 session in the last 7 days · 0 of 10 cards known")).toBeVisible();
+    // The parent doesn't practise: no Practise button, no card content.
+    await expect(page.getByRole("link", { name: /^Practise/ })).toHaveCount(0);
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});

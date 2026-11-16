@@ -87,7 +87,9 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 | **F1 · Deck** ✅ 2026-11-16 | Tables; AI card writer; starter deck on track creation/restart; cards from missed questions after marking; top-up | A new track gets a starter deck in the background; a missed question becomes a card |
 | **F2 · Session** ✅ 2026-11-16 | `/practise/[trackId]`: front, Show answer, Got it / Not yet, keyboard, leave; session done (fc-2–fc-4) | A learner practises 10 cards and sees the summary; the page never scrolls at 1280×800 and 390×844 |
 | **F3 · Spaced repetition and places** ✅ 2026-11-16 | Boxes and due dates; Practise buttons with counts on the dashboard and track cards (fc-1, fc-5); the deck page (fc-6); points | "Not yet" cards come back next day, "Got it" ones later; counts on buttons match due cards; points as in the rules |
-| **F4 · Parents and charts** | Parent's line on a child's tracks page and 2k card (fc-7); activity chart series | A parent sees a child's flashcard activity; a child's session doesn't count as an exam anywhere |
+| **F4 · Parents and charts** ✅ 2026-11-16 | Parent's line on a child's tracks page and 2k card (fc-7); activity chart series | A parent sees a child's flashcard activity; a child's session doesn't count as an exam anywhere |
+
+**F4 done (2026-11-16):** the parent's line (fc-7) on each child's 2k card ("Flashcards: 3 sessions in the last 7 days · 41 cards known") and on each track card of the child's tracks page ("· 12 of 24 cards known"), with no card content and no Practise button. The 7-day activity chart (3c and 2k) gets flashcard sessions as a second, narrower teal series with a legend and its own counts, only when there were sessions that week; the 26-week grid, "exams completed", streaks and exam numbers stay exams only. A session counts once at least one card is answered. All of 0.3 F1–F4 is built; the release tasks below remain.
 
 ## After F4: release tasks (owner, 2026-11-16)
 

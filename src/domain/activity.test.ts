@@ -35,3 +35,13 @@ describe("activity (rules §9)", () => {
     expect(g.weeks[25]!.filter((c) => c.future).map((c) => c.date)).toEqual(["2026-11-12", "2026-11-13", "2026-11-14"]);
   });
 });
+
+describe("flashcard sessions on the 7-day bars (0.3, F4)", () => {
+  it("are their own count per day, separate from exams", async () => {
+    const { last7Days } = await import("./activity");
+    const bars = last7Days(new Map([["2026-11-16", 2]]), "2026-11-16", new Map([["2026-11-16", 1], ["2026-11-14", 3]]));
+    expect(bars.at(-1)).toMatchObject({ count: 2, flashcards: 1, isToday: true });
+    expect(bars.at(-3)).toMatchObject({ count: 0, flashcards: 3 });
+    expect(last7Days(new Map(), "2026-11-16").every((b) => b.flashcards === 0)).toBe(true);
+  });
+});

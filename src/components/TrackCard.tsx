@@ -9,6 +9,7 @@ import { trackCompletion } from "@/domain/goals";
 import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
 import type { DeckCount } from "@/server/flashcards";
 import { DeckLine, PractiseButton } from "./flashcards/Practise";
+import { cardsLine } from "@/domain/flashcards";
 
 /**
  * A track on the parent's tracks page (2g) or the learner's Your tracks (sm-4.1a). A self-managed learner also gets
@@ -20,6 +21,7 @@ export function TrackCard({
   audience,
   timeZone,
   deck,
+  cardsActivity,
 }: {
   track: TrackSummary;
   highlight?: boolean;
@@ -27,6 +29,8 @@ export function TrackCard({
   timeZone: string;
   /** The track's flashcards (0.3, fc-5): a learner practising here gets the deck line, Practise and Flashcards. */
   deck?: DeckCount;
+  /** The parent's line (fc-7): the child's flashcard practice on this track, no card content. */
+  cardsActivity?: { sessionsWeek: number; known: number; total: number };
 }) {
   const runLength = t.goalRunLength ?? 3;
   const flashcards = audience.kind === "learner" && deck && (t.status === "active" || t.status === "goal_reached");
@@ -88,6 +92,11 @@ export function TrackCard({
       )}
 
       {flashcards && <DeckLine deck={deck} timeZone={timeZone} reached={t.status === "goal_reached"} />}
+      {audience.kind === "parent" && cardsActivity && cardsActivity.total > 0 && (
+        <p className="mt-4 rounded bg-page px-3.5 py-3 text-sm">
+          <strong>Flashcards</strong> · {cardsLine(cardsActivity.sessionsWeek, cardsActivity.known, cardsActivity.total)}
+        </p>
+      )}
 
       {(start || practise) && (
         <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-4">

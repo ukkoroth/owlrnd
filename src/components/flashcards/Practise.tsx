@@ -11,7 +11,7 @@ export function PractiseButton({ trackId, trackName, deck, from, className = "" 
   if (!deck?.practise) return null;
   const label = plural(deck.practise, deck.due === 0);
   return (
-    <Link href={`/practise/${trackId}${from ? `?from=${from}` : ""}`} className={`btn-practise ${className}`} aria-label={`Practise ${label}: ${trackName}`}>
+    <Link href={`/practise/${trackId}${from ? `?from=${from}` : ""}`} className={`btn-practise text-center leading-tight ${className}`} aria-label={`Practise ${label}: ${trackName}`}>
       Practise · {label}
     </Link>
   );

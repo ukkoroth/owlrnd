@@ -18,13 +18,14 @@ const dayName = (iso: string) => new Intl.DateTimeFormat("en-GB", { weekday: "sh
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthName = (iso: string) => MONTHS[Number(iso.slice(5, 7)) - 1]!;
 
-export type Bar = { date: string; label: string; count: number; isToday: boolean };
+/** `flashcards`: flashcard sessions that day (0.3), a separate series that never counts as exams. */
+export type Bar = { date: string; label: string; count: number; isToday: boolean; flashcards: number };
 
 /** The 7-day bar chart: the last 7 days ending today (rules §9). */
-export function last7Days(counts: Map<string, number>, today: string): Bar[] {
+export function last7Days(counts: Map<string, number>, today: string, flashcards: Map<string, number> = new Map()): Bar[] {
   return Array.from({ length: rules.activity.barDays }, (_, i) => {
     const date = addDays(today, i - (rules.activity.barDays - 1));
-    return { date, label: date === today ? "Today" : dayName(date), count: counts.get(date) ?? 0, isToday: date === today };
+    return { date, label: date === today ? "Today" : dayName(date), count: counts.get(date) ?? 0, isToday: date === today, flashcards: flashcards.get(date) ?? 0 };
   });
 }
 

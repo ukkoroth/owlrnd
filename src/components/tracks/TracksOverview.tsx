@@ -22,13 +22,15 @@ type Props = {
   timeZone: string;
   /** Flashcard decks (0.3, fc-5), for a learner practising here. */
   decks?: Map<string, DeckCount>;
+  /** A child's flashcard practice per track, for the parent's line (fc-7). */
+  cardsActivity?: Map<string, { sessionsWeek: number; known: number; total: number }>;
 };
 
 /**
  * The tracks page: the parent's 2d (none yet) / 2g, and the learner's sm-2c / sm-4.1a "Your tracks: practise and
  * manage". The same cards and actions; links and words follow the audience.
  */
-export function TracksOverview({ audience, list, hasDraft, created, timeZone, decks }: Props) {
+export function TracksOverview({ audience, list, hasDraft, created, timeZone, decks, cardsActivity }: Props) {
   const words = trackWords(audience);
   const learner = audience.kind === "learner";
   const newHref = newTrackHref(audience);
@@ -146,7 +148,7 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
               // A track that just reached its goal comes first (2i).
               .sort((a, b) => Number(b.status === "goal_reached") - Number(a.status === "goal_reached"))
               .map((t, i) => (
-                <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} />
+                <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} cardsActivity={cardsActivity?.get(t.id)} />
               ))}
           </div>
           {list.some((t) => t.status === "archived") && (

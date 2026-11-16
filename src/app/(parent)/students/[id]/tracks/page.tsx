@@ -5,6 +5,7 @@ import { TracksOverview } from "@/components/tracks/TracksOverview";
 import { requireShell } from "@/server/auth/current";
 import { getOwnStudent } from "@/server/students";
 import { getDraftChat, listTracks } from "@/server/tracks";
+import { flashcardActivity } from "@/server/flashcards";
 
 export const metadata: Metadata = { title: "Tracks · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function TracksPage({ params, searchParams }: { params: Pro
   const list = (await listTracks(actor, id)) ?? [];
   const draft = (await getDraftChat(actor, id))?.draft;
   const { created } = await searchParams;
+  const cards = (await flashcardActivity(id)).perTrack;
 
   return (
     <>
@@ -28,6 +30,7 @@ export default async function TracksPage({ params, searchParams }: { params: Pro
         hasDraft={!!draft}
         created={!!created}
         timeZone={student.timeZone}
+        cardsActivity={cards}
       />
     </>
   );

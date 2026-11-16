@@ -96,3 +96,12 @@ describe("F3: counts, card states and points", () => {
     expect(sessionPoints(10, 2)).toBe(0);
   });
 });
+
+describe("the parent's line (fc-7)", () => {
+  it("sessions in the last 7 days and cards known, overall or of the track's deck", async () => {
+    const { cardsLine } = await import("./flashcards");
+    expect(cardsLine(3, 41)).toBe("3 sessions in the last 7 days · 41 cards known");
+    expect(cardsLine(1, 1)).toBe("1 session in the last 7 days · 1 card known");
+    expect(cardsLine(0, 12, 24)).toBe("0 sessions in the last 7 days · 12 of 24 cards known");
+  });
+});
