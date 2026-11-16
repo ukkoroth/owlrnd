@@ -68,3 +68,31 @@ describe("near-copies between exams and cards (rules.flashcards.repeats)", () =>
     expect(tooManyRepeats(["a b c d e", "f g h i j"], ["a b c d e", "f g h i j"], "Question")).toHaveLength(2);
   });
 });
+
+describe("F3: counts, card states and points", () => {
+  it("the Practise count: due cards up to a session; none due → the top-up; a full deck with none due → no button", async () => {
+    const { practiseCount } = await import("./flashcards");
+    expect(practiseCount({ total: 30, due: 4 })).toBe(4);
+    expect(practiseCount({ total: 30, due: 25 })).toBe(10);
+    expect(practiseCount({ total: 30, due: 0 })).toBe(10);
+    expect(practiseCount({ total: 0, due: 0 })).toBe(10);
+    expect(practiseCount({ total: 200, due: 0 })).toBeNull();
+  });
+
+  it("card states: due now → to practise; otherwise known from box 4", async () => {
+    const { cardState } = await import("./flashcards");
+    const now = new Date("2026-11-16T10:00:00Z");
+    const later = new Date("2026-11-17T10:00:00Z");
+    expect(cardState({ box: 5, dueAt: now }, now)).toBe("to_practise");
+    expect(cardState({ box: 3, dueAt: later }, now)).toBe("learning");
+    expect(cardState({ box: 4, dueAt: later }, now)).toBe("known");
+  });
+
+  it("points: 5 for a session of 8+ cards, at most 2 a day per track, none per card", async () => {
+    const { sessionPoints } = await import("./flashcards");
+    expect(sessionPoints(10, 0)).toBe(5);
+    expect(sessionPoints(8, 1)).toBe(5);
+    expect(sessionPoints(7, 0)).toBe(0);
+    expect(sessionPoints(10, 2)).toBe(0);
+  });
+});

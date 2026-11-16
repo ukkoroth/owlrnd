@@ -7,6 +7,9 @@ import { TracksOverview } from "@/components/tracks/TracksOverview";
 import { requireShell } from "@/server/auth/current";
 import { getStudentTracks, type StudentTrack } from "@/server/exams";
 import { getDraftChat, listTracks } from "@/server/tracks";
+import { PRACTISE_STATUSES } from "@/domain/flashcards";
+import { deckCounts } from "@/server/flashcards";
+import { DeckLine, PractiseButton } from "@/components/flashcards/Practise";
 
 export const metadata: Metadata = { title: "Your tracks · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -24,11 +27,12 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
   const { user: { student }, actor } = await requireShell("learner");
   if (student.type === "self_managed") {
     const tracks = (await listTracks(actor, student.id)) ?? [];
+    const decks = await deckCounts(tracks.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
     const draft = (await getDraftChat(actor, student.id))?.draft;
     const { created } = await searchParams;
     return (
       <>
-        <TracksOverview audience={{ kind: "learner" }} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} />
+        <TracksOverview audience={{ kind: "learner" }} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} decks={decks} />
         {tracks.length > 0 && (
           <div className="mt-3">
             <StrengthLegend />
@@ -38,6 +42,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
     );
   }
   const list = await getStudentTracks(student.id);
+  const decks = await deckCounts(list.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
 
   return (
     <>
@@ -63,7 +68,8 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
               <div className="mt-4">
                 <GoalProgress threshold={t.goalThreshold} runLength={t.goalRunLength} progress={t.goalProgress} reached={t.status === "goal_reached"} topics={t.topics} />
               </div>
-              <div className="mt-auto border-t border-line pt-4">
+              <DeckLine deck={decks.get(t.id)} timeZone={student.timeZone} reached={t.status === "goal_reached"} />
+              <div className="mt-auto flex flex-col gap-2.5 border-t border-line pt-4">
                 {t.status === "paused" ? (
                   <p className="text-ink-muted">No new exams while paused</p>
                 ) : t.status === "goal_reached" ? (
@@ -74,6 +80,12 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
                   </Link>
                 ) : (
                   <p className="text-ink-muted">Your next exam will be ready soon</p>
+                )}
+                <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} from="tracks" className="h-12 px-5" />
+                {(decks.get(t.id)?.total ?? 0) > 0 && (
+                  <Link href={`/tracks/${t.id}/flashcards`} className="link flex min-h-touch items-center self-start font-semibold" aria-label={`Flashcards in ${t.name}`}>
+                    Flashcards
+                  </Link>
                 )}
               </div>
             </li>

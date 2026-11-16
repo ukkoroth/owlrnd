@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import type { StoredPreview, StoredUpdate } from "@/domain/tracks";
 
 // Tables from docs/06-data.md, added milestone by milestone.
@@ -495,15 +495,20 @@ export const pointsEvents = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    examId: uuid("exam_id")
-      .notNull()
-      .references(() => exams.id, { onDelete: "cascade" }),
+    /** The exam that earned it; null for a flashcard session (0.3), which sets `flashcardSessionId` instead. */
+    examId: uuid("exam_id").references(() => exams.id, { onDelete: "cascade" }),
+    flashcardSessionId: uuid("flashcard_session_id").references((): AnyPgColumn => flashcardSessions.id, { onDelete: "cascade" }),
     kind: pointsKind("kind").notNull(),
     points: integer("points").notNull(),
     label: text("label").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("points_events_student_idx").on(t.studentId, t.createdAt)],
+  (t) => [
+    index("points_events_student_idx").on(t.studentId, t.createdAt),
+    // One award per flashcard session.
+    uniqueIndex("points_events_flashcard_session_idx").on(t.flashcardSessionId),
+    check("points_events_source", sql`(${t.examId} is null) <> (${t.flashcardSessionId} is null)`),
+  ],
 );
 
 // ── 0.2 M10 · Under-18 consent (editions §2.4) ─────────────────────────────

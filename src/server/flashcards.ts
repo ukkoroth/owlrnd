@@ -2,14 +2,15 @@ import "server-only";
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { holderRef } from "@/domain/accounts";
-import { dueAfter, nextBox, planStarter, planTopUp, type CardSlot, type DeckTopic } from "@/domain/flashcards";
+import { cardState, dueAfter, nextBox, planStarter, planTopUp, practiseCount, PRACTISE_STATUSES, sessionPoints, type CardSlot, type CardState, type DeckTopic } from "@/domain/flashcards";
+import { todayIn } from "@/domain/tracks";
 import type { Actor } from "@/domain/permissions";
 import { formatClass } from "@/domain/identity";
 import { ai } from "./ai";
 import { allowanceOf, budgetLeft, withAiContext } from "./ai/usage";
 import { learnerConsent } from "./consent";
 import { db } from "./db";
-import { exams, flashcardReviews, flashcardSessions, flashcards, marks, questions, topics, tracks } from "./db/schema";
+import { exams, flashcardReviews, flashcardSessions, flashcards, marks, pointsEvents, questions, students, topics, tracks } from "./db/schema";
 import { trackMaterial } from "./examWriter";
 import { enqueue } from "./jobs/queue";
 import { authorizeTrack, loadLearner } from "./learners";
@@ -148,16 +149,73 @@ export async function deckOf(trackId: string) {
 }
 
 /** How many cards a track has, and how many are due now (for buttons in F3). */
+export type DeckCount = {
+  total: number;
+  due: number;
+  known: number;
+  /** The number for "Practise · N flashcards", or null when there's nothing to practise (practiseCount). */
+  practise: number | null;
+  /** When the learner last finished a session on the track. */
+  lastAt: Date | null;
+};
+
+/** Per track: cards, cards due now, cards known, and the Practise button's count (fc-1, fc-5). */
 export async function deckCounts(trackIds: string[], now = new Date()) {
-  const out = new Map<string, { total: number; due: number }>(trackIds.map((id) => [id, { total: 0, due: 0 }]));
+  const out = new Map<string, DeckCount>(trackIds.map((id) => [id, { total: 0, due: 0, known: 0, practise: null, lastAt: null }]));
   if (!trackIds.length) return out;
-  const rows = await db.select({ trackId: flashcards.trackId, dueAt: flashcards.dueAt }).from(flashcards).where(and(inArray(flashcards.trackId, trackIds), isNotNull(flashcards.dueAt)));
+  const rows = await db
+    .select({ trackId: flashcards.trackId, dueAt: flashcards.dueAt, box: flashcards.box })
+    .from(flashcards)
+    .where(and(inArray(flashcards.trackId, trackIds), isNotNull(flashcards.dueAt)));
   for (const r of rows) {
     const c = out.get(r.trackId)!;
     c.total++;
-    if (r.dueAt <= now) c.due++;
+    const state = cardState(r, now);
+    if (state === "to_practise") c.due++;
+    if (state === "known") c.known++;
   }
+  const last = await db
+    .select({ trackId: flashcardSessions.trackId, at: sql<Date>`max(${flashcardSessions.finishedAt})`.mapWith((v) => new Date(v)) })
+    .from(flashcardSessions)
+    .where(and(inArray(flashcardSessions.trackId, trackIds), isNotNull(flashcardSessions.finishedAt)))
+    .groupBy(flashcardSessions.trackId);
+  for (const l of last) out.get(l.trackId)!.lastAt = l.at;
+  for (const c of out.values()) c.practise = practiseCount(c);
   return out;
+}
+
+export type DeckPage = {
+  trackId: string;
+  trackName: string;
+  colorIndex: number;
+  status: string;
+  counts: DeckCount;
+  topics: { name: string; cards: { id: string; front: string; answer: string; state: CardState; dueAt: Date; fromMissed: boolean }[] }[];
+};
+
+/** fc-6: a track's deck by topic, for the learner (both kinds: a child can see their own cards). */
+export async function deckPage(actor: Actor, trackId: string, now = new Date()): Promise<DeckPage | null> {
+  if (actor.kind !== "learner") return null;
+  const own = await authorizeTrack(actor, "viewProgress", trackId);
+  if (!own || own.track.status === "draft") return null;
+  const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(asc(topics.position));
+  const cards = await db.select().from(flashcards).where(eq(flashcards.trackId, trackId)).orderBy(asc(flashcards.createdAt));
+  const counts = (await deckCounts([trackId], now)).get(trackId)!;
+  return {
+    trackId,
+    trackName: own.track.name ?? "",
+    colorIndex: own.track.colorIndex,
+    status: own.track.status,
+    counts,
+    topics: tps
+      .map((t) => ({
+        name: t.name,
+        cards: cards
+          .filter((c) => c.topicId === t.id)
+          .map((c) => ({ id: c.id, front: c.front, answer: c.answer, state: cardState(c, now), dueAt: c.dueAt, fromMissed: c.source === "missed_question" })),
+      }))
+      .filter((t) => t.cards.length > 0),
+  };
 }
 
 // ── F2 · A practice session (fc-2 to fc-4) ─────────────────────────────────
@@ -183,7 +241,7 @@ const STRENGTH_ORDER: Record<string, number> = { needs_work: 0, not_tested: 1, s
  */
 export async function startSession(actor: Actor, trackId: string, opts: { again?: string } = {}, now = new Date()): Promise<StartedSession> {
   const own = await authorizeTrack(actor, "practise", trackId);
-  if (!own || own.track.status === "draft" || own.track.status === "archived") return null;
+  if (!own || !PRACTISE_STATUSES.includes(own.track.status)) return null;
   const { track, student } = own;
 
   let picked: (typeof flashcards.$inferSelect)[] = [];
@@ -267,13 +325,16 @@ export type SessionSummary = {
   next: { at: Date; count: number } | null;
   /** The track's exam waiting to be taken, for "Start exam N". */
   readyExam: { id: string; number: number } | null;
+  /** Points this session earned (sessionPoints): 0 if it was short or the day's limit for the track was reached. */
+  points: number;
 };
 
-/** Finish the session (fc-4). Points for finishing come with F3. */
+/** Finish the session (fc-4), awarding its points once (sessionPoints). Finishing again just returns the summary. */
 export async function finishSession(actor: Actor, sessionId: string, now = new Date()): Promise<SessionSummary | null> {
   const s = await ownSession(actor, sessionId);
   if (!s) return null;
-  if (!s.finishedAt) await db.update(flashcardSessions).set({ finishedAt: now }).where(eq(flashcardSessions.id, sessionId));
+  if (!s.finishedAt) await finishAndAward(s, now);
+  const [award] = await db.select({ points: pointsEvents.points }).from(pointsEvents).where(eq(pointsEvents.flashcardSessionId, sessionId));
   const rows = await db
     .select({ result: flashcardReviews.result, topicName: topics.name })
     .from(flashcardReviews)
@@ -306,5 +367,28 @@ export async function finishSession(actor: Actor, sessionId: string, now = new D
     byTopic: [...byTopic.entries()].map(([topicName, v]) => ({ topicName, ...v })),
     next: firstDay ? { at: later[0]!.dueAt, count: later.filter((l) => l.dueAt.toISOString().slice(0, 10) === firstDay).length } : null,
     readyExam: open ?? null,
+    points: award?.points ?? 0,
   };
+}
+
+/** Marks the session finished and awards its points, in one transaction so the daily limit holds. */
+async function finishAndAward(s: typeof flashcardSessions.$inferSelect, now: Date) {
+  await db.transaction(async (tx) => {
+    // Lock the session row: a second finish waits, then sees it finished.
+    const [locked] = await tx.select().from(flashcardSessions).where(eq(flashcardSessions.id, s.id)).for("update");
+    if (!locked || locked.finishedAt) return;
+    await tx.update(flashcardSessions).set({ finishedAt: now }).where(eq(flashcardSessions.id, s.id));
+    const [student] = await tx.select({ timeZone: students.timeZone }).from(students).where(eq(students.id, s.studentId)).for("update");
+    const tz = student?.timeZone ?? "UTC";
+    const recent = await tx
+      .select({ at: pointsEvents.createdAt })
+      .from(pointsEvents)
+      .innerJoin(flashcardSessions, eq(flashcardSessions.id, pointsEvents.flashcardSessionId))
+      .where(and(eq(pointsEvents.studentId, s.studentId), eq(flashcardSessions.trackId, s.trackId), gt(pointsEvents.createdAt, new Date(now.getTime() - 2 * 24 * 60 * 60_000))));
+    const today = todayIn(tz, now);
+    const points = sessionPoints(locked.cardsSeen, recent.filter((r) => todayIn(tz, r.at) === today).length);
+    if (!points) return;
+    const [track] = await tx.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, s.trackId));
+    await tx.insert(pointsEvents).values({ studentId: s.studentId, flashcardSessionId: s.id, kind: "flashcards", points, label: `Flashcards: ${track?.name ?? "practice"}`, createdAt: now });
+  });
 }

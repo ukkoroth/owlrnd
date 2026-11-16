@@ -127,6 +127,7 @@ Points reward effort and improvement more than raw marks. Points only add up; th
 | A weak topic becomes strong | 10 each |
 | A perfect 10 / 10 | 10 extra |
 | First exam of the day, when the student also practised the day before | 5, or 10 from day 7 of an unbroken streak |
+| Finish a flashcard session of 8 or more cards *(0.3)* | 5, for at most 2 sessions a day in each track **(default)**; none per card |
 
 - Full points apply to the first 5 exams a day **(default)**; after that only correct answers score.
 - Worked example: 8 / 10, up from 6 last time, on day 4 of a streak: 10 + 16 + (2 × 5) + 5 = **41 points**.
@@ -150,6 +151,17 @@ The sidebar shows the total and current level on every student screen. The paren
 - **7-day bar chart:** the last 7 days ending today; the count above each bar; today highlighted.
 - **26-week activity grid:** one square per day for the last 26 weeks, weeks as columns, days as rows, today outlined. Five shades for 0, 1, 2, 3 and 4 or more exams.
 - Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data.
+
+## §9a Flashcards *(0.3)*
+
+Practice, not assessment: flashcards never change an exam score, topic strength, goal progress or streak. Details and defaults: `docs/plan-0.3-flashcards.md` and `rules.flashcards`.
+
+- **Deck:** about 6 cards per active topic when a track starts (up to 60), up to 3 cards from missed questions after each marked exam, top-ups of 10; at most 200 per track.
+- **Session:** up to 10 due cards, lower boxes and weaker topics first; with none due, a top-up is written first. Running and goal-reached tracks only (not paused or archived).
+- **Spacing (Leitner):** Got it moves a card up a box (1–5), Not yet back to box 1; due again after 1, 2, 4, 8 or 16 days. "Known" = box 4 or higher.
+- **Practise · N flashcards:** N = cards due now, up to 10; with none due, the top-up size, shown as "N new flashcards"; no button when nothing is due and the deck is full.
+- **Exams and cards rarely repeat each other's wording** (at most one near-copy per paper or batch after one rewrite; AI §7).
+- **Points:** see §8.
 
 ## §10 Permissions
 

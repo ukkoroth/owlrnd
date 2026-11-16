@@ -8,7 +8,7 @@ const { writeQuestions } = await import("./writeQuestions");
 const { writeFlashcards } = await import("./writeFlashcards");
 
 const deck = ["What is the unit of electrical resistance?", "State Ohm's law in words.", "What does an ammeter measure?"];
-const q = (prompt: string) => ({ topicKey: "T1", type: "short_answer" as const, prompt, options: [], correctIndex: null, expectedAnswer: "ohm", explanation: "Because.", difficulty: 2 });
+const q = (prompt: string) => ({ topicKey: "T1", type: "short" as const, prompt, options: [], correctIndex: null, expectedAnswer: "ohm", explanation: "Because.", difficulty: 2 });
 const examInput = (n: number) => ({
   audience: "parent" as const,
   trackName: "Physics",
@@ -16,7 +16,7 @@ const examInput = (n: number) => ({
   topics: [{ key: "T1", name: "Ohm's law", description: "" }],
   focusNotes: null,
   material: "",
-  plan: Array.from({ length: n }, () => ({ topicKey: "T1", type: "short_answer" as const })),
+  plan: Array.from({ length: n }, () => ({ topicKey: "T1", type: "short" as const })),
   avoid: [],
   deckFronts: deck,
 });

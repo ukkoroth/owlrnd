@@ -3,9 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rules } from "@/config/rules";
 import { cleanup, learnerActor, makeParent, parentActor, makeSelfLearner, makeStudent, makeTrackWithExam } from "../../tests/db-helpers";
 import { db } from "./db";
-import { aiUsage, consentRequests, jobs, parents, questions } from "./db/schema";
+import { aiUsage, consentRequests, jobs, parents, pointsEvents, questions, tracks } from "./db/schema";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
-import { deckCounts, deckOf, finishSession, reviewCard, startSession, writeDeck } from "./flashcards";
+import { deckCounts, deckOf, deckPage, finishSession, reviewCard, startSession, writeDeck } from "./flashcards";
 import { markExamJob } from "./marking";
 import { requestConsent } from "./consent";
 
@@ -46,7 +46,7 @@ describe("the starter deck", () => {
     const topicsCount = new Set(deck.map((c) => c.topicId)).size;
     expect(first).toEqual({ written: rules.flashcards.starterPerTopic * topicsCount });
     expect(deck.every((c) => c.source === "material" && c.box === 1)).toBe(true);
-    expect((await deckCounts([trackId])).get(trackId)).toEqual({ total: deck.length, due: deck.length }); // new cards are due now
+    expect((await deckCounts([trackId])).get(trackId)).toMatchObject({ total: deck.length, due: deck.length }); // new cards are due now
 
     expect(await writeDeck(trackId, "starter")).toEqual({ written: 0 }); // already has its cards
   });
@@ -169,5 +169,80 @@ describe("a practice session", () => {
     const learner = await makeSelfLearner({ dateOfBirth: `${new Date().getUTCFullYear() - 15}-01-01` });
     const { trackId } = await makeTrackWithExam(learnerActor(learner), learner.id);
     expect(await startSession({ ...learnerActor(learner), practiseBlocked: true } as never, trackId)).toBeNull();
+  });
+});
+
+// F3: points, counts and the deck page.
+async function practise(me: ReturnType<typeof learnerActor>, trackId: string, n: number, at: Date) {
+  const s = (await startSession(me, trackId, {}, at))!;
+  for (const c of s.cards.slice(0, n)) await reviewCard(me, s.sessionId, c.id, "got_it", at);
+  return finishSession(me, s.sessionId, at);
+}
+
+describe("flashcard points", () => {
+  it("5 for 8+ cards, at most 2 sessions a day per track, once per session, never for a short one", async () => {
+    const { student, trackId } = await family();
+    const me = learnerActor(student);
+    await writeDeck(trackId, "starter");
+    await writeDeck(trackId, "top_up");
+    await writeDeck(trackId, "top_up");
+    const day = new Date("2026-11-16T09:00:00Z");
+    // Practise in the future so every card is due; each session sees fresh due cards.
+    const at = (h: number) => new Date(day.getTime() + 40 * DAY + h * 60 * 60_000);
+
+    expect((await practise(me, trackId, 7, at(0)))!.points).toBe(0); // short
+    const first = (await practise(me, trackId, 8, at(1)))!;
+    expect(first.points).toBe(rules.flashcards.points.perSession);
+    expect((await practise(me, trackId, 10, at(2)))!.points).toBe(rules.flashcards.points.perSession);
+    expect((await practise(me, trackId, 10, at(3)))!.points).toBe(0); // third today on this track
+
+    const events = await db.select().from(pointsEvents).where(eq(pointsEvents.studentId, student.id));
+    expect(events.map((e) => [e.kind, e.points, e.examId])).toEqual([
+      ["flashcards", 5, null],
+      ["flashcards", 5, null],
+    ]);
+    expect(events[0]!.label).toMatch(/^Flashcards: /);
+  });
+
+  it("finishing the same session twice awards it once", async () => {
+    const { student, trackId } = await family();
+    const me = learnerActor(student);
+    await writeDeck(trackId, "starter");
+    const s = (await startSession(me, trackId))!;
+    for (const c of s.cards) await reviewCard(me, s.sessionId, c.id, "got_it");
+    const [a, b] = await Promise.all([finishSession(me, s.sessionId), finishSession(me, s.sessionId)]);
+    expect([a!.points, b!.points]).toEqual([5, 5]); // both summaries show the session's points…
+    expect(await db.select().from(pointsEvents).where(eq(pointsEvents.studentId, student.id))).toHaveLength(1); // …awarded once
+  });
+});
+
+describe("counts and the deck page", () => {
+  it("counts due, known and the last session; the deck page lists cards by topic for the learner only", async () => {
+    const { parent, student, trackId } = await family();
+    const me = learnerActor(student);
+    await writeDeck(trackId, "starter");
+    const before = (await deckCounts([trackId])).get(trackId)!;
+    expect(before).toMatchObject({ due: before.total, known: 0, practise: rules.flashcards.sessionSize, lastAt: null });
+
+    await practise(me, trackId, 10, new Date());
+    const after = (await deckCounts([trackId])).get(trackId)!;
+    expect(after.due).toBe(before.total - 10);
+    expect(after.lastAt).toBeInstanceOf(Date);
+
+    const page = (await deckPage(me, trackId))!;
+    expect(page.topics.flatMap((t) => t.cards)).toHaveLength(before.total);
+    expect(page.topics.flatMap((t) => t.cards).filter((c) => c.state === "learning")).toHaveLength(10);
+    expect(await deckPage(parentActor(parent.id), trackId)).toBeNull();
+    expect(await deckPage(learnerActor((await family()).student), trackId)).toBeNull();
+  });
+
+  it("a paused track can't be practised; a goal-reached one can", async () => {
+    const { student, trackId } = await family();
+    const me = learnerActor(student);
+    await writeDeck(trackId, "starter");
+    await db.update(tracks).set({ status: "paused" }).where(eq(tracks.id, trackId));
+    expect(await startSession(me, trackId)).toBeNull();
+    await db.update(tracks).set({ status: "goal_reached" }).where(eq(tracks.id, trackId));
+    expect((await startSession(me, trackId))!.cards.length).toBeGreaterThan(0);
   });
 });

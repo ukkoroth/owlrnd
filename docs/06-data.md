@@ -22,7 +22,10 @@ The things owlrnd stores and how they relate. Names are descriptive; choose your
 | Answer | Exam question | chosen option or typed text, saved at | Saved as the student works. |
 | Mark | Answer | marks awarded, verdict, reason or feedback, marked by (rule or AI) | One per answer. |
 | Topic strength | Student, Topic | status (strong, needs work, not tested), recent results | Recomputed after each marked exam. |
-| Points event | Student, Exam | kind (finish, correct, improvement, topic strong, perfect, streak), points, created at | Total points = sum; never decreases. |
+| Points event | Student, Exam **or** Flashcard session | kind (finish, correct, improvement, topic strong, perfect, streak, flashcards), points, label, created at | Total points = sum; never decreases. Exactly one of exam and flashcard session is set; one award per session. |
+| Flashcard *(0.3)* | Track, Topic | front, answer, explanation, source (material or missed question, with the question), box 1–5, due at, created at | The track's deck; at most 200. Goes with the track. |
+| Flashcard session *(0.3)* | Student, Track | started at, finished at, cards seen, got it | A few minutes of practice; never changes scores or goals. |
+| Flashcard review *(0.3)* | Flashcard session, Flashcard | result (got it, not yet), at | One per card per session; moves the card's box. |
 
 ## Derived values
 

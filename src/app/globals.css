@@ -13,6 +13,8 @@
   .btn { @apply inline-flex min-h-touch items-center justify-center gap-2 rounded px-5 text-[15px] font-semibold disabled:cursor-not-allowed; }
   .btn-primary { @apply btn bg-brand text-white hover:bg-sidebar disabled:bg-pale disabled:text-ink-muted; }
   .btn-outline { @apply btn border border-ink bg-card text-ink hover:bg-pale-2 disabled:border-line disabled:text-ink-muted; }
+  /* Practise · N flashcards (fc-1, fc-5): secondary to Start, dashed. */
+  .btn-practise { @apply btn border-[1.5px] border-dashed border-[#A9BCE0] bg-transparent text-brand hover:border-brand hover:bg-pale-2; }
   .btn-danger { @apply btn border border-danger bg-card text-danger-text hover:bg-danger-fill; }
   .card { @apply rounded border border-line bg-card p-5 md:p-6; }
   .input { @apply min-h-touch w-full rounded border border-line-input bg-card px-3 text-[16px] text-ink placeholder:text-ink-muted; }

@@ -101,6 +101,34 @@ export function tooManyRepeats(texts: string[], others: string[], label: string)
   return found.map((r) => `${label} ${r.index + 1} repeats the wording of "${r.like.slice(0, 80)}"; ask the same idea differently.`);
 }
 
+/** Tracks a learner can practise flashcards on: running ones, and finished ones for revision (not paused or archived). */
+export const PRACTISE_STATUSES: readonly string[] = ["active", "goal_reached"];
+
+/**
+ * The number on "Practise · N flashcards" (fc-1, fc-5): the cards due now, up to a session; with none due, the
+ * top-up that will be written; null when there is nothing to practise and the deck is full.
+ */
+export function practiseCount(deck: { total: number; due: number }): number | null {
+  if (deck.due > 0) return Math.min(deck.due, F.sessionSize);
+  return deck.total < F.deckMax ? F.topUp : null;
+}
+
+/** How a card shows on the deck page (fc-6): due now, still being learnt, or known (box 4 or higher). */
+export type CardState = "to_practise" | "learning" | "known";
+export function cardState(card: { box: number; dueAt: Date }, now: Date): CardState {
+  if (card.dueAt <= now) return "to_practise";
+  return card.box >= 4 ? "known" : "learning";
+}
+
+/**
+ * Points for finishing a session (rules §8 addition, 0.3): `perSession` for at least `minCards` cards, for at most
+ * `maxSessionsPerDay` sessions a day on one track. None per card, so there's no reason to tap "Got it" dishonestly.
+ */
+export function sessionPoints(cardsSeen: number, awardedTodayOnTrack: number): number {
+  const p = F.points;
+  return cardsSeen >= p.minCards && awardedTodayOnTrack < p.maxSessionsPerDay ? p.perSession : 0;
+}
+
 /** Spaced repetition (Leitner boxes): "Got it" moves a card up a box (at most 5); "Not yet" sends it back to 1. */
 export function nextBox(box: number, result: "got_it" | "not_yet"): number {
   return result === "got_it" ? Math.min(F.boxDays.length, box + 1) : 1;

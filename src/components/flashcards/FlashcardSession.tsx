@@ -166,7 +166,7 @@ function Summary({ summary: s, session, back }: { summary: SessionSummary; sessi
       <p className="mt-1 text-ink-muted">
         {session.trackName} · {s.cardsSeen} {s.cardsSeen === 1 ? "card" : "cards"} · about {s.minutes} {s.minutes === 1 ? "minute" : "minutes"}
       </p>
-      <dl className="my-6 grid grid-cols-2 gap-3">
+      <dl className={`my-6 grid gap-3 ${s.points ? "grid-cols-3" : "grid-cols-2"}`}>
         <div className="rounded bg-page px-4 py-4 text-center">
           <dt className="text-sm text-ink-muted">Got it</dt>
           <dd className="text-3xl font-bold">{s.gotIt}</dd>
@@ -175,6 +175,12 @@ function Summary({ summary: s, session, back }: { summary: SessionSummary; sessi
           <dt className="text-sm text-ink-muted">To see again</dt>
           <dd className="text-3xl font-bold">{s.notYet}</dd>
         </div>
+        {s.points > 0 && (
+          <div className="rounded bg-page px-4 py-4 text-center">
+            <dt className="text-sm text-ink-muted">Points</dt>
+            <dd className="text-3xl font-bold text-brand">+{s.points}</dd>
+          </div>
+        )}
       </dl>
       {s.byTopic.length > 0 && (
         <ul className="divide-y divide-line border-y border-line">

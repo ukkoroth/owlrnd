@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TrackCard } from "@/components/TrackCard";
 import { newTrackHref, trackHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { TrackSummary } from "@/server/tracks";
+import type { DeckCount } from "@/server/flashcards";
 
 const Plus = () => (
   <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -19,13 +20,15 @@ type Props = {
   /** Just created a track (?created=1). */
   created: boolean;
   timeZone: string;
+  /** Flashcard decks (0.3, fc-5), for a learner practising here. */
+  decks?: Map<string, DeckCount>;
 };
 
 /**
  * The tracks page: the parent's 2d (none yet) / 2g, and the learner's sm-2c / sm-4.1a "Your tracks: practise and
  * manage". The same cards and actions; links and words follow the audience.
  */
-export function TracksOverview({ audience, list, hasDraft, created, timeZone }: Props) {
+export function TracksOverview({ audience, list, hasDraft, created, timeZone, decks }: Props) {
   const words = trackWords(audience);
   const learner = audience.kind === "learner";
   const newHref = newTrackHref(audience);
@@ -143,7 +146,7 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone }: 
               // A track that just reached its goal comes first (2i).
               .sort((a, b) => Number(b.status === "goal_reached") - Number(a.status === "goal_reached"))
               .map((t, i) => (
-                <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} />
+                <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} />
               ))}
           </div>
           {list.some((t) => t.status === "archived") && (

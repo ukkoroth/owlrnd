@@ -32,6 +32,10 @@ export default async function PointsPage() {
     ["A perfect 10 out of 10", `${p.perfectBonus} extra`],
     ["First exam of the day, when you practised yesterday too", `${p.streak.firstExamOfDay}`],
     [`The same, from day ${p.streak.fromDay} of a streak`, `${p.streak.firstExamOfDayLong}`],
+    [
+      `Finish a flashcard session of ${rules.flashcards.points.minCards} or more cards (up to ${rules.flashcards.points.maxSessionsPerDay} a day in each track)`,
+      `${rules.flashcards.points.perSession}`,
+    ],
   ];
 
   return (

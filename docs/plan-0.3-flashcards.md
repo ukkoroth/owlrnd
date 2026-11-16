@@ -80,12 +80,21 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 
 **F2 done (2026-11-16):** the session at `/practise/[trackId]` (focus mode, `src/components/flashcards/FlashcardSession.tsx`): card front, Show answer (Space), Not yet / Got it (1 / 2) saved as they're given, Leave at any time, and the summary (fc-4) by topic with "Practise these N again", "Start exam N" and Back. Up to 10 due cards per session, lower boxes and weaker topics first; with nothing due a top-up is written first. Answers move cards between boxes already (F3 adds the buttons and counts). Not linked from anywhere yet (decision #7); reachable by URL for testing. Points come with F3.
 
+**F3 done (2026-11-16):** **Practise · N flashcards** under Start on every dashboard suggestion (fc-1, also the first-day card and "all caught up" list), and N to practise on the All tracks tab ("Practise · 10 new flashcards" when none are due, since a top-up is written first); on Your tracks (fc-5, both kinds of learner) the deck line ("24 cards · 8 to practise today · Last: yesterday"), Practise, and a **Flashcards** link to the deck page `/tracks/[id]/flashcards` (fc-6: cards by topic, To practise / Learning / Known). Goal-reached tracks keep Practise; paused and archived tracks don't. Points: 5 per finished session of 8+ cards, at most 2 a day per track, shown on the summary and the points page (migration `0015_flashcard_points`: points events link to an exam or a flashcard session). Rules §8 and §9a, data doc updated.
+
 | Milestone | Builds | Done when |
 |---|---|---|
 | **F1 · Deck** ✅ 2026-11-16 | Tables; AI card writer; starter deck on track creation/restart; cards from missed questions after marking; top-up | A new track gets a starter deck in the background; a missed question becomes a card |
 | **F2 · Session** ✅ 2026-11-16 | `/practise/[trackId]`: front, Show answer, Got it / Not yet, keyboard, leave; session done (fc-2–fc-4) | A learner practises 10 cards and sees the summary; the page never scrolls at 1280×800 and 390×844 |
-| **F3 · Spaced repetition and places** | Boxes and due dates; Practise buttons with counts on the dashboard and track cards (fc-1, fc-5); the deck page (fc-6); points | "Not yet" cards come back next day, "Got it" ones later; counts on buttons match due cards; points as in the rules |
+| **F3 · Spaced repetition and places** ✅ 2026-11-16 | Boxes and due dates; Practise buttons with counts on the dashboard and track cards (fc-1, fc-5); the deck page (fc-6); points | "Not yet" cards come back next day, "Got it" ones later; counts on buttons match due cards; points as in the rules |
 | **F4 · Parents and charts** | Parent's line on a child's tracks page and 2k card (fc-7); activity chart series | A parent sees a child's flashcard activity; a child's session doesn't count as an exam anywhere |
+
+## After F4: release tasks (owner, 2026-11-16)
+
+- [ ] **Website** (`src/app/(site)`, landing page): add flashcards to the features (learn between exams, spaced repetition, no marks), with an HD screenshot of a session (fc-3) and the Practise button (fc-1); check the FAQ and the For parents section mention it; privacy page already covers flashcards ("Your material").
+- [ ] **README on GitHub:** flashcards in the feature list and screenshots (HD, deviceScaleFactor 2), the `write_flashcards` job, and the new routes.
+- [ ] **AI usage estimate (README "Running costs", `docs/release-plan.md`):** add flashcards: the starter deck per track (~6 cards per topic, up to 60), up to 3 cards per marked exam, top-ups of 10, and the longer exam prompt (the deck's fronts). Measure from `ai_usage` (`npm run ai:usage`, purpose `write_flashcards`) on real tracks during local testing, then update the per-exam, per-learner-per-month and $10 demo allowance figures (how many exams and sessions it covers).
+- [ ] Release notes for v0.3.0.
 
 ## Tests
 

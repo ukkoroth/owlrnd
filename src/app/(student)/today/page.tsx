@@ -11,6 +11,9 @@ import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examTopicLines, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
+import { PractiseButton } from "@/components/flashcards/Practise";
+import { PRACTISE_STATUSES } from "@/domain/flashcards";
+import { deckCounts, type DeckCount } from "@/server/flashcards";
 
 export const metadata: Metadata = { title: "Today · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -34,6 +37,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Self-managed learners set up their own tracks; children are told their parent does (3c–3g, sm-3c–3g).
   const selfManaged = student.type === "self_managed";
   const w = learnerWords(selfManaged);
+  // 0.3 flashcards (fc-1): the Practise button's count per track that can be practised.
+  const decks = await deckCounts(dash.tracks.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
 
   return (
     <>
@@ -59,10 +64,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-8">
         {firstDay ? (
-          <FirstDay suggestion={dash.suggestions[0]!} w={w} />
+          <FirstDay suggestion={dash.suggestions[0]!} w={w} deck={decks.get(dash.suggestions[0]!.id)} />
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
+            <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} decks={decks} />
             {dash.recent.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
@@ -72,7 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : tab === "recent" ? (
           <Recent recent={dash.recent} tz={tz} lines={await examTopicLines(dash.recent.filter((r) => r.status === "marked").map((r) => r.id))} />
         ) : (
-          <AllTracks tracks={dash.tracks} w={w} />
+          <AllTracks tracks={dash.tracks} w={w} decks={decks} />
         )}
       </div>
     </>
@@ -93,7 +98,7 @@ function StartLink({ t, primary }: { t: StudentTrack; primary: boolean }) {
 
 type Words = ReturnType<typeof learnerWords>;
 
-function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) {
+function FirstDay({ suggestion: t, w, deck }: { suggestion: StudentTrack; w: Words; deck: DeckCount | undefined }) {
   return (
     <div className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <section className="card relative overflow-hidden">
@@ -107,8 +112,9 @@ function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) 
         <p className="mt-3 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
         <h2 className="text-2xl">{t.name}</h2>
         <p className="mt-1 text-ink-muted">{examLine(t)}</p>
-        <div className="mt-5 max-w-[260px]">
+        <div className="mt-5 flex max-w-[260px] flex-col gap-2.5">
           <StartLink t={t} primary />
+          <PractiseButton trackId={t.id} trackName={t.name} deck={deck} className="h-[52px] w-full text-base" />
         </div>
       </section>
       <section className="card bg-transparent">
@@ -129,7 +135,9 @@ function Today({
   done,
   selfManaged,
   w,
+  decks,
 }: {
+  decks: Map<string, DeckCount>;
   suggestions: StudentTrack[];
   /** Exams the learner has finished on owlrnd, all tracks. */
   completed: number;
@@ -151,7 +159,7 @@ function Today({
       </section>
     );
   }
-  if (suggestions.length === 0) return <CaughtUp tracks={tracks} selfManaged={selfManaged} w={w} />;
+  if (suggestions.length === 0) return <CaughtUp tracks={tracks} selfManaged={selfManaged} w={w} decks={decks} />;
   return (
     <section aria-labelledby="suggested">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -178,13 +186,17 @@ function Today({
             <p className="mt-4 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
             <h3 className="text-[21px] leading-snug">{t.name}</h3>
             <p className="mb-5 mt-1 text-ink-muted">{examLine(t)}</p>
-            <div className="mt-auto">
+            <div className="mt-auto flex flex-col gap-2.5">
               <StartLink t={t} primary={i === 0} />
+              <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="h-[52px] w-full text-base" />
             </div>
           </li>
         ))}
       </ol>
-      <p className="mt-4 text-ink-muted">When you finish one, a new suggestion takes its place. Do as many as you like.</p>
+      <p className="mt-4 text-ink-muted">
+        When you finish one, a new suggestion takes its place. Do as many as you like.
+        {suggestions.some((t) => decks.get(t.id)?.practise) && " Flashcards are quick practice: no marks, no effect on your goal."}
+      </p>
     </section>
   );
 }
@@ -192,7 +204,7 @@ function Today({
 const statusOf = (t: StudentTrack, w: Words) =>
   t.status === "paused" ? w.paused : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : "Your next exam is being prepared";
 
-function CaughtUp({ tracks, selfManaged, w }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words }) {
+function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words; decks: Map<string, DeckCount> }) {
   return (
     <section className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <div className="card">
@@ -220,6 +232,8 @@ function CaughtUp({ tracks, selfManaged, w }: { tracks: StudentTrack[]; selfMana
             <li key={t.id} className="py-2.5">
               <p className="font-semibold">{t.name}</p>
               <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
+              {/* Nothing to take, but the deck can still be practised (fc-5: also on finished tracks). */}
+              <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="mt-2 h-11 px-4 text-[15px]" />
             </li>
           ))}
         </ul>
@@ -286,7 +300,7 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
   );
 }
 
-function AllTracks({ tracks, w }: { tracks: StudentTrack[]; w: Words }) {
+function AllTracks({ tracks, w, decks }: { tracks: StudentTrack[]; w: Words; decks: Map<string, DeckCount> }) {
   const ready = tracks.filter((t) => t.status === "active" && t.exam);
   return (
     <div className="flex flex-col gap-8">
@@ -361,6 +375,7 @@ function AllTracks({ tracks, w }: { tracks: StudentTrack[]; w: Words }) {
                   {t.status === "paused"
                     ? w.paused
                     : `${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"}${t.scores.length ? ` · last score ${t.scores[t.scores.length - 1]} / 10` : ""}`}
+                  {decks.get(t.id)?.due ? ` · ${decks.get(t.id)!.due} ${decks.get(t.id)!.due === 1 ? "flashcard" : "flashcards"} to practise` : ""}
                 </span>
                 <TopicStrength topics={t.topics} compact />
               </Link>

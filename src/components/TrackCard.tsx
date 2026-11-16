@@ -7,13 +7,31 @@ import { ArchiveButton } from "./ArchiveButton";
 import { TrackEdge, TrackTag } from "./TrackTag";
 import { trackCompletion } from "@/domain/goals";
 import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
+import type { DeckCount } from "@/server/flashcards";
+import { DeckLine, PractiseButton } from "./flashcards/Practise";
 
 /**
  * A track on the parent's tracks page (2g) or the learner's Your tracks (sm-4.1a). A self-managed learner also gets
  * "Start exam N" when an exam is ready, since they practise and manage on the same page.
  */
-export function TrackCard({ track: t, highlight, audience, timeZone }: { track: TrackSummary; highlight?: boolean; audience: TrackAudience; timeZone: string }) {
+export function TrackCard({
+  track: t,
+  highlight,
+  audience,
+  timeZone,
+  deck,
+}: {
+  track: TrackSummary;
+  highlight?: boolean;
+  audience: TrackAudience;
+  timeZone: string;
+  /** The track's flashcards (0.3, fc-5): a learner practising here gets the deck line, Practise and Flashcards. */
+  deck?: DeckCount;
+}) {
   const runLength = t.goalRunLength ?? 3;
+  const flashcards = audience.kind === "learner" && deck && (t.status === "active" || t.status === "goal_reached");
+  const start = audience.kind === "learner" && t.readyExam && t.status === "active";
+  const practise = flashcards && deck.practise;
   const next = t.examsTaken === 0 ? "first exam" : "next exam";
   const examBox =
     t.nextExam === "failed"
@@ -69,20 +87,26 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
         </div>
       )}
 
-      {audience.kind === "learner" && t.readyExam && t.status === "active" && (
-        <div className="mt-5 border-t border-line pt-4">
-          <Link href={`/exam/${t.readyExam.id}`} className="btn-primary h-12 px-5" aria-label={`${t.readyExam.started ? "Continue" : "Start"} exam ${t.readyExam.number} in ${t.name}`}>
-            {t.readyExam.started ? "Continue" : "Start"} exam {t.readyExam.number}
-          </Link>
+      {flashcards && <DeckLine deck={deck} timeZone={timeZone} reached={t.status === "goal_reached"} />}
+
+      {(start || practise) && (
+        <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-4">
+          {start && t.readyExam && (
+            <Link href={`/exam/${t.readyExam.id}`} className="btn-primary h-12 px-5" aria-label={`${t.readyExam.started ? "Continue" : "Start"} exam ${t.readyExam.number} in ${t.name}`}>
+              {t.readyExam.started ? "Continue" : "Start"} exam {t.readyExam.number}
+            </Link>
+          )}
+          <PractiseButton trackId={t.id} trackName={t.name ?? ""} deck={deck} from="tracks" className="h-12 px-5" />
         </div>
       )}
 
-      <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${audience.kind === "learner" && t.readyExam && t.status === "active" ? "mt-3" : "mt-5 border-t border-line pt-4"}`}>
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-0 ${start || practise ? "mt-3" : "mt-5 border-t border-line pt-4"}`}>
         {t.status === "goal_reached" ? (
           <>
             <Link href={updateHref(audience, t.id)} className="btn-primary">
               Add topics to continue
             </Link>
+            {flashcards && deck.total > 0 && <FlashcardsLink id={t.id} name={t.name} />}
             <ArchiveButton trackId={t.id} studentId={t.studentId} trackName={t.name ?? ""} question={trackWords(audience).archiveQuestion} />
           </>
         ) : (
@@ -92,6 +116,7 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
                 Exam history
               </Link>
             )}
+            {flashcards && deck.total > 0 && <FlashcardsLink id={t.id} name={t.name} />}
             {t.status !== "archived" && (
               <Link href={updateHref(audience, t.id)} className="link flex min-h-touch items-center font-semibold" aria-label={`Add material to ${t.name}`}>
                 Add material
@@ -115,5 +140,14 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
         )}
       </div>
     </article>
+  );
+}
+
+/** To the deck (fc-6). */
+function FlashcardsLink({ id, name }: { id: string; name: string | null }) {
+  return (
+    <Link href={`/tracks/${id}/flashcards`} className="link flex min-h-touch items-center font-semibold" aria-label={`Flashcards in ${name}`}>
+      Flashcards
+    </Link>
   );
 }
