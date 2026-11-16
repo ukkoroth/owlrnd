@@ -56,7 +56,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <FirstDay suggestion={dash.suggestions[0]!} />
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} />
+            <Today suggestions={dash.suggestions} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={student.type === "self_managed"} />
             {dash.recent.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
@@ -110,12 +110,17 @@ function FirstDay({ suggestion: t }: { suggestion: StudentTrack }) {
   );
 }
 
-function Today({ suggestions, tracks, done }: { suggestions: StudentTrack[]; tracks: StudentTrack[]; done: number }) {
+function Today({ suggestions, tracks, done, selfManaged }: { suggestions: StudentTrack[]; tracks: StudentTrack[]; done: number; selfManaged: boolean }) {
   if (tracks.length === 0) {
+    // A self-managed learner sets up their own tracks (sm-2a, M9); a parent-managed one waits for their parent.
     return (
       <section className="card max-w-xl">
         <h2 className="text-xl">No tracks yet</h2>
-        <p className="mt-1 text-ink-muted">Your parent sets up what you practise. Your first exam will appear here as soon as they do.</p>
+        <p className="mt-1 text-ink-muted">
+          {selfManaged
+            ? "You set up what you practise. Your first exam will appear here as soon as you create a track."
+            : "Your parent sets up what you practise. Your first exam will appear here as soon as they do."}
+        </p>
       </section>
     );
   }

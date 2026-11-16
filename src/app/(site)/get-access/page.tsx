@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { rules } from "@/config/rules";
 import { SiteFooter, SiteHeader } from "@/components/landing/SiteChrome";
 import { GetAccessForm } from "./GetAccessForm";
 
@@ -7,6 +9,8 @@ export const metadata: Metadata = { title: "Get access · owlrnd" };
 
 /** Closed beta: the landing page's "Get access" buttons lead here. */
 export default async function GetAccessPage({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
+  // Sign-up is open: there is nothing to ask for.
+  if (!rules.access.inviteOnly) redirect("/sign-up");
   const { sent } = await searchParams;
   return (
     <div className="flex min-h-screen flex-col bg-page text-ink">

@@ -55,3 +55,38 @@ export function formatClass(raw: string): string {
   if (/^\d{1,2}[a-z]?$/i.test(value)) return `Class ${value}`;
   return value.replace(/^class\b/i, "Class");
 }
+
+// ── Date of birth (0.2: sign-up "For me", and children added by a parent) ──────────────────────────────
+
+export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
+
+/** Whole years from `dobIso` to `todayIso` (both "YYYY-MM-DD"). Someone born on 29 February turns a year older on 1 March. */
+export function ageOn(dobIso: string, todayIso: string): number {
+  const [by, bm, bd] = dobIso.split("-").map(Number) as [number, number, number];
+  const [ty, tm, td] = todayIso.split("-").map(Number) as [number, number, number];
+  return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0);
+}
+
+/**
+ * The three date-of-birth boxes (day, month 1–12, year) as "YYYY-MM-DD", or the message to show. The date must be
+ * real, not in the future, and give an age within `ages` on `todayIso`.
+ */
+export function parseDateOfBirth(
+  input: { day: string; month: string; year: string },
+  todayIso: string,
+  ages: { min: number; max: number },
+): { ok: true; iso: string; age: number } | { ok: false; error: string } {
+  const [day, month, year] = [input.day, input.month, input.year].map((v) => v.trim());
+  if (!day || !month || !year) return { ok: false, error: "Enter the full date of birth." };
+  if (!/^\d{1,2}$/.test(day) || !/^\d{1,2}$/.test(month) || !/^\d{4}$/.test(year)) return { ok: false, error: "Enter a real date, for example 12 March 2009." };
+  const [d, m, y] = [Number(day), Number(month), Number(year)];
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (m < 1 || m > 12 || date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) {
+    return { ok: false, error: "Enter a real date, for example 12 March 2009." };
+  }
+  const iso = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  if (iso > todayIso) return { ok: false, error: "The date of birth can't be in the future." };
+  const age = ageOn(iso, todayIso);
+  if (age < ages.min || age > ages.max) return { ok: false, error: `Check the year: the age should be between ${ages.min} and ${ages.max}.` };
+  return { ok: true, iso, age };
+}

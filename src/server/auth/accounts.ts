@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq, gt, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Identifier } from "@/domain/identity";
 import { rules } from "@/config/rules";
 import { db } from "../db";
@@ -55,10 +55,29 @@ export async function getParent(id: string) {
   return parent ?? null;
 }
 
-/** True if a self-managed learner already signs in with this email (one email, one account). */
-async function emailTakenByLearner(email: string, tx: Pick<typeof db, "select"> = db) {
-  const [row] = await tx.select({ id: students.id }).from(students).where(eq(sql`lower(${students.email})`, email.toLowerCase()));
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+const sameEmail = (column: typeof students.email | typeof parents.email, email: string) => eq(sql`lower(${column})`, email.toLowerCase());
+
+/** True if a *verified* self-managed learner other than `exceptId` signs in with this email (one email, one account). */
+async function emailTakenByLearner(email: string, tx: Pick<typeof db, "select"> = db, exceptId?: string) {
+  const [row] = await tx
+    .select({ id: students.id })
+    .from(students)
+    .where(and(sameEmail(students.email, email), isNotNull(students.emailVerifiedAt), exceptId ? ne(students.id, exceptId) : undefined));
   return !!row;
+}
+
+/** Until verified, an account belongs to whoever reads the inbox: an abandoned learner sign-up gives way. */
+async function dropUnverifiedLearner(email: string, tx: Tx, exceptId?: string) {
+  await tx
+    .delete(students)
+    .where(and(sameEmail(students.email, email), eq(students.type, "self_managed"), isNull(students.emailVerifiedAt), exceptId ? ne(students.id, exceptId) : undefined));
+}
+
+/** The same for an abandoned parent sign-up (their unverified account has no children yet). */
+async function dropUnverifiedParent(email: string, tx: Tx, exceptId?: string) {
+  await tx.delete(parents).where(and(sameEmail(parents.email, email), isNull(parents.emailVerifiedAt), exceptId ? ne(parents.id, exceptId) : undefined));
 }
 
 /** True if a *verified* parent other than `exceptId`, or any self-managed learner, already uses this email. */
@@ -89,6 +108,7 @@ export async function upsertUnverifiedParent(
     if (await emailTakenByLearner(input.email, tx)) return { ok: false, reason: "email_taken" } as const;
     const [sameEmail] = await tx.select().from(parents).where(eq(sql`lower(${parents.email})`, input.email.toLowerCase()));
     if (sameEmail?.emailVerifiedAt) return { ok: false, reason: "email_taken" } as const;
+    await dropUnverifiedLearner(input.email, tx);
 
     let mine: Parent | undefined;
     if (pendingParentId) {
@@ -108,6 +128,57 @@ export async function upsertUnverifiedParent(
 
 export async function markEmailVerified(parentId: string, now = new Date()) {
   await db.update(parents).set({ emailVerifiedAt: now }).where(eq(parents.id, parentId));
+}
+
+export type LearnerSignUp = {
+  name: string;
+  email: string;
+  passwordHash: string;
+  timeZone: string;
+  dateOfBirth: string;
+  consentedAt: Date;
+  consentVersion: string;
+};
+
+/**
+ * Sign-up "For me" (sm-1b), like `upsertUnverifiedParent`: reuses the caller's own unverified learner (from "Use a
+ * different email"), refuses an email a verified parent or learner uses, and replaces an unverified sign-up of
+ * either kind with the same email.
+ */
+export async function upsertUnverifiedLearner(
+  input: LearnerSignUp,
+  pendingStudentId: string | null,
+): Promise<{ ok: true; studentId: string } | { ok: false; reason: "email_taken" }> {
+  return db.transaction(async (tx) => {
+    let mine: Student | undefined;
+    if (pendingStudentId) {
+      [mine] = await tx.select().from(students).where(and(eq(students.id, pendingStudentId), eq(students.type, "self_managed"), isNull(students.emailVerifiedAt)));
+    }
+    if (await emailTakenByLearner(input.email, tx, mine?.id)) return { ok: false, reason: "email_taken" } as const;
+    const [parent] = await tx.select({ verified: parents.emailVerifiedAt }).from(parents).where(sameEmail(parents.email, input.email));
+    if (parent?.verified) return { ok: false, reason: "email_taken" } as const;
+    await dropUnverifiedParent(input.email, tx);
+    await dropUnverifiedLearner(input.email, tx, mine?.id);
+
+    if (mine) {
+      await tx.update(students).set(input).where(eq(students.id, mine.id));
+      return { ok: true, studentId: mine.id } as const;
+    }
+    const [created] = await tx
+      .insert(students)
+      .values({ ...input, type: "self_managed", parentId: null, username: null })
+      .returning({ id: students.id });
+    return { ok: true, studentId: created!.id } as const;
+  });
+}
+
+export async function markLearnerEmailVerified(studentId: string, now = new Date()) {
+  await db.update(students).set({ emailVerifiedAt: now }).where(and(eq(students.id, studentId), eq(students.type, "self_managed")));
+}
+
+export async function getLearner(id: string) {
+  const [learner] = await db.select().from(students).where(eq(students.id, id));
+  return learner ?? null;
 }
 
 export async function recordSignInFailure(identifier: string, ip: string | null) {
@@ -141,6 +212,7 @@ export async function deleteParent(parentId: string) {
 export async function changeParentEmail(parentId: string, newEmail: string) {
   return db.transaction(async (tx) => {
     if (await emailTakenByLearner(newEmail, tx)) return false;
+    await dropUnverifiedLearner(newEmail, tx);
     const [other] = await tx
       .select()
       .from(parents)

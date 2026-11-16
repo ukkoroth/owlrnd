@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { holderForParent } from "@/domain/accounts";
-import { cleanup, learnerActor, makeParent, makeSelfLearner, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
+import { cleanup, learnerActor, makeParent, makeSelfLearner, makeStudent, makeTrackWithExam, parentActor, uniqueEmail } from "../../tests/db-helpers";
 import { latestCode } from "../../tests/mailpit";
 import { allowanceOf, ALLOWANCE_USED_UP, chatBlocked, examWriteBlocked, withAiContext, recordUsage } from "./ai/usage";
-import { findAccount } from "./auth/accounts";
+import { findAccount, upsertUnverifiedLearner, upsertUnverifiedParent } from "./auth/accounts";
 import { issueCode, verifyCode, type CodeOwner } from "./auth/codes";
 import { db } from "./db";
 import { aiUsage, parents, students, trackMessages, tracks } from "./db/schema";
@@ -123,8 +123,13 @@ describe("the server refuses what the policy refuses", () => {
 });
 
 describe("AI allowance per account holder (demo, $10)", () => {
-  const spend = (ctx: Parameters<typeof withAiContext>[0], outputTokens: number) =>
-    withAiContext(ctx, () => recordUsage("claude-opus-5-5", { input_tokens: 0, output_tokens: outputTokens }));
+  // Recorded as now, then moved to January 2020: the allowance counts all time, and test spend stays out of the
+  // real month's budget (which would pause chats in the dev database).
+  const spend = async (ctx: Parameters<typeof withAiContext>[0], outputTokens: number) => {
+    const before = new Date(Date.now() - 1000);
+    await withAiContext(ctx, () => recordUsage("claude-opus-5-5", { input_tokens: 0, output_tokens: outputTokens }));
+    await db.update(aiUsage).set({ createdAt: new Date("2020-01-15T00:00:00Z") }).where(and(gte(aiUsage.createdAt, before), eq(aiUsage.inputTokens, 0)));
+  };
 
   it("counts a family's spend and blocks chats and exam writing at the limit; an override lifts it", async () => {
     const parent = await makeParent();
@@ -160,5 +165,60 @@ describe("AI allowance per account holder (demo, $10)", () => {
 
     const parent = await makeParent();
     expect(await allowanceOf(holderForParent(parent))).toMatchObject({ usedUsd: 0 });
+  });
+});
+
+describe("sign-up For me: one email, one account (owner, 2026-11-16)", () => {
+  const signUp = (email: string, pending: string | null = null) =>
+    upsertUnverifiedLearner(
+      { name: "Rancho", email, passwordHash: "x", timeZone: "UTC", dateOfBirth: "2000-03-12", consentedAt: new Date(), consentVersion: "test" },
+      pending,
+    );
+  const learnersWith = (email: string) => db.select().from(students).where(eq(sql`lower(${students.email})`, email.toLowerCase()));
+
+  it("creates an unverified self-managed learner, and reuses it for 'Use a different email'", async () => {
+    const email = uniqueEmail("l");
+    const res = await signUp(email);
+    if (!res.ok) throw new Error("expected ok");
+    const [row] = await learnersWith(email);
+    expect(row).toMatchObject({ type: "self_managed", parentId: null, username: null, emailVerifiedAt: null, dateOfBirth: "2000-03-12" });
+
+    const other = uniqueEmail("l");
+    const again = await signUp(other, res.studentId);
+    expect(again).toEqual({ ok: true, studentId: res.studentId });
+    expect(await learnersWith(email)).toHaveLength(0);
+    await db.delete(students).where(eq(students.id, res.studentId));
+  });
+
+  it("refuses an email a verified parent or learner uses", async () => {
+    const parent = await makeParent();
+    expect(await signUp(parent.email)).toEqual({ ok: false, reason: "email_taken" });
+    const learner = await makeSelfLearner();
+    expect(await signUp(learner.email!.toUpperCase())).toEqual({ ok: false, reason: "email_taken" });
+  });
+
+  it("replaces an unverified sign-up of either kind with the same email", async () => {
+    const parent = await makeParent({ emailVerifiedAt: null });
+    const res = await signUp(parent.email);
+    expect(res.ok).toBe(true);
+    expect(await db.select().from(parents).where(eq(parents.id, parent.id))).toHaveLength(0);
+    if (res.ok) await db.delete(students).where(eq(students.id, res.studentId));
+
+    const learner = await makeSelfLearner({ emailVerifiedAt: null });
+    const mine = await signUp(learner.email!);
+    expect(mine.ok).toBe(true);
+    expect(await db.select().from(students).where(eq(students.id, learner.id))).toHaveLength(0);
+    if (mine.ok) await db.delete(students).where(eq(students.id, mine.studentId));
+  });
+
+  it("a parent can't sign up with a verified learner's email; an unverified learner gives way", async () => {
+    const learner = await makeSelfLearner();
+    expect(await upsertUnverifiedParent({ name: "A", email: learner.email!, passwordHash: "x", timeZone: "UTC" }, null)).toEqual({ ok: false, reason: "email_taken" });
+
+    const pendingLearner = await makeSelfLearner({ emailVerifiedAt: null });
+    const res = await upsertUnverifiedParent({ name: "A", email: pendingLearner.email!, passwordHash: "x", timeZone: "UTC" }, null);
+    expect(res.ok).toBe(true);
+    expect(await db.select().from(students).where(eq(students.id, pendingLearner.id))).toHaveLength(0);
+    if (res.ok) await db.delete(parents).where(eq(parents.id, res.parentId));
   });
 });

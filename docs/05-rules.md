@@ -7,19 +7,26 @@ These rules are the source of truth. Values marked **(default)** are working def
 **Roles.** Two roles: parent and student. A parent has many students. A student belongs to exactly one parent.
 From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as below) or **self-managed**: they sign in with their own email, receive their own codes and control their own tracks. The **account holder** is whoever controls an account: the parent for a parent-managed learner, the learner themselves when self-managed. One email belongs to one account, parent or self-managed learner, never both *(owner, 2026-11-16)*.
 
+**Sign-up** *(0.2)*. The first screen asks **Who is this account for?** (sm-1a): **For me** creates a self-managed learner, **For my child** a parent account. Sign-up is open to everyone (no invitation needed); `rules.access.inviteOnly` can close it again.
+
+**Learner sign-up ("For me").**
+- Name, email, password and date of birth, and agreement to the terms and privacy policy (recorded with the policy version).
+- 18 or over **(default)**: the account is made and the email verified with a 6-digit code, as for parents. Under 18: until parent consent is built (M10), no account is made and the learner is asked to have a parent set it up.
+- The email can't belong to a parent or another learner (one email, one account).
+
 **Parent sign-up.**
 - Name, email and password. Password at least 8 characters **(default)**.
 - After sign-up, a 6-digit code is emailed to verify the address. The account cannot be used until it is verified.
 
 **Students.**
-- Created only by their parent: name, class, username and password. No email.
+- Created only by their parent: name, class, date of birth *(0.2; 3 to 18 years old **(default)**)*, username and password. No email.
 - Usernames are unique across the whole app.
 - A student cannot change their own password; the parent sets a new one on the edit screen (5e) or the student uses "Forgot password" (5g), which also sends the code to the parent.
 
-**Sign-in (both roles).**
-1. One screen (3a): username or email, plus password.
+**Sign-in (every account type).**
+1. One screen (3a): "Email or username", plus password. Parents and self-managed learners use their email; parent-managed learners their username. After signing out, nothing is pre-filled.
 2. If they are correct, a new 6-digit code is emailed to the **account holder's** email: for a parent, their own; for a parent-managed student, their parent's; for a self-managed learner, their own.
-3. The code screen (3b) shows the parent's email masked (for example `u•••@example.com`). For students the text says to ask their parent for the code.
+3. The code screen (3b) shows that email masked (for example `u•••@example.com`). For parent-managed students the text says to ask their parent for the code; a self-managed learner is told it went to their own email.
 4. On success, a parent lands on Your students (2k) and a student on their dashboard (3c).
 
 **Codes** (verification, sign-in, password reset).

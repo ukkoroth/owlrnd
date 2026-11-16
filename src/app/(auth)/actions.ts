@@ -3,9 +3,20 @@
 import { redirect } from "next/navigation";
 import { POLICIES_VERSION } from "@/config/legal";
 import { rules } from "@/config/rules";
-import { parseIdentifier, normalizeEmail, validateEmail, validateName, validatePassword } from "@/domain/identity";
+import { parseDateOfBirth, parseIdentifier, normalizeEmail, validateEmail, validateName, validatePassword } from "@/domain/identity";
+import { todayIn } from "@/domain/tracks";
 import { codeFrom, text, type FormState } from "@/lib/form";
-import { codeOwnerOf, findAccount, getParent, markEmailVerified, recordSignInFailure, tooManySignInFailures, upsertUnverifiedParent } from "@/server/auth/accounts";
+import {
+  codeOwnerOf,
+  findAccount,
+  getParent,
+  markEmailVerified,
+  markLearnerEmailVerified,
+  recordSignInFailure,
+  tooManySignInFailures,
+  upsertUnverifiedLearner,
+  upsertUnverifiedParent,
+} from "@/server/auth/accounts";
 import { issueCode, verifyCode, type CodeOwner, type IssueResult } from "@/server/auth/codes";
 import { clearPending, clientIp, getPending, setPending, startSession } from "@/server/auth/current";
 import { hashPassword, verifyDummyPassword, verifyPassword } from "@/server/auth/passwords";
@@ -19,7 +30,7 @@ import { checkInvitation, claimInvitation, hasOpenClaim, consumeInvitation } fro
 
 const INVITE_NEEDED = "This invitation link has expired or has already been used. Ask for access again and we'll send you a new one.";
 
-const BAD_SIGN_IN = "That username or email and password don't match.";
+const BAD_SIGN_IN = "That email or username and password don't match.";
 
 // ── 3a Sign in ──────────────────────────────────────────────────────────────
 
@@ -29,7 +40,7 @@ export async function signIn(_prev: FormState, form: FormData): Promise<FormStat
   const password = text(form, "password");
   const values = { identifier: rawId };
   const id = parseIdentifier(rawId);
-  if (!id || !password) return { error: "Enter your username or email and your password.", values };
+  if (!id || !password) return { error: "Enter your email or username and your password.", values };
 
   if (await tooManySignInFailures(id.value)) {
     return { error: `Too many attempts. Wait ${rules.accounts.signInFailures.windowMinutes} minutes and try again, or reset your password.`, values };
@@ -48,6 +59,12 @@ export async function signIn(_prev: FormState, form: FormData): Promise<FormStat
   if (account.kind === "parent" && !account.parent.emailVerifiedAt) {
     await setPending({ kind: "verify_email", parentId: account.parent.id, studentId: null });
     await issueCode({ parentId: account.parent.id, studentId: null, purpose: "verify_email" });
+    redirect("/sign-up/verify");
+  }
+  // The same for a self-managed learner (sm-1c).
+  if (account.kind === "student" && account.student.type === "self_managed" && !account.student.emailVerifiedAt) {
+    await setPending({ kind: "verify_email", parentId: null, studentId: account.student.id });
+    await issueCode({ parentId: null, studentId: account.student.id, purpose: "verify_email" });
     redirect("/sign-up/verify");
   }
 
@@ -103,7 +120,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
 
   // Closed beta: a valid invitation link, or (for "Use a different email") the one this account was started with.
   let invitationId: string | null = null;
-  if (rules.access.inviteOnly && !(pending?.parentId && (await hasOpenClaim(pending.parentId)))) {
+  if (rules.access.inviteOnly && !(pending?.parentId && (await hasOpenClaim({ parentId: pending.parentId })))) {
     const invitation = await checkInvitation(text(form, "invite"));
     if (!invitation.ok) return { error: INVITE_NEEDED, values };
     invitationId = invitation.id;
@@ -114,23 +131,80 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
     pending?.parentId ?? null,
   );
   if (!res.ok) return { fieldErrors: { email: "An account with this email already exists. Sign in instead." }, values };
-  if (invitationId) await claimInvitation(invitationId, res.parentId);
+  if (invitationId) await claimInvitation(invitationId, { parentId: res.parentId });
 
   await setPending({ kind: "verify_email", parentId: res.parentId, studentId: null });
   const sent = await issueCode({ parentId: res.parentId, studentId: null, purpose: "verify_email" });
   redirect(sent.sent ? "/sign-up/verify" : "/sign-up/verify?limit=1");
 }
 
+// ── sm-1b Sign up "For me" ──────────────────────────────────────────────────
+
+export async function signUpLearner(_prev: FormState, form: FormData): Promise<FormState> {
+  if (!(await allowed("signUp"))) return { error: RATE_LIMITED };
+  const name = text(form, "name").trim();
+  const email = normalizeEmail(text(form, "email"));
+  const password = text(form, "password");
+  const timeZone = validTimeZone(text(form, "timeZone"));
+  const dob = { day: text(form, "dobDay"), month: text(form, "dobMonth"), year: text(form, "dobYear") };
+  const values = { name, email: text(form, "email"), dobDay: dob.day, dobMonth: dob.month, dobYear: dob.year };
+
+  const fieldErrors: Record<string, string> = {};
+  const nameErr = validateName(name);
+  const emailErr = validateEmail(email);
+  const pwErr = validatePassword(password);
+  const birth = parseDateOfBirth(dob, todayIn(timeZone), rules.accounts.ages.learner);
+  if (nameErr) fieldErrors.name = nameErr;
+  if (emailErr) fieldErrors.email = emailErr;
+  if (pwErr) fieldErrors.password = pwErr;
+  if (!birth.ok) fieldErrors.dob = birth.error;
+  if (text(form, "consent") !== "yes") fieldErrors.consent = "Please agree to the terms and privacy policy to create your account.";
+  if (Object.keys(fieldErrors).length || !birth.ok) return { fieldErrors, values };
+
+  // Editions §2.4: an under-18 learner needs a parent's consent, which arrives in M10. Until then, no account.
+  if (birth.age < rules.accounts.ages.adult && !rules.accounts.ages.under18SelfSignUp) redirect("/sign-up?for=me&under18=1");
+
+  const pending = await getPending("verify_email");
+  const pendingStudentId = pending && !pending.parentId ? pending.studentId : null;
+
+  let invitationId: string | null = null;
+  if (rules.access.inviteOnly && !(pendingStudentId && (await hasOpenClaim({ studentId: pendingStudentId })))) {
+    const invitation = await checkInvitation(text(form, "invite"));
+    if (!invitation.ok) return { error: INVITE_NEEDED, values };
+    invitationId = invitation.id;
+  }
+
+  const res = await upsertUnverifiedLearner(
+    { name, email, passwordHash: await hashPassword(password), timeZone, dateOfBirth: birth.iso, consentedAt: new Date(), consentVersion: POLICIES_VERSION },
+    pendingStudentId,
+  );
+  if (!res.ok) return { fieldErrors: { email: "An account with this email already exists. Sign in instead." }, values };
+  if (invitationId) await claimInvitation(invitationId, { studentId: res.studentId });
+
+  await setPending({ kind: "verify_email", parentId: null, studentId: res.studentId });
+  const sent = await issueCode({ parentId: null, studentId: res.studentId, purpose: "verify_email" });
+  redirect(sent.sent ? "/sign-up/verify" : "/sign-up/verify?limit=1");
+}
+
 export async function verifyEmail(_prev: FormState, form: FormData): Promise<FormState> {
   if (!(await allowed("codeEntry"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
-  // Parents only until M8 adds "For me" sign-up.
-  if (!pending?.parentId) redirect("/sign-in?expired=1");
-  const result = await verifyCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }, codeFrom(form));
+  if (!pending) redirect("/sign-in?expired=1");
+  const result = await verifyCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "verify_email" }, codeFrom(form));
   if (result.result !== "ok") return codeMessage(result);
 
+  // A self-managed learner (sm-1c) goes to their Exams dashboard; choosing an exam (sm-2a) arrives in M9.
+  if (pending.studentId) {
+    await markLearnerEmailVerified(pending.studentId);
+    await consumeInvitation({ studentId: pending.studentId });
+    await clearPending();
+    await startSession({ studentId: pending.studentId });
+    redirect("/today");
+  }
+  if (!pending.parentId) redirect("/sign-in?expired=1");
+
   await markEmailVerified(pending.parentId);
-  await consumeInvitation(pending.parentId);
+  await consumeInvitation({ parentId: pending.parentId });
   await clearPending();
   await startSession({ parentId: pending.parentId });
   redirect("/students/new"); // flow 1: a new parent goes straight to 2a Add a student
@@ -139,8 +213,8 @@ export async function verifyEmail(_prev: FormState, form: FormData): Promise<For
 export async function resendVerifyCode(): Promise<FormState> {
   if (!(await allowed("codeSend"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
-  if (!pending?.parentId) redirect("/sign-in?expired=1");
-  return resendResult(await issueCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }));
+  if (!pending) redirect("/sign-in?expired=1");
+  return resendResult(await issueCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "verify_email" }));
 }
 
 // ── 5g Forgot password, 5h Reset password ──────────────────────────────────
@@ -149,11 +223,11 @@ export async function forgotPassword(_prev: FormState, form: FormData): Promise<
   if (!(await allowed("passwordReset"))) return { error: RATE_LIMITED, values: { identifier: text(form, "identifier") } };
   const rawId = text(form, "identifier");
   const id = parseIdentifier(rawId);
-  if (!id) return { error: "Enter your username or email.", values: { identifier: rawId } };
+  if (!id) return { error: "Enter your email or username.", values: { identifier: rawId } };
 
   const account = await findAccount(id);
   // Owner decision (M1): say plainly when the account doesn't exist.
-  if (!account) return { error: "We couldn't find that username or email.", values: { identifier: rawId } };
+  if (!account) return { error: "We couldn't find that email or username.", values: { identifier: rawId } };
 
   const owner: CodeOwner = { ...codeOwnerOf(account), purpose: "reset_password" };
   await setPending({ kind: "reset_password", parentId: owner.parentId, studentId: owner.studentId });

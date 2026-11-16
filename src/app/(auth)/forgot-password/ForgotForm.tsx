@@ -13,7 +13,7 @@ export function ForgotForm({ notice }: { notice?: string }) {
       {state === emptyForm && <Notice>{notice}</Notice>}
       <FormError>{state.error}</FormError>
       <Field
-        label="Username or email"
+        label="Email or username"
         name="identifier"
         autoComplete="username"
         autoCapitalize="none"

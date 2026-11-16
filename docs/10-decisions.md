@@ -21,6 +21,9 @@ Use the default until the owner decides. Keep each one configurable.
 | Time zone for "today" | The student's time zone, set from the parent's device at sign-up | §9 |
 | What Archive does | Hides a goal-reached track from the student; history kept | §2 |
 | Session length *(0.2 plan, M7; was 30 days in 0.1)* | Signed in until Sign out, or without use for 7 days (parents, self-managed learners) or 12 hours (parent-managed learners), sliding | §1 |
+| Open sign-up *(owner, 2026-11-15; built in M8)* | No invitation needed on either path. `rules.access.inviteOnly` closes sign-up again; `/get-access` then works as before. At 0.2 release, `npm run access -- announce` emails everyone still on the waiting list | §1 |
+| Ages from the date of birth *(M8)* | A self-managed learner is 18 or over until M10 adds parent consent (`rules.accounts.ages.under18SelfSignUp`); learners 5–120, children a parent adds 3–18. Optional for children added in 0.1 (set on 5e) | §1 |
+| Landing page *(owner, 2026-11-16)* | The Rank-ready hand-off (`landing-handoff 3`) word for word, except: the exam paragraph says "Multiple choice and short written answers" (no numerical answers in 0.2); the open-source section and header GitHub link stay; every package card shows "Coming soon"; the paper and parent screenshots stay the HD captures of the app | none |
 | One email, one account *(owner, 2026-11-16)* | An email belongs to a parent or a self-managed learner, never both; sign-up refuses an email the other kind of account uses | §1 |
 | AI allowance *(owner, 2026-11-15)* | $10 of Claude use per account holder (a family, or a self-managed learner) for the whole demo, not per month. At the limit new chats and exams pause (marking still finishes) and the account is asked to contact owlrnd to buy a package. The owner can raise one account's limit with `npm run ai:allowance` | §1 |
 | Forgot password, unknown account *(owner, M1)* | Say "We couldn't find that username or email." | §1 |

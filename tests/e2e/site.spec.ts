@@ -37,7 +37,7 @@ test("pages send security headers and nothing breaks under the Content-Security-
   page.on("console", (m) => {
     if (/Content Security Policy|Refused to (load|execute|apply)/i.test(m.text())) violations.push(m.text());
   });
-  for (const path of ["/", "/sign-in", "/get-access", "/privacy"]) {
+  for (const path of ["/", "/sign-in", "/sign-up?for=me", "/privacy"]) {
     const res = await page.goto(path);
     const h = res!.headers();
     expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
@@ -48,23 +48,23 @@ test("pages send security headers and nothing breaks under the Content-Security-
     expect(h["x-powered-by"]).toBeUndefined();
   }
   // A form that only works with JavaScript: the client-side code ran under the policy.
-  await page.goto("/get-access");
+  await page.goto("/contact?topic=package");
   await page.getByLabel("Email").fill("not-an-email@x");
   await page.getByLabel("Your name").fill("Asha");
-  await page.getByRole("button", { name: "Get access" }).click();
+  await page.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("#f-email-err")).toBeVisible();
   expect(violations).toEqual([]);
 });
 
-test("Get access is limited per network address", async ({ browser }) => {
+test("the package request form is limited per network address", async ({ browser }) => {
   // Requests carry a made-up proxy address, as Caddy adds in production.
   const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `203.0.113.${Math.floor(Math.random() * 250)}` } });
   const page = await ctx.newPage();
   for (let i = 0; i < 6; i++) {
-    await page.goto("/get-access");
+    await page.goto("/contact?topic=package");
     await page.getByLabel("Your name").fill("Asha");
     await page.getByLabel("Email").fill("bad@x");
-    await page.getByRole("button", { name: "Get access" }).click();
+    await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator("#f-email-err").or(page.getByRole("main").getByRole("alert"))).toBeVisible();
   }
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Too many attempts from your network");

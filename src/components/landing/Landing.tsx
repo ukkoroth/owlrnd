@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { rules } from "@/config/rules";
 import { site } from "@/config/site";
-import { CapIcon, GitHubIcon, PeopleIcon, SparkleIcon, StarIcon, Swash } from "./icons";
+import { CapIcon, GitHubIcon, SparkleIcon, StarIcon, Swash } from "./icons";
 import chatImg from "./img/chat.png";
 import dashImg from "./img/dash.png";
 import paperImg from "./img/paper.png";
@@ -11,53 +11,54 @@ import parentImg from "./img/parent.png";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 /**
- * Public landing page. Copy, structure and design follow the landing hand-off (docs/01-sections.md word for word).
+ * Public landing page: the Rank-ready page for self-managed learners, with one For parents section (#parents).
+ * Copy, structure and design follow the landing hand-off of 2026-11-16 (docs/01-sections.md word for word), with
+ * two owner changes: the exam has no numerical answers in 0.2, and the open-source section stays.
  * Screenshots live in ./img/; replace a file there (same name) to update it.
  */
 
 // Imported, so each file gets a content-hashed URL (a swapped screenshot shows up at once) and its own size.
 const SHOTS = {
-  dash: { src: dashImg, alt: "A student's owlrnd dashboard showing today's suggested practice exams" },
-  chat: { src: chatImg, alt: "A parent creating a practice track by chatting with the owlrnd AI" },
+  dash: { src: dashImg, alt: "A learner's owlrnd dashboard with three suggested JEE practice tests" },
+  chat: { src: chatImg, alt: "A learner creating a JEE Physics track by chatting with the owlrnd AI" },
   paper: { src: paperImg, alt: "An owlrnd exam paper with numbered multiple-choice questions" },
   parent: { src: parentImg, alt: "The parent's view of two children's practice activity" },
 };
 
-const STATS = [
-  {
-    group: "Parents",
-    icon: <PeopleIcon />,
-    cells: [
-      ["A few minutes", "to set up each chapter"],
-      ["About 10 minutes a week", "to check progress"],
-    ],
-  },
-  {
-    group: "Children",
-    icon: <CapIcon size={18} tassel={false} />,
-    cells: [
-      ["2–3 short exams a day", "about 10 minutes each"],
-      ["A new exam every time", "written, marked and adapted automatically"],
-    ],
-  },
-];
-
 const STEPS = [
-  ["Tell owlrnd what they are studying", "Chat with the AI. Attach photos of the textbook pages, the syllabus, or just describe the chapter and the test date."],
-  ["Agree a track and a goal", "The AI finds the topics and suggests a goal, such as 9 out of 10 in three exams in a row. You change anything before it goes live."],
-  ["Your child practises", "Short papers of up to 10 questions. Each new exam gives more weight to what they found hard and brings back what they know, so it sticks."],
+  ["Choose your exam", "Start from a ready-made package for your exam, or chat with the AI and attach the syllabus, your coaching notes or a past paper."],
+  ["Set a track and a goal", "The AI lists the topics and suggests a goal, such as 9 out of 10 in three tests in a row. Change anything before you start."],
+  ["Practise every day", "Short papers of up to 10 questions. Each new test gives more weight to what you got wrong and brings back what you know, so it sticks."],
 ];
 
 const EXAM_POINTS = [
-  ["A reason for every miss", "The marked paper shows the right answer and a one-line explanation, written for a child."],
-  ["Strengths and weak spots", "Every result lists the topics they have mastered and the ones that need more practice."],
-  ["The next exam adapts", "Weak topics come back until they are strong, and strong ones return now and then so they stay strong."],
+  ["A reason for every miss", "Every marked test shows the right answer and a short worked explanation."],
+  ["Strengths and weak spots", "Every result lists the topics you have mastered and the ones costing you marks."],
+  ["The next test adapts", "Weak topics come back until they are strong, and strong ones return now and then so they stay strong."],
+];
+
+/** No package is live in 0.2 (owner, 2026-11-15): every card shows "Coming soon" (hand-off, open items). */
+const PACKAGES = [
+  ["JEE Main", "Physics, Chemistry, Mathematics"],
+  ["NEET UG", "Physics, Chemistry, Biology"],
+  ["CUET UG", "Domain subjects and the general test"],
+  ["CAT", "Quantitative ability, verbal ability, data interpretation and logical reasoning"],
+  ["GATE", "Engineering subjects, engineering maths and general aptitude"],
+  ["UPSC Prelims", "General studies and CSAT"],
+  ["SSC CGL", "Quantitative aptitude, reasoning, English and general awareness"],
+  ["Bank PO", "Quantitative aptitude, reasoning, English and banking awareness"],
+];
+
+const PACKAGE_POINTS = [
+  ["You are in charge", "Set up, pause and change your tracks yourself. No parent or teacher account is needed."],
+  ["Built from your material", "Questions stay within your syllabus and the notes you attach, at the level of your exam."],
+  ["Secure sign-in", "Every sign-in sends a 6-digit code to your email, so your account stays yours."],
 ];
 
 const PARENT_POINTS = [
-  ["You stay in control", "You add each child, set up their tracks and goals, and pause a track whenever you like. Your child just practises."],
-  ["Every sign-in comes to you", "Each time anyone signs in, a 6-digit code is sent to your email, so you always know when practice starts."],
-  ["Built from your material", "Questions stay within the pages and topics you provide, at your child's class level. No surprises."],
+  ["You set up the tracks", "Photograph the textbook pages or describe the chapter. The AI builds the tracks and goals with you."],
+  ["Every sign-in comes to you", "Each time your child signs in, a 6-digit code is sent to your email."],
+  ["See effort and weak spots", "One page for all your children: last exam, what needs work, and how often they practise."],
 ];
 
 /** Star badge shades, lightest to darkest, one per level. */
@@ -65,8 +66,8 @@ const LEVEL_SHADES = ["#7FA9F5", "#3F7CEB", "#2563EB", "#1E40AF", "#132C6B"];
 
 const GOAL_SCORES = [6, 8, 9, 9, 10];
 
-/** Closed beta: the calls to action ask for access instead of opening sign-up (rules.access.inviteOnly). */
-const CTA = rules.access.inviteOnly ? { href: "/get-access", label: "Get access" } : { href: "/sign-up", label: "Create a parent account" };
+/** While sign-up is invite-only, the calls to action ask for access instead (rules.access.inviteOnly). */
+const CTA = rules.access.inviteOnly ? { href: "/get-access", label: "Get access" } : { href: "/sign-up", label: "Create your account" };
 
 const btnOnBlue = "flex items-center justify-center rounded text-[17px] font-semibold no-underline focus-visible:outline-white";
 const btnWhite = `${btnOnBlue} bg-white text-sidebar hover:bg-[#EAF1FF]`;
@@ -80,13 +81,14 @@ export function Landing() {
         <HowItWorks />
         <TheExam />
         <Goals />
-        <ForParents />
+        <Packages />
         <Motivation />
-        <ComingSoon />
+        <ForParents />
         {site.sourceUrl && <OpenSource repoUrl={site.sourceUrl} />}
+        <ComingSoon />
         <FinalCta />
       </main>
-      <SiteFooter />
+      <SiteFooter home />
     </div>
   );
 }
@@ -97,18 +99,18 @@ function Hero() {
       <div className="mx-auto flex max-w-[1180px] flex-col items-center gap-7 text-center">
         <span className="inline-flex min-h-[34px] items-center gap-2 text-balance rounded border border-[#7AA2FF] bg-[#2A4DBF] px-3.5 py-1 text-sm font-semibold tracking-[0.01em]">
           <SparkleIcon className="shrink-0 text-amber" />
-          AI-Powered Continuous Testing &amp; Evaluation for Students
+          AI-Powered Continuous Testing &amp; Evaluation for Competitive Exams
         </span>
         <h1 className="m-0 max-w-[14ch] text-balance text-[clamp(2.5rem,6.5vw,4.75rem)] font-bold leading-[1.02] tracking-[-0.03em]">
-          Exam-ready,{" "}
+          Rank-ready,{" "}
           <span className="relative inline-block text-amber">
             every day.
             <Swash />
           </span>
         </h1>
         <p className="m-0 max-w-[40rem] text-pretty text-[clamp(1.0625rem,2vw,1.25rem)] leading-[1.55] text-[#EAF1FF]">
-          Photograph the textbook pages or describe the chapter. owlrnd writes short, paper-style exams for your child, and
-          every new exam is built from how they did on the last one.
+          Pick your exam, attach the syllabus or your notes, and owlrnd writes exam-style tests for you, marks them, and
+          builds every new test from what you got wrong on the last one.
         </p>
         <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
           <Link href={CTA.href} className={`${btnWhite} h-[54px] px-7`}>
@@ -121,9 +123,9 @@ function Hero() {
         <div className="flex flex-col items-center gap-2.5">
           <p className="m-0 flex items-center gap-2.5 text-base font-semibold">
             <CapIcon className="shrink-0 text-amber" />
-            Built with teachers and parents
+            Developed by experts in education
           </p>
-          <p className="m-0 text-sm text-sidebar-muted">For school students, set up by their parents. Works in the browser.</p>
+          <p className="m-0 text-sm text-sidebar-muted">For aspirants preparing on their own. Set up in minutes, works in the browser.</p>
         </div>
         <div className="mb-[-10rem] mt-4 w-full max-w-[1040px] overflow-hidden rounded border border-line bg-white">
           <div aria-hidden="true" className="flex gap-1.5 border-b border-line bg-page px-3 py-2.5">
@@ -146,10 +148,10 @@ function H2({ children }: { children: ReactNode }) {
   return <h2 className="m-0 text-balance text-[clamp(2rem,4vw,2.75rem)] font-bold leading-[1.1] tracking-[-0.02em]">{children}</h2>;
 }
 
-function Shot({ shot, border = "border-line" }: { shot: (typeof SHOTS)[keyof typeof SHOTS]; border?: string }) {
+function Shot({ shot, border = "border-line", sizes = "(min-width: 1228px) 1180px, 100vw" }: { shot: (typeof SHOTS)[keyof typeof SHOTS]; border?: string; sizes?: string }) {
   return (
     <div className={`overflow-hidden rounded border bg-white ${border}`}>
-      <Image {...shot} alt={shot.alt} sizes="(min-width: 1228px) 1180px, 100vw" className="block h-auto w-full" />
+      <Image {...shot} alt={shot.alt} sizes={sizes} className="block h-auto w-full" />
     </div>
   );
 }
@@ -167,31 +169,26 @@ function Points({ items }: { items: string[][] }) {
   );
 }
 
+/** Heading on the left, paragraph on the right; stacked on narrow screens. */
+function SectionIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-12 gap-y-5">
+      <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2.5">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <H2>{title}</H2>
+      </div>
+      <p className="m-0 min-w-0 flex-[1_1_380px] text-[17px] leading-[1.55] text-ink-muted">{children}</p>
+    </div>
+  );
+}
+
 function HowItWorks() {
   return (
     <section id="how" className="scroll-mt-4 px-6 pb-20 pt-56">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-10">
-        <div className="grid w-full grid-cols-1 gap-5 lg:grid-cols-2">
-          {STATS.map((s) => (
-            <div key={s.group} className="flex flex-col border-t-[3px] border-brand bg-line">
-              <h3 className="m-0 flex items-center justify-center gap-2 border-b border-line bg-white px-4 py-3 text-[13px] font-bold uppercase tracking-[0.06em] text-sidebar">
-                {s.icon}
-                {s.group}
-              </h3>
-              <ul className="m-0 grid flex-1 list-none grid-cols-1 gap-px border-b border-line p-0 sm:grid-cols-2">
-                {s.cells.map(([figure, line]) => (
-                  <li key={figure} className="flex flex-col justify-center gap-2 bg-white px-5 py-[26px] text-center">
-                    <span className="text-[clamp(1.625rem,2.6vw,2.125rem)] font-bold leading-[1.1] tracking-[-0.02em]">{figure}</span>
-                    <span className="text-balance text-base leading-[1.45] text-brand">{line}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
         <div className="flex max-w-[44rem] flex-col gap-2.5">
           <Eyebrow>How it works</Eyebrow>
-          <H2>From a textbook photo to a first exam in a few minutes.</H2>
+          <H2>From syllabus to first test in a few minutes.</H2>
         </div>
         <div className="flex flex-wrap items-start gap-x-14 gap-y-10">
           <ol className="m-0 flex min-w-0 flex-[1_1_360px] list-none flex-col gap-7 p-0">
@@ -223,15 +220,11 @@ function TheExam() {
   return (
     <section className="border-y border-line bg-white px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-9">
-        <div className="flex flex-wrap items-end justify-between gap-x-12 gap-y-5">
-          <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2.5">
-            <Eyebrow>The exam</Eyebrow>
-            <H2>It feels like a real exam paper.</H2>
-          </div>
-          <p className="m-0 min-w-0 flex-[1_1_380px] text-[17px] leading-[1.55] text-ink-muted">
-            A white page, numbered questions in a printed-paper typeface, and one Submit button. Multiple choice and short answers. Every page fits the screen, so there is no scrolling.
-          </p>
-        </div>
+        {/* Owner, 2026-11-16: no numerical-answer questions in 0.2, so the hand-off's "numerical answers" is left out. */}
+        <SectionIntro eyebrow="The exam" title="It feels like the real paper.">
+          A clean page, numbered questions in a printed-paper typeface, and one Submit button. Multiple choice and short
+          written answers. Every page fits the screen, so there is no scrolling.
+        </SectionIntro>
         <Shot shot={SHOTS.paper} border="border-paper-rule" />
         <Points items={EXAM_POINTS} />
       </div>
@@ -248,14 +241,14 @@ function Goals() {
           <Eyebrow>Goals</Eyebrow>
           <H2>Practice with a finish line.</H2>
           <p className="m-0 text-[17px] leading-[1.55] text-ink-muted">
-            Every track has a goal you agree on. When your child reaches it, the track stops, so practice never drags on past
-            the point of learning. Add the next chapter whenever you are ready and set a new goal.
+            Every track has a goal you set. When you reach it, the track stops, so you move on instead of over-practising
+            what you already know. Add the next chapter whenever you are ready and set a new goal.
           </p>
         </div>
         <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-4 rounded border-2 border-brand bg-white p-6">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-sidebar">Goal reached · well done</span>
-            <h3 className="m-0 text-[22px] font-semibold">Physics: Current electricity</h3>
+            <h3 className="m-0 text-[22px] font-semibold">JEE Physics: Current electricity</h3>
           </div>
           <div
             role="img"
@@ -291,20 +284,36 @@ function Goals() {
   );
 }
 
-function ForParents() {
+function Packages() {
   return (
-    <section id="parents" className="scroll-mt-4 border-y border-line bg-white px-6 py-20">
+    <section id="packages" className="scroll-mt-4 border-y border-line bg-white px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-9">
-        <div className="flex max-w-[46rem] flex-col gap-2.5">
-          <Eyebrow>For parents</Eyebrow>
-          <H2>See effort and weak spots at a glance.</H2>
-          <p className="m-0 text-[17px] leading-[1.55] text-ink-muted">
-            One page for all your children: their last exam, what needs work, and a day-by-day picture of how often they
-            practise.
-          </p>
-        </div>
-        <Shot shot={SHOTS.parent} />
-        <Points items={PARENT_POINTS} />
+        <SectionIntro eyebrow="Packages" title="Start from your exam, or build your own.">
+          Pick a package and owlrnd sets up tracks that follow that exam&apos;s syllabus and question style. Add your own
+          topics, notes and goals on top, or skip packages and build every track yourself.
+        </SectionIntro>
+        <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          {PACKAGES.map(([name, line]) => (
+            <li key={name} className="flex flex-col gap-1.5 rounded border border-line bg-page px-5 py-[18px]">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-[0.06em] text-brand">Package</span>
+                <span className="inline-flex h-[22px] items-center rounded bg-pale px-2 text-[11px] font-bold uppercase tracking-[0.04em] text-sidebar">
+                  Coming soon
+                </span>
+              </span>
+              <h3 className="m-0 text-lg font-semibold">{name}</h3>
+              <p className="m-0 text-[15px] leading-[1.5] text-ink-muted">{line}</p>
+            </li>
+          ))}
+          <li className="flex flex-col gap-1.5 rounded border-[1.5px] border-dashed border-brand bg-pale-2 px-5 py-[18px]">
+            <span className="text-xs font-bold uppercase tracking-[0.06em] text-brand">Your own</span>
+            <h3 className="m-0 text-lg font-semibold">Build your own track</h3>
+            <p className="m-0 text-[15px] leading-[1.5] text-ink-muted">
+              Any exam, any topic: attach your syllabus, notes or past papers and the AI sets it up.
+            </p>
+          </li>
+        </ul>
+        <Points items={PACKAGE_POINTS} />
       </div>
     </section>
   );
@@ -314,16 +323,10 @@ function Motivation() {
   return (
     <section className="px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-8">
-        <div className="flex flex-wrap items-end justify-between gap-x-12 gap-y-5">
-          <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2.5">
-            <Eyebrow>Motivation</Eyebrow>
-            <H2>Points for showing up and getting better.</H2>
-          </div>
-          <p className="m-0 min-w-0 flex-[1_1_380px] text-[17px] leading-[1.55] text-ink-muted">
-            Children earn points for finishing exams, improving on their last score, turning a weak topic strong and
-            practising day after day, not just for top marks. Points only go up.
-          </p>
-        </div>
+        <SectionIntro eyebrow="Motivation" title="Points for showing up and getting better.">
+          You earn points for finishing tests, beating your last score, turning a weak topic strong and practising day
+          after day, not just for top marks. Points only go up.
+        </SectionIntro>
         {/* Names and thresholds come from the app's points rules, so the two never drift apart. */}
         <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-3 lg:grid-cols-5">
           {rules.points.levels.map((level, i) => (
@@ -342,6 +345,48 @@ function Motivation() {
         </ul>
       </div>
     </section>
+  );
+}
+
+function ForParents() {
+  return (
+    <section id="parents" className="scroll-mt-4 border-y border-line bg-white px-6 py-20">
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-14 gap-y-10">
+        <div className="flex min-w-0 flex-[1_1_400px] flex-col gap-4">
+          <Eyebrow>For parents</Eyebrow>
+          <H2>Setting this up for your child?</H2>
+          <p className="m-0 text-[17px] leading-[1.55] text-ink-muted">
+            owlrnd also works for school students, with a parent in charge. You set up the practice from their textbooks;
+            they just practise.
+          </p>
+          <ul className="m-0 mt-1 flex list-none flex-col gap-4 p-0">
+            {PARENT_POINTS.map(([title, body]) => (
+              <li key={title} className="flex items-start gap-3">
+                <TickIcon />
+                <div className="flex flex-col gap-1">
+                  <h3 className="m-0 text-lg font-semibold">{title}</h3>
+                  <p className="m-0 text-[15px] leading-[1.55] text-ink-muted">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Link href="/sign-up?for=child" className="btn-primary mt-2 h-[52px] self-start px-6 text-base no-underline">
+            Set up for my child
+          </Link>
+        </div>
+        <div className="min-w-0 flex-[1_1_480px]">
+          <Shot shot={SHOTS.parent} sizes="(min-width: 1024px) 640px, 100vw" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TickIcon() {
+  return (
+    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-brand">
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
   );
 }
 
@@ -418,14 +463,12 @@ function OpenSource({ repoUrl }: { repoUrl: string }) {
 
 function ComingSoon() {
   return (
-    <section className="px-6 pb-20">
+    <section className="px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-4 gap-y-2.5 rounded border-[1.5px] border-dashed border-line-input bg-white px-[26px] py-[22px]">
         <span className="inline-flex h-[26px] items-center rounded bg-pale px-2.5 text-xs font-bold uppercase tracking-[0.04em] text-sidebar">
           Coming soon
         </span>
-        <span className="text-base leading-normal">
-          Ready-made packages for CBSE and ICSE, and handwritten answers your child can photograph and upload.
-        </span>
+        <span className="text-base leading-normal">Full-length timed mock tests, and handwritten answers you can photograph and upload.</span>
       </div>
     </section>
   );
@@ -435,13 +478,9 @@ function FinalCta() {
   return (
     <section className="bg-sidebar px-6 py-20 text-white">
       <div className="mx-auto flex max-w-[760px] flex-col items-center gap-[22px] text-center">
-        <h2 className="m-0 text-balance text-[clamp(2rem,4.5vw,3rem)] font-bold leading-[1.1] tracking-[-0.02em]">
-          {rules.access.inviteOnly ? "Be one of the first families on owlrnd." : "Set up your child's first track tonight."}
-        </h2>
+        <h2 className="m-0 text-balance text-[clamp(2rem,4.5vw,3rem)] font-bold leading-[1.1] tracking-[-0.02em]">Set up your first track tonight.</h2>
         <p className="m-0 text-lg leading-[1.55] text-[#EAF1FF]">
-          {rules.access.inviteOnly
-            ? "We're opening owlrnd to a small group of families first. Ask for access, and when your invitation arrives, setting up your child's first track takes a few minutes."
-            : "Create your account, add your child, and photograph the chapter they are studying. Their first exam is ready within minutes."}
+          Create your account, choose your exam or attach your syllabus, and your first test is ready straight away.
         </p>
         <Link href={CTA.href} className={`${btnWhite} h-14 px-[30px]`}>
           {CTA.label}

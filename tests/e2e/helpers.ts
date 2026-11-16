@@ -13,7 +13,7 @@ export async function enterCode(page: Page, code: string) {
 export async function signIn(page: Page, identifier: string, password: string, codeTo: string) {
   const before = await inboxCount(codeTo);
   await page.goto("/sign-in");
-  await page.getByLabel("Username or email").fill(identifier);
+  await page.getByLabel("Email or username").fill(identifier);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in\/code$/);

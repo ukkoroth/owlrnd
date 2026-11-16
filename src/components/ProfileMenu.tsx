@@ -6,7 +6,7 @@ import { ChevronUpIcon } from "./icons";
 
 type Props = {
   name: string;
-  roleLabel: "Parent" | "Student";
+  roleLabel: string;
   profileHref: string;
   /** Route that ends the session (wired up in M1). */
   signOutAction: string;

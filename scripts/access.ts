@@ -5,6 +5,7 @@
  *   npm run access -- list --pending     only those not invited yet
  *   npm run invite -- a@x.com b@y.com    email a sign-up link to each address
  *   npm run invite -- --pending          invite everyone still waiting
+ *   npm run access -- announce [--dry-run]   sign-up is open: email everyone still waiting (0.2 release)
  *   npm run ai:allowance -- a@x.com            show an account's AI allowance
  *   npm run ai:allowance -- a@x.com 25         raise it to $25 (after they buy a package)
  *   npm run ai:allowance -- a@x.com default    back to the default (rules.aiLimits.perAccountUsd)
@@ -18,7 +19,7 @@ import { config } from "dotenv";
 config({ path: ".env.local", quiet: true });
 
 // Loaded after .env.local: the database module reads its settings as soon as it is imported.
-const { invite, listAccessRequests } = await import("@/server/access");
+const { announceOpenSignUp, invite, listAccessRequests } = await import("@/server/access");
 const { customAllowances, holderByEmail, setAllowanceLimit } = await import("@/server/allowances");
 const { allowanceOf } = await import("@/server/ai/usage");
 const { formatUsd } = await import("@/domain/allowance");
@@ -50,6 +51,19 @@ async function sendInvites(args: string[]) {
     const { link, expiresAt } = await invite(email);
     console.log(`Invited ${email} (link expires ${date(expiresAt)})\n  ${link}`);
   }
+}
+
+async function announce(dryRun: boolean) {
+  const waiting = await listAccessRequests("pending");
+  if (!waiting.length) return console.log("Nobody is waiting.");
+  for (const r of waiting) {
+    if (dryRun) console.log(`Would email ${r.name} <${r.email}>`);
+    else {
+      await announceOpenSignUp(r.email);
+      console.log(`Emailed ${r.name} <${r.email}>`);
+    }
+  }
+  console.log(`\n${waiting.length} ${dryRun ? "would be emailed (dry run, nothing sent)" : "emailed"}.`);
 }
 
 async function allowance(args: string[]) {
@@ -97,6 +111,7 @@ async function main() {
   if (command === "list") await list(args.includes("--pending"));
   else if (command === "invite") await sendInvites(args);
   else if (command === "allowance") await allowance(args);
+  else if (command === "announce") await announce(args.includes("--dry-run"));
   else {
     console.log("Usage: npm run access -- list [--pending]\n       npm run invite -- <email> [<email> …] | --pending\n       npm run ai:allowance -- <email> [<usd> | default] | list");
     process.exitCode = 1;

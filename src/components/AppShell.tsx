@@ -9,7 +9,8 @@ import type { AllowanceState } from "@/domain/allowance";
 export type { NavItem };
 
 type Props = {
-  user: { name: string; role: "parent" | "student" };
+  /** roleLabel: who is signed in, shown under the name (editions §2.7). Defaults to "Parent" or "Student". */
+  user: { name: string; role: "parent" | "student"; roleLabel?: string };
   nav: NavItem[];
   /** Students only: the points box above the profile button. Links to the points page once it exists (M6). */
   points?: { total: number; levelName: string | null; href?: string };
@@ -38,7 +39,7 @@ export function AppShell({ user, nav, points, allowance, children }: Props) {
           {allowance && <AiAllowanceBox allowance={allowance} />}
           <ProfileMenu
             name={user.name}
-            roleLabel={isStudent ? "Student" : "Parent"}
+            roleLabel={user.roleLabel ?? (isStudent ? "Student" : "Parent")}
             profileHref={isStudent ? "/profile" : "/parent/profile"}
             signOutAction="/api/auth/sign-out"
           />

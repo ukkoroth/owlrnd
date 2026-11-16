@@ -50,12 +50,37 @@ export async function deleteSelfLearner(studentId: string) {
   await pool.query(`delete from students where id = $1 and type = 'self_managed'`, [studentId]);
 }
 
-/** AI spend recorded against an account holder (a family, or a self-managed learner), as one usage row. */
+/** A self-managed learner by email, as sign-up stored them (or null). */
+export async function learnerByEmail(
+  email: string,
+): Promise<{ id: string; type: string; dateOfBirth: string | null; emailVerifiedAt: Date | null; consentVersion: string | null } | null> {
+  const { rows } = await pool.query(
+    `select id, type, to_char(date_of_birth, 'YYYY-MM-DD') as "dateOfBirth", email_verified_at as "emailVerifiedAt", consent_version as "consentVersion"
+       from students where lower(email) = lower($1)`,
+    [email],
+  );
+  return rows[0] ?? null;
+}
+
+export async function deleteLearnerByEmail(email: string) {
+  await pool.query(`delete from students where lower(email) = lower($1) and type = 'self_managed'`, [email]);
+}
+
+/** A child's date of birth as stored ("YYYY-MM-DD"), by username. */
+export async function childDateOfBirth(username: string): Promise<string | null> {
+  const { rows } = await pool.query(`select to_char(date_of_birth, 'YYYY-MM-DD') as dob from students where lower(username) = lower($1)`, [username]);
+  return rows[0]?.dob ?? null;
+}
+
+/**
+ * AI spend recorded against an account holder (a family, or a self-managed learner), as one usage row. Dated in
+ * January 2020: the allowance counts all time, and this keeps test spend out of the real month's budget.
+ */
 export async function addAiSpend(holder: { parentId: string } | { studentId: string }, usd: number) {
   const parentId = "parentId" in holder ? holder.parentId : null;
   const studentId = "studentId" in holder ? holder.studentId : null;
   await pool.query(
-    `insert into ai_usage (parent_id, student_id, purpose, model, input_tokens, output_tokens, cost_usd) values ($1, $2, 'track_chat', 'claude-opus-5-5', 0, 0, $3)`,
+    `insert into ai_usage (parent_id, student_id, purpose, model, input_tokens, output_tokens, cost_usd, created_at) values ($1, $2, 'track_chat', 'claude-opus-5-5', 0, 0, $3, '2020-01-15')`,
     [parentId, studentId, usd],
   );
 }

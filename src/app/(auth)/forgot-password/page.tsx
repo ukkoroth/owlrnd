@@ -10,7 +10,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
   return (
     <AuthLayout variant="tagline">
       <AuthHeading title="Forgot your password?">
-        Enter your username or email. We will send a reset code to the parent&apos;s registered email.
+        Enter your email or username. We will send a reset code to the email that controls the account.
       </AuthHeading>
       <ForgotForm notice={expired ? "That step timed out. Ask for a new reset code." : undefined} />
     </AuthLayout>

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { closeDb, createFamily, createInvitation, deleteParentByEmail, uid } from "../fixtures";
+import { closeDb, createFamily, deleteParentByEmail, uid } from "../fixtures";
 import { inboxCount, nextCode } from "../mailpit";
 import { enterCode, formAlert, signIn, signOut } from "./helpers";
 
@@ -8,10 +8,10 @@ test.afterAll(closeDb);
 test("M1 done-when: a parent signs up, verifies, signs out and signs back in with a code", async ({ page }) => {
   const email = `atticus-${uid()}@test.owlrnd`;
   try {
-    // Signed out, "/" is the landing page. Closed beta: sign-up opens from an invitation link.
+    // Signed out, "/" is the landing page. Sign-up "For my child" makes a parent account.
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: /Exam-ready/ })).toBeVisible();
-    await page.goto(await createInvitation(email));
+    await expect(page.getByRole("heading", { level: 1, name: /Rank-ready/ })).toBeVisible();
+    await page.goto("/sign-up?for=child");
 
     await page.getByLabel("Your name").fill("Atticus Finch");
     await page.getByLabel("Email").fill(email);
@@ -125,11 +125,11 @@ test("sign-in errors don't say which part was wrong", async ({ page }) => {
       [`nobody-${uid()}`, "whatever1"],
     ]) {
       await page.goto("/sign-in");
-      await page.getByLabel("Username or email").fill(id!);
+      await page.getByLabel("Email or username").fill(id!);
       await page.getByLabel("Password").fill(pw!);
       await page.getByRole("button", { name: "Sign in" }).click();
-      await expect(formAlert(page)).toHaveText("That username or email and password don't match.");
-      await expect(page.getByLabel("Username or email")).toHaveValue(id!);
+      await expect(formAlert(page)).toHaveText("That email or username and password don't match.");
+      await expect(page.getByLabel("Email or username")).toHaveValue(id!);
     }
   } finally {
     await deleteParentByEmail(parent.email);
@@ -142,12 +142,12 @@ test("forgot password: a student resets with a code sent to the parent", async (
     await page.goto("/sign-in");
     await page.getByRole("link", { name: "Forgot password?" }).click();
     await expect(page).toHaveURL(/\/forgot-password$/); // sign-in has a field with the same label
-    await page.getByLabel("Username or email").fill(`nobody-${uid()}`);
+    await page.getByLabel("Email or username").fill(`nobody-${uid()}`);
     await page.getByRole("button", { name: "Send reset code" }).click();
-    await expect(formAlert(page)).toHaveText("We couldn't find that username or email.");
+    await expect(formAlert(page)).toHaveText("We couldn't find that email or username.");
 
     const before = await inboxCount(parent.email);
-    await page.getByLabel("Username or email").fill(student.username);
+    await page.getByLabel("Email or username").fill(student.username);
     await page.getByRole("button", { name: "Send reset code" }).click();
     await expect(page).toHaveURL(/\/reset-password$/);
     await expect(page.getByText("Students: ask your parent for the code.")).toBeVisible();
@@ -216,10 +216,10 @@ test("a parent deletes their account", async ({ page }) => {
   await expect(page.getByText("Your account has been deleted.")).toBeVisible();
 
   // The student account went with it.
-  await page.getByLabel("Username or email").fill(student.username);
+  await page.getByLabel("Email or username").fill(student.username);
   await page.getByLabel("Password").fill(student.password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(formAlert(page)).toHaveText("That username or email and password don't match.");
+  await expect(formAlert(page)).toHaveText("That email or username and password don't match.");
 });
 
 test("signed-out visitors are sent to sign in", async ({ page }) => {

@@ -1,13 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeDb, createFamily, createInvitation, deleteParentByEmail, uid } from "../fixtures";
+import { childDateOfBirth, closeDb, createFamily, deleteParentByEmail, uid } from "../fixtures";
 import { inboxCount, nextCode } from "../mailpit";
 import { enterCode, formAlert, formNotice, signIn, signInFully, signOut } from "./helpers";
 
 test.afterAll(closeDb);
 
-async function fillStudent(page: Page, s: { name: string; className: string; username: string; password: string }) {
+async function fillStudent(page: Page, s: { name: string; className: string; username: string; password: string; dob?: [string, string, string] }) {
+  const [day, month, year] = s.dob ?? ["9", "March", "2012"];
   await page.getByLabel("Student's name").fill(s.name);
   await page.getByLabel("Class").fill(s.className);
+  await page.getByLabel("Day").fill(day);
+  await page.getByLabel("Month").selectOption({ label: month });
+  await page.getByLabel("Year").fill(year);
   await page.getByLabel("Username").fill(s.username);
   await page.getByLabel("Password").fill(s.password);
   await page.getByRole("button", { name: "Create student account" }).click();
@@ -18,8 +22,9 @@ test("M2 done-when: a parent adds two students and each signs in with the parent
   const scout = { name: "Scout", className: "10", username: `scout.${uid()}`, password: "practice1" };
   const jem = { name: "Jem", className: "Class 8", username: `jem.${uid()}`, password: "practice2" };
   try {
-    // Sign up and verify → 2a
-    await page.goto(await createInvitation(email));
+    // Who is this account for? → For my child → sign up and verify → 2a
+    await page.goto("/sign-up");
+    await page.getByRole("link", { name: /For my child/ }).click();
     await page.getByLabel("Your name").fill("Atticus Finch");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill("parentpass1");
@@ -40,6 +45,7 @@ test("M2 done-when: a parent adds two students and each signs in with the parent
     await expect(details).toContainText(scout.username);
     await expect(details).toContainText(scout.password);
     await expect(page.getByText(`a 6-digit code is sent to your email, ${email}`)).toBeVisible();
+    expect(await childDateOfBirth(scout.username)).toBe("2012-03-09");
 
     // Add another → blank 2a → 2b → Go to your students
     await page.getByRole("button", { name: "Add another student" }).click();
@@ -123,10 +129,10 @@ test("a new password signs the student out, and only the new password works", as
     await kid.reload();
     await expect(kid).toHaveURL(/\/sign-in$/);
 
-    await kid.getByLabel("Username or email").fill(student.username);
+    await kid.getByLabel("Email or username").fill(student.username);
     await kid.getByLabel("Password").fill(student.password);
     await kid.getByRole("button", { name: "Sign in" }).click();
-    await expect(formAlert(kid)).toHaveText("That username or email and password don't match.");
+    await expect(formAlert(kid)).toHaveText("That email or username and password don't match.");
     await signIn(kid, student.username, "brandnew1", parent.email);
     await kidCtx.close();
   } finally {
@@ -152,10 +158,10 @@ test("removing a student asks first, then deletes the account", async ({ page })
     await expect(page.getByRole("main").getByRole("listitem")).toHaveCount(0);
 
     await signOut(page, parent.name);
-    await page.getByLabel("Username or email").fill(student.username);
+    await page.getByLabel("Email or username").fill(student.username);
     await page.getByLabel("Password").fill(student.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(formAlert(page)).toHaveText("That username or email and password don't match.");
+    await expect(formAlert(page)).toHaveText("That email or username and password don't match.");
   } finally {
     await deleteParentByEmail(parent.email);
   }

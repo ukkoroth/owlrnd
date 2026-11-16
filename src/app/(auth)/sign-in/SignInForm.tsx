@@ -14,7 +14,7 @@ export function SignInForm({ notice }: { notice?: string }) {
       {state === emptyForm && <Notice>{notice}</Notice>}
       <FormError>{state.error}</FormError>
       <Field
-        label="Username or email"
+        label="Email or username"
         name="identifier"
         autoComplete="username"
         autoCapitalize="none"
@@ -33,7 +33,7 @@ export function SignInForm({ notice }: { notice?: string }) {
       <p className="text-center text-sm text-ink-muted md:hidden">
         New to owlrnd?{" "}
         <Link href={rules.access.inviteOnly ? "/get-access" : "/sign-up"} className="link font-semibold">
-          {rules.access.inviteOnly ? "Get access" : "Create a parent account"}
+          {rules.access.inviteOnly ? "Get access" : "Create an account"}
         </Link>
       </p>
     </form>

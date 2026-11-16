@@ -43,7 +43,8 @@ const isUniqueViolation = (err: unknown) =>
     ? true
     : (err as { cause?: { code?: string } })?.cause?.code === "23505";
 
-export type StudentDetails = { name: string; className: string; username: string };
+/** dateOfBirth: "YYYY-MM-DD"; undefined leaves it as it is. */
+export type StudentDetails = { name: string; className: string; username: string; dateOfBirth?: string };
 
 export async function createStudent(
   actor: Actor,
@@ -62,6 +63,7 @@ export async function createStudent(
         name: input.name,
         className: input.className,
         username: input.username,
+        dateOfBirth: input.dateOfBirth ?? null,
         passwordHash: await hashPassword(input.password),
         // "Today" for the student uses the time zone of the parent's device (docs/10-decisions.md).
         timeZone: parent?.timeZone ?? "UTC",

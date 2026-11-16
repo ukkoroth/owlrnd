@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { Inter, STIX_Two_Text } from "next/font/google";
 import { connection } from "next/server";
 import "./globals.css";
+import { site } from "@/config/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const stix = STIX_Two_Text({ subsets: ["latin"], variable: "--font-stix", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
   title: "owlrnd",
   description: "Short, paper-style practice exams that adapt to each result.",
 };

@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Field, FormError, Notice, SubmitButton } from "@/components/forms";
+import { DateOfBirthField, Field, FormError, Notice, SubmitButton } from "@/components/forms";
 import { SectionLabel } from "@/components/PageHeader";
 import { rules } from "@/config/rules";
 import { emptyForm } from "@/lib/form";
 import { removeStudent, setStudentPassword, updateStudent } from "../../actions";
 
-type S = { id: string; name: string; className: string; username: string };
+type S = { id: string; name: string; className: string; username: string; dobDay: string; dobMonth: string; dobYear: string };
 
 export function EditStudentForms({ student }: { student: S }) {
   return (
@@ -31,6 +31,8 @@ function DetailsForm({ student }: { student: S }) {
         <Notice>{state.notice}</Notice>
         <Field label="Student's name" name="name" required autoComplete="off" defaultValue={v.name} key={`n${v.name}`} error={f?.name} />
         <Field label="Class" name="className" required autoComplete="off" defaultValue={v.className} key={`c${v.className}`} error={f?.className} />
+        {/* Optional here: children added in 0.1 have no date of birth. */}
+        <DateOfBirthField error={f?.dob} values={{ day: v.dobDay, month: v.dobMonth, year: v.dobYear }} required={false} />
         <Field
           label="Username"
           name="username"

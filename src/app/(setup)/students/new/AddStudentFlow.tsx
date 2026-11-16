@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { AuthHeading, AuthLayout } from "@/components/AuthLayout";
-import { Field, FormError, SubmitButton } from "@/components/forms";
+import { DateOfBirthField, Field, FormError, SubmitButton } from "@/components/forms";
 import { rules } from "@/config/rules";
 import { createStudent, type CreatedStudent, type CreateState } from "@/app/(parent)/students/actions";
 
@@ -26,6 +26,7 @@ function Flow({ parentEmail, onAddAnother }: { parentEmail: string; onAddAnother
         <FormError>{state.error}</FormError>
         <Field label="Student's name" name="name" required autoComplete="off" defaultValue={v?.name} key={`n${v?.name}`} error={f?.name} />
         <Field label="Class" name="className" required autoComplete="off" placeholder="Class 10" defaultValue={v?.className} key={`c${v?.className}`} error={f?.className} />
+        <DateOfBirthField legend="Student's date of birth" error={f?.dob} values={{ day: v?.dobDay, month: v?.dobMonth, year: v?.dobYear }} />
         <Field
           label="Username"
           name="username"

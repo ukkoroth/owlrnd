@@ -14,7 +14,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const allowance = holder ? await allowanceOf(holder) : undefined;
   return (
     <AppShell
-      user={{ name: student.name, role: "student" }}
+      // A self-managed learner is a "Learner"; a child a parent manages is a "Student" (sm-5a, editions §2.7).
+      user={{ name: student.name, role: "student", roleLabel: student.type === "self_managed" ? "Learner" : "Student" }}
       nav={[{ href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/tracks", "/exam"] }]}
       points={{ total, levelName: levelFor(total).current, href: "/points" }}
       allowance={allowance}

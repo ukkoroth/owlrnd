@@ -67,14 +67,14 @@ describe("invitations", () => {
 
     const check = await checkInvitation(token);
     if (!check.ok) throw new Error("expected a valid invitation");
-    await claimInvitation(check.id, parent.id);
-    expect(await hasOpenClaim(parent.id)).toBe(true);
+    await claimInvitation(check.id, { parentId: parent.id });
+    expect(await hasOpenClaim({ parentId: parent.id })).toBe(true);
     // Claimed but not verified: the link still works (for example after the sign-up step timed out).
     expect((await checkInvitation(token)).ok).toBe(true);
 
-    await consumeInvitation(parent.id);
+    await consumeInvitation({ parentId: parent.id });
     expect(await checkInvitation(token)).toEqual({ ok: false, reason: "invalid" });
-    expect(await hasOpenClaim(parent.id)).toBe(false);
+    expect(await hasOpenClaim({ parentId: parent.id })).toBe(false);
   });
 
   it("the email names the person when they asked for access", () => {

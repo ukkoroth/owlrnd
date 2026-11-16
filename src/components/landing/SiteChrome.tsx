@@ -4,7 +4,10 @@ import { site } from "@/config/site";
 import { Logo } from "../Logo";
 import { GitHubIcon } from "./icons";
 
-/** Public site header and footer (landing hand-off, sections 1 and 10). App routes: /sign-up (1a), /sign-in (3a). */
+/**
+ * Public site header and footer (landing hand-off of 2026-11-16, sections 1 and 11). App routes: /sign-up (sm-1a),
+ * /sign-in (3a). Parents are never mentioned in the header; the footer links to #parents.
+ */
 
 const navLink =
   "flex min-h-touch items-center text-[15px] font-medium text-[#EAF1FF] no-underline hover:text-white hover:underline underline-offset-4 focus-visible:outline-white";
@@ -25,8 +28,8 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
           <Link href={`${base}#how`} className={navLink}>
             How it works
           </Link>
-          <Link href={`${base}#parents`} className={navLink}>
-            For parents
+          <Link href={`${base}#packages`} className={navLink}>
+            Packages
           </Link>
           <Link href="/sign-in" className={navLink}>
             Sign in
@@ -63,7 +66,7 @@ function GitHubBadge({ href }: { href: string }) {
 
 const footerLink = "flex min-h-touch items-center text-[#D3E0FF] underline underline-offset-2 hover:text-white focus-visible:outline-white";
 
-export function SiteFooter() {
+export function SiteFooter({ home = false }: { home?: boolean }) {
   return (
     <footer className="bg-ink px-6 py-7 text-[#D3E0FF]">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-6 gap-y-3 text-sm">
@@ -74,6 +77,9 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-1">
           <Link href="/sign-in" className={footerLink}>
             Sign in
+          </Link>
+          <Link href={`${home ? "" : "/"}#parents`} className={footerLink}>
+            For parents
           </Link>
           <Link href="/privacy" className={footerLink}>
             Privacy

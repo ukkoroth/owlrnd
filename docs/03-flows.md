@@ -2,9 +2,21 @@
 
 Screen codes refer to `04-screens.md` and the files in `screens/`.
 
+## 0 · Who is this account for? *(0.2)*
+
+1. **Get started** or **Create your account** on the landing page, or **Create an account** on sign-in (3a), opens **sm-1a Who is this account for?**
+2. **For me** → flow 0a. **For my child** → flow 1. The For parents section's **Set up for my child** (`/sign-up?for=child`) skips sm-1a.
+
+## 0a · A learner signs up for themselves *(0.2, screens `04b-screens-self-managed.md`)*
+
+1. **sm-1b Create your account:** name, email, password, date of birth, agreement to the terms and privacy policy.
+2. Under 18: no account is made; the page says "Ask a parent to help you sign up" and links to flow 1. (From M10 an under-18 learner signs up and a parent consents, editions §2.4.)
+3. **sm-1c Verify email:** a 6-digit code goes to the learner's own email. Wrong or expired codes behave as in rules §1.
+4. On success, the learner lands on the **Exams** dashboard (3c). Choosing an exam or building a track (sm-2a) arrives in M9.
+
 ## 1 · Parent signs up
 
-1. From sign-in (3a) the parent chooses **Create a parent account**.
+1. From sm-1a the parent chooses **For my child**.
 2. **1a Sign up:** name, email, password.
 3. **1b Verify email:** a 6-digit code is emailed; the parent enters it. Wrong or expired codes behave as in rules §1.
 4. On success, continue to **2a Add a student**.

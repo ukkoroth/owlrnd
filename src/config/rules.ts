@@ -21,6 +21,18 @@ export const rules = {
     signInFailures: { max: 10, windowMinutes: 15 },
     /** The step between password and code (or sign-up and verify) expires after this. */
     pendingStepMinutes: 30,
+    /**
+     * Ages from the date of birth (0.2 plan, M8). A self-managed learner under `adult` needs a parent's consent
+     * (editions §2.4); until M10 builds it, under-18s can't sign up "For me". Children a parent adds are
+     * `child.min`–`child.max` years old.
+     */
+    ages: {
+      adult: 18,
+      learner: { min: 5, max: 120 },
+      child: { min: 3, max: 18 },
+      /** M10 switches this on; until then an under-18 "For me" sign-up is stopped. */
+      under18SelfSignUp: false,
+    },
   },
 
   /**
@@ -60,9 +72,12 @@ export const rules = {
     allowanceWarnAt: 0.8,
   },
 
-  /** Closed beta (docs/release-plan.md, Phase 1 item 1). Set inviteOnly to false to open sign-up to everyone. */
+  /**
+   * Closed beta (docs/release-plan.md, Phase 1 item 1) until 0.2, which opens sign-up on both paths (owner,
+   * 2026-11-15). Set inviteOnly back to true to close it again: invitations still work.
+   */
   access: {
-    inviteOnly: true,
+    inviteOnly: false,
     /** An invitation link works once, for this many days. */
     invitationDays: 14,
   },
