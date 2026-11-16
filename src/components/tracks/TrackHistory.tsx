@@ -31,7 +31,7 @@ export function TrackHistory({ audience, studentId, track, exams, strengths, tim
         subtitle={`${statusWord[track.status] ?? ""} · ${exams.length} ${exams.length === 1 ? "exam" : "exams"} taken · ${strong} of ${strengths.length} topics strong`}
       />
       <div className="max-w-[560px]">
-        <GoalProgress threshold={track.goalThreshold ?? 8} runLength={track.goalRunLength ?? 3} progress={track.goalProgress} reached={track.status === "goal_reached"} />
+        <GoalProgress threshold={track.goalThreshold ?? 8} runLength={track.goalRunLength ?? 3} progress={track.goalProgress} reached={track.status === "goal_reached"} topics={strengths} />
       </div>
 
       <div className="mt-6 overflow-x-auto rounded border border-line bg-card">

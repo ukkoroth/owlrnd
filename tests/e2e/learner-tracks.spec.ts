@@ -216,3 +216,29 @@ test("a learner changes their password and email, then deletes their account", a
     await deleteLearnerByEmail(learner.email);
   }
 });
+
+test("0.2 goal coverage: a full score run with an untested topic keeps the track going", async ({ page }) => {
+  const { studentId, learner } = await createSelfLearner({ name: "Rancho" });
+  try {
+    await createTrackWithExam(studentId, {
+      name: "JEE Physics: Current electricity",
+      questions: paper,
+      topicNames: topics,
+      untestedTopics: ["Electric power"],
+      goal: { threshold: 8, runLength: 1 },
+    });
+    await signInFully(page, learner.email, learner.password, learner.email, /\/today$/);
+    await page.getByRole("link", { name: /Start exam 1/ }).click();
+    await takeAll(page);
+    await expect(page.getByRole("heading", { name: "Goal reached!" })).toHaveCount(0);
+    await expect(page.getByText(/You've met the score part of the goal\. The track finishes once this topic is strong too: Electric power\./)).toBeVisible();
+
+    await page.goto("/tracks");
+    const card = page.getByRole("article");
+    await expect(card).toContainText("1 of 1 exams · 3 of 4 topics strong");
+    await expect(card).toContainText("with every topic strong");
+    await expect(card).not.toContainText("Reached");
+  } finally {
+    await deleteSelfLearner(studentId);
+  }
+});

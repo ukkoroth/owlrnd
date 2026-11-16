@@ -61,7 +61,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
                 <NeedsWork topics={t.topics} />
               </div>
               <div className="mt-4">
-                <GoalProgress threshold={t.goalThreshold} runLength={t.goalRunLength} progress={t.goalProgress} reached={t.status === "goal_reached"} />
+                <GoalProgress threshold={t.goalThreshold} runLength={t.goalRunLength} progress={t.goalProgress} reached={t.status === "goal_reached"} topics={t.topics} />
               </div>
               <div className="mt-auto border-t border-line pt-4">
                 {t.status === "paused" ? (

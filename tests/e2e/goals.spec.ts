@@ -112,7 +112,7 @@ test("Add material on an active track: the AI explains, the parent applies, the 
     await chat(page, "Add chapter 13: electromagnets.");
     await expect(page.getByText(/I would add Electromagnets from the next exam, with the goal stays/)).toBeVisible();
     const panel = page.getByRole("complementary", { name: "Track update" });
-    await expect(panel).toContainText("Stays: 8 / 10 or better in 3 exams in a row · progress 1 of 3");
+    await expect(panel).toContainText("Stays: 8 / 10 or better in 3 exams in a row, with every topic strong · progress 1 of 3");
     await chat(page, "Yes please.");
     await page.getByRole("button", { name: "Apply changes" }).click();
     await expect(page.getByText(/Electromagnets is now part of Physics: Current electricity/)).toBeVisible();

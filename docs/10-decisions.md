@@ -6,7 +6,7 @@ Use the default until the owner decides. Keep each one configurable.
 | --- | --- | --- |
 | Technology stack | Not decided. Confirm with the owner before starting. | none |
 | Goal form | "X / 10 or better in N exams in a row", X = 8, N = 3; parent can change | §3 |
-| Goal coverage *(owner, 2026-11-15, 0.2)* | Every active topic strong as well as the score run (`all_strong`); alternatives `all_tested` or `off` | §3 |
+| Goal coverage *(owner, 2026-11-15, 0.2; built)* | Every active topic strong as well as the score run (`rules.goal.coverage = all_strong`); alternatives `all_tested` or `off`. The goal reads "…, with every topic strong"; progress shows "3 of 3 exams · 10 of 12 topics strong" | §3 |
 | Strong topic | At least 80% of its last 5 questions correct, with at least 3 answered | §4 |
 | Topic mix per exam | 50% needs work, 30% not tested, 20% strong repeats | §4 |
 | Revision after adding topics | About 2 questions per exam from earlier topics | §3 |

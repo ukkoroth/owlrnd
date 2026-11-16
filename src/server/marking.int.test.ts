@@ -8,6 +8,7 @@ import { writeExamJob } from "./examWriter";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
 import { markExamJob } from "./marking";
 import { topicStrengths } from "./progress";
+import { getResult } from "./results";
 
 beforeAll(() => {
   process.env.OWLRND_FAKE_AI = "1";
@@ -118,6 +119,20 @@ describe("marking (rules §6) and the next exam (rules §4)", () => {
     expect(await writeJobs()).toBe(before); // no next exam requested
     const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
     expect(t).toMatchObject({ status: "goal_reached", goalProgress: 1, nextExam: "none" });
+  });
+
+  it("0.2: a full score run with an untested topic keeps the track going, and the result names the topic", async () => {
+    const { student, trackId, examId } = await family();
+    await db.update(tracks).set({ goalThreshold: 8, goalRunLength: 1 }).where(eq(tracks.id, trackId));
+    // A topic this exam doesn't ask about: still untested after a perfect paper.
+    await db.insert(topics).values({ trackId, name: "Electric power", description: "", position: 99 });
+    await takeExam(student.id, examId, () => true);
+    await markExamJob({ examId });
+    const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(t).toMatchObject({ status: "active", goalProgress: 1, nextExam: "writing" });
+    const result = await getResult(student.id, examId);
+    expect(result?.goalReached).toBe(false);
+    expect(result?.nextFocus).toMatch(/^You've met the score part of the goal\. The track finishes once this topic is strong too: Electric power\./);
   });
 
   it("never opens a second exam in a track", async () => {

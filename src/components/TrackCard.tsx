@@ -59,7 +59,7 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
 
       {t.goalThreshold && (
         <div className="mt-4">
-          <GoalProgress threshold={t.goalThreshold} runLength={runLength} progress={t.goalProgress} reached={t.status === "goal_reached"} />
+          <GoalProgress threshold={t.goalThreshold} runLength={runLength} progress={t.goalProgress} reached={t.status === "goal_reached"} topics={t.topics} />
         </div>
       )}
 

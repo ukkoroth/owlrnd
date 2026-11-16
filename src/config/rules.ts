@@ -100,6 +100,11 @@ export const rules = {
   goal: {
     defaultThreshold: 8, // X
     defaultRunLength: 3, // N
+    /**
+     * 0.2 (owner, 2026-11-15): the goal also needs every active topic covered. "all_strong": every topic strong
+     * (§4). "all_tested": no topic untested and none needing work. "off": the score run only, as in 0.1.
+     */
+    coverage: "all_strong" as "all_strong" | "all_tested" | "off",
   },
 
   /** §2 Tracks */

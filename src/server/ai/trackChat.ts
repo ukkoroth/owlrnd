@@ -33,7 +33,7 @@ What a track has:
 - name: "Subject: Chapter or test", e.g. "Physics: Current electricity" or "Maths: Quadratic equations".
 - topics: the topics found in the parent's description and material, each with a one-line description. At most ${rules.track.maxTopics}.
 - test date and what the test is called, only if the parent gives them.
-- goal: "X / 10 or better in N exams in a row". Suggest ${goalLabel({ threshold: rules.goal.defaultThreshold, runLength: rules.goal.defaultRunLength })} unless the parent asks for something else. When it is reached, the track stops until the parent adds topics.
+- goal: "X / 10 or better in N exams in a row"${rules.goal.coverage === "off" ? "" : ", with every topic strong"}. Suggest ${goalLabel({ threshold: rules.goal.defaultThreshold, runLength: rules.goal.defaultRunLength })} unless the parent asks for something else. When it is reached, the track stops until the parent adds topics.${rules.goal.coverage === "off" ? "" : ' When you propose the goal, say in one short sentence that every topic must also be strong (most of its recent questions right), so the track doesn\'t stop while a topic is still weak. The parent can change X and N, but not this part.'}
 - focus notes: preferences the parent states about the questions (for example more calculations on one topic).
 Each exam has up to ${rules.exam.maxQuestions} questions, multiple choice and short answers (a word or one sentence). There are no long written answers.
 

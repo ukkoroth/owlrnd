@@ -143,6 +143,8 @@ export async function createTrackWithExam(
     questions?: FixtureQuestion[];
     goal?: { threshold: number; runLength: number };
     topicNames?: string[];
+    /** Extra topics with no questions in exam 1, so they stay untested (goal coverage, rules §3). */
+    untestedTopics?: string[];
   } = {},
 ) {
   const qs =
@@ -166,6 +168,9 @@ export async function createTrackWithExam(
   }
   const { rows: ex } = await pool.query(`insert into exams (student_id, track_id, number, status) values ($1, $2, 1, 'ready') returning id`, [studentId, trackId]);
   const examId = ex[0].id as string;
+  for (const [i, name] of (opts.untestedTopics ?? []).entries()) {
+    await pool.query(`insert into topics (track_id, name, position) values ($1, $2, $3)`, [trackId, name, names.length + i]);
+  }
   for (const [i, q] of qs.entries()) {
     const { rows } = await pool.query(
       `insert into questions (track_id, topic_id, type, prompt, options, correct_option, expected_answer, difficulty, explanation)

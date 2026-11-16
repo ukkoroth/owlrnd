@@ -1,3 +1,5 @@
+import { rules } from "@/config/rules";
+import { coverageMet, topicCoverage, type CoverageTopic } from "@/domain/goals";
 import { goalLabel } from "@/domain/tracks";
 import type { Strength } from "@/domain/topicStrength";
 
@@ -72,18 +74,40 @@ export function StrengthLegend() {
 }
 
 /** Goal box with progress segments (2g, 4.1a). */
-export function GoalProgress({ threshold, runLength, progress, reached = false }: { threshold: number; runLength: number; progress: number; reached?: boolean }) {
+/**
+ * Goal progress (rules §3). From 0.2 the goal also needs the active topics covered: with `topics`, it reads
+ * "3 of 3 exams · 10 of 12 topics strong", and the bar fills only when both parts are complete.
+ */
+export function GoalProgress({
+  threshold,
+  runLength,
+  progress,
+  reached = false,
+  topics,
+}: {
+  threshold: number;
+  runLength: number;
+  progress: number;
+  reached?: boolean;
+  topics?: CoverageTopic[];
+}) {
+  const coverageOn = rules.goal.coverage !== "off" && !!topics;
+  const cover = topics ? topicCoverage(topics) : null;
+  const covered = !coverageOn || coverageMet(topics!);
+  const runDone = progress >= runLength;
+  const status = reached ? "Reached" : coverageOn && cover ? `${Math.min(progress, runLength)} of ${runLength} exams · ${cover.strong} of ${cover.total} topics strong` : `${progress} of ${runLength}`;
   return (
     <div className="rounded bg-page px-3 py-2.5">
       <div className="flex justify-between gap-3 text-sm">
         <span>
           <strong>Goal:</strong> {goalLabel({ threshold, runLength })}
         </span>
-        <span className={`shrink-0 font-semibold ${reached ? "text-brand" : "text-ink-muted"}`}>{reached ? "Reached" : `${progress} of ${runLength}`}</span>
+        <span className={`shrink-0 text-right font-semibold ${reached ? "text-brand" : "text-ink-muted"}`}>{status}</span>
       </div>
       <ul className="mt-2 flex gap-1" aria-hidden="true">
         {Array.from({ length: runLength }, (_, i) => (
-          <li key={i} className={`h-2 flex-1 rounded ${reached || i < progress ? "bg-brand" : "bg-pale-2"}`} />
+          // The last step waits for the topics too, so a full bar always means the goal is reached.
+          <li key={i} className={`h-2 flex-1 rounded ${reached || (i < progress && (i < runLength - 1 || !runDone || covered)) ? "bg-brand" : "bg-pale-2"}`} />
         ))}
       </ul>
     </div>

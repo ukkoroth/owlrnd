@@ -12,8 +12,10 @@ const ready: TrackPreview = {
 
 describe("goalLabel (rules §3)", () => {
   it("reads like the mockups", () => {
-    expect(goalLabel({ threshold: 9, runLength: 3 })).toBe("9 / 10 or better in 3 exams in a row");
-    expect(goalLabel({ threshold: 8, runLength: 1 })).toBe("8 / 10 or better in 1 exam");
+    expect(goalLabel({ threshold: 9, runLength: 3 }, "off")).toBe("9 / 10 or better in 3 exams in a row");
+    expect(goalLabel({ threshold: 8, runLength: 1 }, "off")).toBe("8 / 10 or better in 1 exam");
+    // 0.2: the goal also needs every topic strong (the default).
+    expect(goalLabel({ threshold: 9, runLength: 3 })).toBe("9 / 10 or better in 3 exams in a row, with every topic strong");
   });
 });
 

@@ -18,8 +18,10 @@ export type TrackPreview = {
 export const emptyPreview: TrackPreview = { name: null, topics: [], testDate: null, testLabel: null, goal: null, focusNotes: null };
 
 /** Rules §3: "score X / 10 or better in N exams in a row". */
-export function goalLabel({ threshold, runLength }: Goal): string {
-  return `${threshold} / 10 or better in ${runLength} ${runLength === 1 ? "exam" : "exams in a row"}`;
+/** "8 / 10 or better in 3 exams in a row, with every topic strong" (rules §3; the coverage part from 0.2). */
+export function goalLabel({ threshold, runLength }: Goal, coverage: "all_strong" | "all_tested" | "off" = rules.goal.coverage): string {
+  const run = `${threshold} / 10 or better in ${runLength} ${runLength === 1 ? "exam" : "exams in a row"}`;
+  return coverage === "all_strong" ? `${run}, with every topic strong` : coverage === "all_tested" ? `${run}, with every topic tested` : run;
 }
 
 export function defaultGoal(): Goal {

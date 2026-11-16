@@ -122,7 +122,9 @@ To build:
 
 Done when (Playwright): answer multiple choice and short-answer questions on both pages, press Back straight after typing, press Forward, and every answer is there; reload mid-exam and every answer is there; Back after submit lands on marking or the result.
 
-### Also in 0.2 · A goal also needs every topic covered (owner, 2026-11-15)
+### Also in 0.2 · A goal also needs every topic covered (owner, 2026-11-15) · ✅ done 2026-11-16
+
+Built as below. Under today's strength rules (§4) `all_tested` gives the same result as `all_strong`; it differs only if those rules change. Release notes: active tracks follow the new rule from their next marked exam, so some keep going longer than before.
 
 Today a track stops on its score alone (8/10 or better in 3 exams in a row). That can happen while topics are still untested or weak: a 12-topic track can reach its goal in 30 questions, about 2.5 per topic, and a student who misses the same topic every time can still score 8/10. From 0.2 the goal has two parts, and **both** must hold:
 

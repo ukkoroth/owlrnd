@@ -2,7 +2,7 @@ import "server-only";
 import { holderRef } from "@/domain/accounts";
 import { loadLearner } from "./learners";
 import { and, asc, desc, eq, gt, isNotNull, lt, ne, sql } from "drizzle-orm";
-import { goalProgress, goalReached } from "@/domain/goals";
+import { coverageMet, goalProgress, goalReached } from "@/domain/goals";
 import { addDays, examPoints, streakDays } from "@/domain/points";
 import { exactMatch, scoreOutOf10 } from "@/domain/scoring";
 import { todayIn } from "@/domain/tracks";
@@ -124,7 +124,8 @@ export async function markExamJob(payload: unknown) {
       .where(and(eq(exams.trackId, exam.trackId), eq(exams.status, "marked"), gt(exams.number, track!.goalSinceExam)))
       .orderBy(asc(exams.number));
     const progress = goalProgress(scores.map((s) => s.score ?? 0), track!.goalThreshold ?? 8);
-    const reached = goalReached(progress, track!.goalRunLength ?? 3);
+    // 0.2: the goal also needs every active topic covered (rules §3); `after` already holds this exam's results.
+    const reached = goalReached(progress, track!.goalRunLength ?? 3, coverageMet(after));
     writeNext = !reached && track!.status === "active";
     await tx
       .update(tracks)

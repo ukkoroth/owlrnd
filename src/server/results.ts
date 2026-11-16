@@ -1,4 +1,5 @@
 import "server-only";
+import { coverageMet } from "@/domain/goals";
 import { and, asc, count, desc, eq, inArray, isNotNull, sum } from "drizzle-orm";
 import { nextExamFocus, nextExamPlan } from "@/domain/examMix";
 import { examTopicSummary } from "@/domain/topicStrength";
@@ -48,6 +49,11 @@ export async function getResult(studentId: string, examId: string) {
   if (!goalReachedNow) {
     const mix = strengths.map((t, i) => ({ key: `T${i + 1}`, name: t.name, strength: t.strength }));
     nextFocus = nextExamFocus(exam.number + 1, nextExamPlan(mix), mix);
+    // 0.2 (rules §3): the score run is done but some topics aren't strong yet, so the track keeps going for them.
+    const toStrengthen = strengths.filter((t) => !t.revisionOnly && t.strength !== "strong").map((t) => t.name);
+    if (track.goalProgress >= (track.goalRunLength ?? 3) && toStrengthen.length && !coverageMet(strengths)) {
+      nextFocus = `You've met the score part of the goal. The track finishes once ${toStrengthen.length === 1 ? "this topic is" : "these topics are"} strong too: ${toStrengthen.join(", ")}. ${nextFocus}`;
+    }
   }
   const strongCount = strengths.filter((t) => t.strength === "strong").length;
 
