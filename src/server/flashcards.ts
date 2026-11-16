@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { holderRef } from "@/domain/accounts";
 import { dueAfter, nextBox, planStarter, planTopUp, type CardSlot, type DeckTopic } from "@/domain/flashcards";
@@ -82,6 +82,7 @@ export async function writeDeck(trackId: string, reason: DeckReason, examId?: st
   if (!plan.length && !missed.length) return { written: 0 };
 
   const material = await trackMaterial(trackId);
+  const examQuestions = await recentExamQuestions(trackId);
   const written = await withAiContext({ purpose: "write_flashcards", holder: holderRef(holder), studentId: student.id }, () =>
     ai().writeFlashcards({
       audience: holder.kind === "parent" ? "parent" : "learner",
@@ -92,6 +93,7 @@ export async function writeDeck(trackId: string, reason: DeckReason, examId?: st
       plan,
       missed: missed.map((m) => ({ key: m.key, topicKey: m.topicKey, question: m.question, expected: m.expected, explanation: m.explanation })),
       knownFronts: existing.map((e) => e.front),
+      examQuestions,
     }),
   );
 
@@ -121,6 +123,12 @@ export async function writeDeck(trackId: string, reason: DeckReason, examId?: st
     .onConflictDoNothing()
     .returning({ id: flashcards.id });
   return { written: saved.length };
+}
+
+/** The track's latest exam questions, for cards to avoid repeating (rules.flashcards.repeats). */
+async function recentExamQuestions(trackId: string) {
+  const rows = await db.select({ prompt: questions.prompt }).from(questions).where(eq(questions.trackId, trackId)).orderBy(desc(questions.createdAt)).limit(60);
+  return rows.map((r) => r.prompt);
 }
 
 /** Background job "write_flashcards": payload { trackId, reason, examId? }. Postponed (not failed) while limits apply. */

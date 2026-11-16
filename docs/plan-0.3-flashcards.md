@@ -32,6 +32,7 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 - A card has a front (a question or term, one or two lines), an answer (a word, number with unit, or short sentence) and a one-line explanation, and belongs to one topic of one track.
 - Two sources: **written from the material** (the AI) and **from a missed exam question** (the AI rewrites a question the learner got wrong into a card, so it isn't the identical question; marked "From a missed exam question", fc-2).
 - Revision topics after a restart get cards too, at a lower share.
+- **Exams and cards rarely repeat each other** (owner, 2026-11-16): each writer sees the other's wording and is asked to test the same idea another way. More than one near-copy in a paper or batch gets one rewrite; after that it is kept (`rules.flashcards.repeats`, AI §7).
 
 **Writing the deck.**
 - When a track is created (or restarted), the AI writes a starter deck: about 6 cards per active topic, up to 60 **(default)**, in the background like the first exam.

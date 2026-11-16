@@ -11,7 +11,7 @@ import { ai } from "./ai";
 import { enqueue } from "./jobs/queue";
 import { examWriteBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
-import { attachments, examQuestions, exams, marks, questions, topics, trackMessages, tracks } from "./db/schema";
+import { attachments, examQuestions, exams, flashcards, marks, questions, topics, trackMessages, tracks } from "./db/schema";
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
 
@@ -129,6 +129,8 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     const { plan, avoid } = await planNextExam(trackId, track.studentId, keyed);
 
     const material = await trackMaterial(trackId);
+    // Exams rarely repeat the wording of the track's flashcards (rules.flashcards.repeats).
+    const deckFronts = (await db.select({ front: flashcards.front }).from(flashcards).where(eq(flashcards.trackId, trackId))).map((c) => c.front);
     const written = await withAiContext({ purpose: "write_exam", holder: holderRef(holder), studentId: student.id }, () => ai().writeQuestions({
       trackName: track.name ?? "",
       // A child's class, or (self-managed) the exam they are preparing for, which the track's name and material give.
@@ -139,6 +141,7 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       material,
       plan,
       avoid,
+      deckFronts,
     }));
 
     await db.transaction(async (tx) => {

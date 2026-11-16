@@ -118,6 +118,12 @@ export const rules = {
     boxDays: [1, 2, 4, 8, 16],
     /** Points for finishing a session of at least `minCards` cards; at most `maxSessionsPerDay` count per track. */
     points: { perSession: 5, minCards: 8, maxSessionsPerDay: 2 },
+    /**
+     * Exams and cards rarely repeat each other's wording (owner, 2026-11-16: "rarely", not "never"). The writers are
+     * asked to avoid it; an exam paper or a batch of cards with more near-copies than this is written again once,
+     * and kept after that. Near-copy: at least `similarity` of the words are shared (after case and punctuation).
+     */
+    repeats: { maxPerWrite: 1, similarity: 0.8 },
     /** Card lengths the writer must keep to (characters). */
     maxFront: 200,
     maxAnswer: 120,

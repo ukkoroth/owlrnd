@@ -69,6 +69,38 @@ export function validateCards(cards: WrittenCard[], topicKeys: string[], knownFr
   return errors;
 }
 
+const words = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
+
+/** Near-copies: share at least rules.flashcards.repeats.similarity of their words (Jaccard), ignoring case and punctuation. */
+export function sameWording(a: string, b: string): boolean {
+  const x = words(a);
+  const y = words(b);
+  if (!x.size || !y.size) return false;
+  let shared = 0;
+  for (const w of x) if (y.has(w)) shared++;
+  return shared / (x.size + y.size - shared) >= F.repeats.similarity;
+}
+
+/** Each text that is a near-copy of one of `others`, with what it copies. */
+export function repeatsOf(texts: string[], others: string[]): { index: number; like: string }[] {
+  const out: { index: number; like: string }[] = [];
+  texts.forEach((t, index) => {
+    const like = others.find((o) => sameWording(t, o));
+    if (like) out.push({ index, like });
+  });
+  return out;
+}
+
+/**
+ * Exams and flashcards rarely repeat each other (rules.flashcards.repeats): problems to send back to the writer
+ * when there are more near-copies than allowed, else none.
+ */
+export function tooManyRepeats(texts: string[], others: string[], label: string): string[] {
+  const found = repeatsOf(texts, others);
+  if (found.length <= F.repeats.maxPerWrite) return [];
+  return found.map((r) => `${label} ${r.index + 1} repeats the wording of "${r.like.slice(0, 80)}"; ask the same idea differently.`);
+}
+
 /** Spaced repetition (Leitner boxes): "Got it" moves a card up a box (at most 5); "Not yet" sends it back to 1. */
 export function nextBox(box: number, result: "got_it" | "not_yet"): number {
   return result === "got_it" ? Math.min(F.boxDays.length, box + 1) : 1;

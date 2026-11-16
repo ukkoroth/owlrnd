@@ -60,6 +60,7 @@ async function main() {
     material: `Parent: ${message1}\nParent: ${message2}\n\n[${turn1.extracted[0]?.label}]\n${turn1.extracted[0]?.text}`,
     plan,
     avoid: [],
+    deckFronts: [],
   });
   writeFileSync(`${out}/writeQuestions.json`, JSON.stringify({ questions }, null, 2));
   console.log(`\n── First exam (${((Date.now() - t2) / 1000).toFixed(1)} s) ──`);

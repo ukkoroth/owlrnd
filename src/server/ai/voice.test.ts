@@ -57,6 +57,7 @@ describe("flashcard writer (0.3)", () => {
       plan: [{ topicKey: "T1", count: 2 }],
       missed: [{ key: "M1", topicKey: "T1", question: "Unit of resistance?", expected: "ohm", explanation: "" }],
       knownFronts: [],
+      examQuestions: [],
     };
     const card = (front: string, missedKey: string | null = null) => ({ topicKey: "T1", front, answer: "a", explanation: "b", missedKey });
     expect(checkFlashcards(input, [card("One?"), card("Two?"), card("Three?", "M1")])).toEqual([]);

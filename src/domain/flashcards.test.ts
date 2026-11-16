@@ -56,3 +56,15 @@ describe("spaced repetition", () => {
     expect(dueAfter(5, now).toISOString()).toBe("2026-12-02T09:00:00.000Z");
   });
 });
+
+describe("near-copies between exams and cards (rules.flashcards.repeats)", () => {
+  it("same words, ignoring case and punctuation, count; a different value or a new question doesn't", async () => {
+    const { sameWording, repeatsOf, tooManyRepeats } = await import("./flashcards");
+    expect(sameWording("What is the unit of resistance?", "what is the UNIT of resistance")).toBe(true);
+    expect(sameWording("A 6 V battery drives 2 A. Find R.", "A 6 V battery drives 3 A. Find R.")).toBe(false);
+    expect(sameWording("What is the unit of resistance?", "Why does resistance rise with temperature?")).toBe(false);
+    expect(repeatsOf(["a b c d e", "x y"], ["A, b, c, d, e."])).toEqual([{ index: 0, like: "A, b, c, d, e." }]);
+    expect(tooManyRepeats(["a b c d e"], ["a b c d e"], "Question")).toEqual([]); // one is allowed: "rarely"
+    expect(tooManyRepeats(["a b c d e", "f g h i j"], ["a b c d e", "f g h i j"], "Question")).toHaveLength(2);
+  });
+});
