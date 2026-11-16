@@ -1,22 +1,22 @@
 # owlrnd
 
-Short, paper-style practice exams that adapt between exams. A parent sets up practice tracks for each child; the child practises.
+Short, paper-style practice exams that adapt between exams, with flashcards in between. Learners preparing for an exam set up their own practice tracks; parents can set them up for school-age children, who just practise.
 
 - **Brief and rules:** [`CLAUDE.md`](CLAUDE.md), [`docs/`](docs/) (`05-rules.md` is the source of truth), [`screens/`](screens/), [`mockups/`](mockups/)
 - **Build plan and progress:** [`PLAN.md`](PLAN.md)
 
 ## Screenshots
 
-![The owlrnd landing page: "Exam-ready, every day."](docs/images/landing.png)
+![The owlrnd landing page: "Rank-ready, every day."](docs/images/landing.png)
 
 <table>
   <tr>
     <td width="50%"><img src="docs/images/screens/2f_create-the-first-track-agreed-with-a-goal.png" alt="A parent creates a track by chatting with the AI and attaching textbook pages"></td>
-    <td width="50%"><img src="docs/images/screens/3c_dashboard-today.png" alt="The student's dashboard with three suggested practice exams and a 7-day chart"></td>
+    <td width="50%"><img src="docs/images/screens/3c_dashboard-today.png" alt="A learner's dashboard with three suggested practice exams, each with Start and Practise flashcards, and a 7-day chart"></td>
   </tr>
   <tr>
     <td><b>1. The parent sets up a track.</b> Describe the chapter or test, attach photos of the textbook pages, and agree the topics and a goal with the AI.</td>
-    <td><b>2. The child sees what to do today.</b> Three suggested exams, and a record of practice over the week.</td>
+    <td><b>2. The learner sees what to do today.</b> Three suggested exams, flashcards to practise for each track, and a record of practice over the week.</td>
   </tr>
   <tr>
     <td><img src="docs/images/screens/4-1b_exam-paper.png" alt="An exam paper with numbered multiple-choice questions in a serif typeface"></td>
@@ -34,13 +34,23 @@ Short, paper-style practice exams that adapt between exams. A parent sets up pra
     <td><b>5. Every miss is explained.</b> The marked paper shows the right answer and a one-line reason.</td>
     <td><b>6. The parent sees effort and weak spots.</b> One page for all their children.</td>
   </tr>
+  <tr>
+    <td><img src="docs/images/screens/fc-3_flashcard.png" alt="A flashcard on Ohm's law with its answer, a one-line explanation, and Not yet and Got it buttons"></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><b>7. Flashcards between exams (0.3).</b> Short cards from the track's material and missed questions. Say Got it or Not yet; cards come back on a spaced schedule. No marks, no effect on the goal.</td>
+    <td></td>
+  </tr>
 </table>
 
-These are the design screens (sample family: Atticus Finch, Scout and Jem). All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
+Most are the design screens (sample family: Atticus Finch, Scout and Jem); 2 and 7 are taken from the app. All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
 
 ## What's coming
 
-owlrnd 0.1 covers the core loop: a parent sets up tracks, the child practises short adaptive exams, and both see progress. Here's what's planned next, roughly in order. The full roadmap is in [`docs/09-roadmap.md`](docs/09-roadmap.md).
+**Released so far:** 0.1, the core loop (a parent sets up tracks, the child practises short adaptive exams, both see progress); 0.2, two kinds of account (learners preparing on their own, with a parent's consent from 13 to 17, and parent-managed children), a demo AI allowance per account and goals that need every topic strong; 0.3 "Flashcards" ([`docs/plan-0.3-flashcards.md`](docs/plan-0.3-flashcards.md)).
+
+Here's what's planned next, roughly in order. The full roadmap is in [`docs/09-roadmap.md`](docs/09-roadmap.md).
 
 **Soon after the first release**
 
@@ -50,14 +60,13 @@ owlrnd 0.1 covers the core loop: a parent sets up tracks, the child practises sh
 
 **Next versions**
 
-- Flashcards
-- Written answers on paper (0.15)
+- A separate tracker for flashcard practice
+- Written answers on paper
 - Camera capture (0.2)
 - Ready-made packages (CBSE, ICSE)
 - A whole term at once
 - Create a track from Claude
 - Progress views
-- owlrnd for college students
 
 Have an idea or want to help build one of these? Open an issue or a pull request.
 
@@ -100,6 +109,12 @@ src/components/       app shell, sidebar, profile menu, …
 src/app/              routes
 tests/e2e/            Playwright
 ```
+
+## Flashcards (0.3)
+
+- **Writing cards:** the background job `write_flashcards` (`src/server/flashcards.ts`, AI in `src/server/ai/writeFlashcards.ts`) writes a starter deck when a track is created or gets new topics (about 6 cards per topic, up to 60), up to 3 cards from missed questions after each marked exam, and top-ups of 10. A deck stops at 200 cards. Exams and cards rarely repeat each other's wording.
+- **Practising:** `/practise/[trackId]` (focus mode, no sidebar; Space, then 1 / 2) and the deck page `/tracks/[trackId]/flashcards`. Practise buttons with due counts are on the dashboard and on Your tracks.
+- **Rules:** Leitner boxes (due again after 1, 2, 4, 8 or 16 days), 5 points per finished session of 8+ cards (at most 2 a day per track), no effect on scores, goals or streaks. All in `rules.flashcards` (`src/config/rules.ts`) and `src/domain/flashcards.ts`; rules §8 and §9a.
 
 ## Accounts (M1)
 

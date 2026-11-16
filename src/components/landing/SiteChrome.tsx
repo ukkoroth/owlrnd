@@ -28,6 +28,9 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
           <Link href={`${base}#how`} className={navLink}>
             How it works
           </Link>
+          <Link href={`${base}#flashcards`} className={navLink}>
+            Flashcards
+          </Link>
           <Link href={`${base}#packages`} className={navLink}>
             Packages
           </Link>

@@ -6,6 +6,7 @@ import { site } from "@/config/site";
 import { CapIcon, GitHubIcon, SparkleIcon, StarIcon, Swash } from "./icons";
 import chatImg from "./img/chat.png";
 import dashImg from "./img/dash.png";
+import flashcardsImg from "./img/flashcards.png";
 import paperImg from "./img/paper.png";
 import parentImg from "./img/parent.png";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
@@ -19,7 +20,8 @@ import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 // Imported, so each file gets a content-hashed URL (a swapped screenshot shows up at once) and its own size.
 const SHOTS = {
-  dash: { src: dashImg, alt: "A learner's owlrnd dashboard with three suggested JEE practice tests" },
+  dash: { src: dashImg, alt: "A learner's owlrnd dashboard with three suggested JEE practice tests, each with a Practise flashcards button" },
+  flashcards: { src: flashcardsImg, alt: "An owlrnd flashcard showing a question on Ohm's law, its answer and a one-line explanation, with Not yet and Got it buttons" },
   chat: { src: chatImg, alt: "A learner creating a JEE Physics track by chatting with the owlrnd AI" },
   paper: { src: paperImg, alt: "An owlrnd exam paper with numbered multiple-choice questions" },
   parent: { src: parentImg, alt: "The parent's view of two children's practice activity" },
@@ -28,7 +30,7 @@ const SHOTS = {
 const STEPS = [
   ["Choose your exam", "Start from a ready-made package for your exam, or chat with the AI and attach the syllabus, your coaching notes or a past paper."],
   ["Set a track and a goal", "The AI lists the topics and suggests a goal, such as 9 out of 10 in three tests in a row. Change anything before you start."],
-  ["Practise every day", "Short papers of up to 10 questions. Each new test gives more weight to what you got wrong and brings back what you know, so it sticks."],
+  ["Practise every day", "Short papers of up to 10 questions, and flashcards in between. Each new test gives more weight to what you got wrong and brings back what you know, so it sticks."],
 ];
 
 const EXAM_POINTS = [
@@ -38,6 +40,13 @@ const EXAM_POINTS = [
 ];
 
 /** No package is live in 0.2 (owner, 2026-11-15): every card shows "Coming soon" (hand-off, open items). */
+/** 0.3 Flashcards (docs/plan-0.3-flashcards.md). */
+const FLASHCARD_POINTS = [
+  ["Written from your material", "Short cards on your syllabus and notes: definitions, formulas, units and quick one-step problems."],
+  ["Your mistakes come back", "Questions you got wrong in a test return as flashcards, asked a new way, until they stick."],
+  ["Spaced, so you remember", "Cards you know come back less often; the ones you are still learning come back the next day."],
+];
+
 const PACKAGES = [
   ["JEE Main", "Physics, Chemistry, Mathematics"],
   ["NEET UG", "Physics, Chemistry, Biology"],
@@ -58,7 +67,7 @@ const PACKAGE_POINTS = [
 const PARENT_POINTS = [
   ["You set up the tracks", "Photograph the textbook pages or describe the chapter. The AI builds the tracks and goals with you."],
   ["Every sign-in comes to you", "Each time your child signs in, a 6-digit code is sent to your email."],
-  ["See effort and weak spots", "One page for all your children: last exam, what needs work, and how often they practise."],
+  ["See effort and weak spots", "One page for all your children: last exam, what needs work, and how often they practise, with tests and flashcards."],
 ];
 
 /** Star badge shades, lightest to darkest, one per level. */
@@ -80,6 +89,7 @@ export function Landing() {
         <Hero />
         <HowItWorks />
         <TheExam />
+        <Flashcards />
         <Goals />
         <Packages />
         <Motivation />
@@ -232,10 +242,25 @@ function TheExam() {
   );
 }
 
+function Flashcards() {
+  return (
+    <section id="flashcards" className="scroll-mt-4 px-6 py-20">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-9">
+        <SectionIntro eyebrow="Flashcards" title="Learn it between tests.">
+          A few minutes at a time: read the question, think, show the answer, and say Got it or Not yet. No marks and no
+          effect on your goal, just practice that makes the next test easier.
+        </SectionIntro>
+        <Shot shot={SHOTS.flashcards} />
+        <Points items={FLASHCARD_POINTS} />
+      </div>
+    </section>
+  );
+}
+
 function Goals() {
   const max = Math.max(...GOAL_SCORES);
   return (
-    <section className="px-6 py-20">
+    <section className="border-y border-line bg-white px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-16 gap-y-10">
         <div className="flex min-w-0 flex-[1_1_400px] flex-col gap-4">
           <Eyebrow>Goals</Eyebrow>
