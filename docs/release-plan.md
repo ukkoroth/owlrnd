@@ -26,7 +26,7 @@ Approximate list prices; check the AWS pricing calculator for Mumbai.
 | SES (sign-in codes) | cents |
 | Domain + DNS | ~$1.50 (domain ~$15/year) |
 | **Infrastructure** | **≈ $30** |
-| Claude: about $0.13–0.27 per exam (with its flashcards), $0.04–0.16 per chat turn, ~$0.20 per starter deck; practising flashcards is free (measured 2026-11-16, README "Running costs") | ≈ $75–145 for 10 students doing 1–2 exams a day |
+| Claude Opus 5.5 (`claude-opus-5-5`): about $0.13–0.27 per exam (with its flashcards), $0.04–0.16 per chat turn, ~$0.20 per starter deck; practising flashcards is free (measured 2026-11-16, README "Running costs") | ≈ $75–145 for 10 students doing 1–2 exams a day |
 | **Total** | **≈ $100–170** |
 
 Claude is the main cost. Phase 1 measures the real cost per exam and adds a hard monthly limit.

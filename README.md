@@ -117,7 +117,7 @@ In development, `/dev/shell?role=student` and `/dev/shell?role=parent` preview t
 
 owlrnd uses the Claude API to read textbook pages, agree tracks with the parent, write each exam, mark typed answers and write flashcards. You pay Anthropic for that by usage, so set a monthly spend limit on your API key in the [Claude Console](https://console.anthropic.com) before you invite families.
 
-The figures below are **estimates** from the app's prompt sizes and recorded outputs, at Claude Opus 5.5 list prices of November 2026 ($4 per million input tokens, $20 per million output tokens), checked against one real test track in November 2026 (see *Measured* below). Check current prices on Anthropic's pricing page.
+The figures below are **estimates** from the app's prompt sizes and recorded outputs, for **Claude Opus 5.5** (model ID `claude-opus-5-5`, the app's default `ANTHROPIC_MODEL`) at its list prices of November 2026 ($4 per million input tokens, $20 per million output tokens), checked against one real test track in November 2026 (see *Measured* below). Check current prices on Anthropic's pricing page.
 
 ### Per exam
 
@@ -141,9 +141,9 @@ Practising flashcards makes **no AI calls**; only writing cards does.
 | Top-up of 10 cards, when a learner practises with none due | In: ~5,100. Out: ~1,100–1,900 | $0.04–0.06 (measured) |
 | **Most a track can ever cost in cards** (a deck stops at 200) | | **~$0.70–1.15** |
 
-### Measured (one test track, 16 November 2026)
+### Measured (one test track, 16 November 2026, `claude-opus-5-5`)
 
-A parent set up a 10-topic Physics track in two chat turns ($0.16 and $0.04), the first exam was written for $0.09, the starter deck of 60 cards for $0.21, and two top-ups of 10 cards for $0.04 and $0.06: **$0.60 in all** before any exam was marked. The first chat turn costs the most, because it carries the instructions and the parent's material.
+Every call used Claude Opus 5.5 (`claude-opus-5-5`). A parent set up a 10-topic Physics track in two chat turns ($0.16 and $0.04), the first exam was written for $0.09, the starter deck of 60 cards for $0.21, and two top-ups of 10 cards for $0.04 and $0.06: **$0.60 in all** before any exam was marked. The first chat turn costs the most, because it carries the instructions and the parent's material.
 
 ### Per child per month
 
