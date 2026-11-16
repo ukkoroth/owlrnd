@@ -88,7 +88,11 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 - Integration: starter deck written in the background; missed questions become cards once; top-up only when few are due; cards never cross accounts; a parent-managed child can practise, the parent can't; consent-blocked learners can't (M10); AI usage recorded against the account holder.
 - Playwright: Practise from the dashboard → 10 cards with keyboard and mouse → summary → counts update; a goal-reached track can still be practised; no scrolling at desktop and phone sizes.
 
-## Decisions for the owner
+## Decisions (owner, 2026-11-16)
+
+All seven working defaults below are **approved** as written. On #5, the owner adds: flashcards will get **their own tracker later** (separate from exam streaks and points), so 0.3 keeps flashcards out of streaks.
+
+### As proposed
 
 | # | Question | Working default |
 |---|---|---|
