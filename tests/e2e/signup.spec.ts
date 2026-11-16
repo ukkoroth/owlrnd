@@ -144,9 +144,12 @@ test("one email, one account: For me refuses a parent's email", async ({ page })
     await enterCode(page, await nextCode(email, before));
     await page.getByRole("button", { name: "Verify email" }).click();
     await expect(page).toHaveURL(/\/students\/new$/);
+    // Let the sign-up's own navigation finish before leaving, or it can land on top of the next page (flaky in CI).
+    await expect(page.getByRole("heading", { name: "Set up the student account" })).toBeVisible();
     await page.context().clearCookies();
 
     await page.goto("/sign-up?for=me");
+    await expect(page.getByLabel("Your name")).toBeVisible();
     await fillForMe(page, { name: "Atticus", email, password: "learnerpass1", dob: ["1", "January", "1980"] });
     await expect(page.locator("#f-email-err")).toHaveText("An account with this email already exists. Sign in instead.");
   } finally {
