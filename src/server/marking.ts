@@ -66,10 +66,12 @@ export async function markExamJob(payload: unknown) {
   const correctCount = result.filter((r) => r.correct).length;
 
   let writeNext = false;
+  let markedNow = false;
   await db.transaction(async (tx) => {
     // Lock the exam row: only one marking run may finish it.
     const locked = await tx.execute<{ status: string }>(sql`select status from exams where id = ${examId} for update`);
     if (locked.rows[0]?.status !== "marking") return;
+    markedNow = true;
 
     const [student] = await tx.select().from(students).where(eq(students.id, exam.studentId));
     const [track] = await tx.select().from(tracks).where(eq(tracks.id, exam.trackId));
@@ -138,6 +140,8 @@ export async function markExamJob(payload: unknown) {
   });
 
   if (writeNext) await enqueue("write_exam", { trackId: exam.trackId });
+  // 0.3: questions missed on topics that need work become flashcards.
+  if (markedNow) await enqueue("write_flashcards", { trackId: exam.trackId, reason: "missed", examId });
 }
 
 /** For 4.1d: is the exam still being marked? */

@@ -239,6 +239,8 @@ export async function createTrack(input: { trackId: string; studentName: string 
     });
   });
   await enqueue("write_exam", { trackId: input.trackId });
+  // 0.3: the starter flashcard deck, written in the background too.
+  await enqueue("write_flashcards", { trackId: input.trackId, reason: "starter" });
 }
 
 /** "Create track" (2f). Only an agreed, complete preview can go live (rules §2). */

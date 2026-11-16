@@ -199,6 +199,8 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
     if (writeNext) await tx.update(tracks).set({ nextExam: "writing" }).where(eq(tracks.id, trackId));
   });
   if (writeNext) await enqueue("write_exam", { trackId });
+  // 0.3: cards for new topics (and the few revision cards after a restart); topics with cards are left as they are.
+  if (u.newTopics.length || mode === "restart") await enqueue("write_flashcards", { trackId, reason: "starter" });
 }
 
 /** "Start the track again" (2j) / "Apply changes" (Add material). Only an agreed, complete update is applied. */

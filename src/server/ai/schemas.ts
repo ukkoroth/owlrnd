@@ -77,3 +77,17 @@ export const trackUpdateSchema = z.object({
   ready: z.boolean().describe("True only when the parent has seen the proposed change and agreed to it."),
 });
 export type TrackUpdateOutput = z.infer<typeof trackUpdateSchema>;
+
+/** 0.3 Flashcards: the cards written for a track's deck. */
+export const flashcardsSchema = z.object({
+  cards: z.array(
+    z.object({
+      topicKey: z.string(),
+      front: z.string().describe("A question or term, one or two lines."),
+      answer: z.string().describe("A word, a number with its unit, or one short sentence."),
+      explanation: z.string().describe("One or two sentences on why, shown with the answer."),
+      missedKey: z.string().nullable().describe("For a card made from a missed exam question: its key (e.g. M1). Otherwise null."),
+    }),
+  ),
+});
+export type FlashcardsOutput = z.infer<typeof flashcardsSchema>;

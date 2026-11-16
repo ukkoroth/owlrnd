@@ -4,6 +4,8 @@ import { defaultGoal, goalLabel, type TrackPreview } from "@/domain/tracks";
 import type { TrackChatOutput } from "./schemas";
 import type { TrackChatInput } from "./trackChat";
 import type { WriteQuestionsInput } from "./writeQuestions";
+import type { WriteFlashcardsInput } from "./writeFlashcards";
+import type { WrittenCard } from "@/domain/flashcards";
 import type { AnswerToMark, MarkedAnswer } from "./markAnswers";
 import type { TrackUpdateInput } from "./trackUpdate";
 import type { TrackUpdateOutput } from "./schemas";
@@ -120,4 +122,24 @@ export async function fakeTrackUpdate(input: TrackUpdateInput): Promise<TrackUpd
     ? `Agreed. ${input.mode === "restart" ? 'Press "Start the track again".' : 'Press "Apply changes".'}`
     : `I would add ${topics}${input.mode === "restart" ? ", keep the earlier topics as revision" : " from the next exam"}, with ${goalLine}. Shall I go ahead?`;
   return { reply, extracted, update: u, ready };
+}
+
+/** Deterministic flashcards: the counts asked for, and one card per missed question. */
+export async function fakeWriteFlashcards(input: WriteFlashcardsInput): Promise<WrittenCard[]> {
+  const known = new Set(input.knownFronts.map((f) => f.toLowerCase()));
+  const cards: WrittenCard[] = [];
+  for (const p of input.plan) {
+    const name = input.topics.find((t) => t.key === p.topicKey)?.name ?? p.topicKey;
+    for (let i = 1, made = 0; made < p.count; i++) {
+      const front = `${name}: key idea ${i}?`;
+      if (known.has(front.toLowerCase())) continue;
+      known.add(front.toLowerCase());
+      cards.push({ topicKey: p.topicKey, front, answer: `Answer ${i} on ${name}`, explanation: `Why ${i}: it follows from ${name}.`, missedKey: null });
+      made++;
+    }
+  }
+  for (const m of input.missed) {
+    cards.push({ topicKey: m.topicKey, front: `In other words: ${m.question}`.slice(0, 200), answer: m.expected.slice(0, 120) || "See the explanation", explanation: (m.explanation || "From your exam.").slice(0, 300), missedKey: m.key });
+  }
+  return cards;
 }

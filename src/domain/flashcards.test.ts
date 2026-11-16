@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import { dueAfter, nextBox, planStarter, planTopUp, validateCards, type DeckTopic } from "./flashcards";
+
+const topic = (key: string, over: Partial<DeckTopic> = {}): DeckTopic => ({ key, strength: "not_tested", revision: false, existing: 0, ...over });
+
+describe("planStarter", () => {
+  it("about 6 per active topic and 2 per revision topic, counting cards they have", () => {
+    expect(planStarter([topic("T1"), topic("T2", { existing: 4 }), topic("T3", { revision: true })], 0)).toEqual([
+      { topicKey: "T1", count: 6 },
+      { topicKey: "T2", count: 2 },
+      { topicKey: "T3", count: 2 },
+    ]);
+  });
+  it("at most 60 in one go, and never past 200 in the deck", () => {
+    const many = Array.from({ length: 12 }, (_, i) => topic(`T${i + 1}`));
+    expect(planStarter(many, 0).reduce((s, x) => s + x.count, 0)).toBe(60);
+    expect(planStarter(many, 195).reduce((s, x) => s + x.count, 0)).toBe(5);
+    expect(planStarter(many, 200)).toEqual([]);
+  });
+});
+
+describe("planTopUp", () => {
+  it("gives more cards to weak and untested topics, and to topics with fewer cards", () => {
+    const plan = planTopUp([topic("W", { strength: "needs_work" }), topic("N"), topic("S", { strength: "strong", existing: 12 }), topic("R", { revision: true })], 20);
+    const count = (k: string) => plan.find((p) => p.topicKey === k)?.count ?? 0;
+    expect(plan.reduce((s, x) => s + x.count, 0)).toBe(10);
+    expect(count("W")).toBeGreaterThan(count("N"));
+    expect(count("N")).toBeGreaterThan(count("S"));
+    expect(count("R")).toBe(0);
+  });
+  it("nothing when the deck is full", () => expect(planTopUp([topic("W")], 200)).toEqual([]));
+});
+
+describe("validateCards", () => {
+  const ok = { topicKey: "T1", front: "What is the unit of resistance?", answer: "Ohm", explanation: "Resistance is measured in ohms (Ω).", missedKey: null };
+  it("accepts good cards and refuses unknown topics, empty or long fields, and repeats", () => {
+    expect(validateCards([ok], ["T1"], [])).toEqual([]);
+    expect(validateCards([{ ...ok, topicKey: "T9" }], ["T1"], [])).toHaveLength(1);
+    expect(validateCards([{ ...ok, answer: "" }], ["T1"], [])).toHaveLength(1);
+    expect(validateCards([{ ...ok, front: "x".repeat(201) }], ["T1"], [])).toHaveLength(1);
+    expect(validateCards([ok], ["T1"], ["what is the UNIT of resistance"])).toHaveLength(1);
+    expect(validateCards([ok, ok], ["T1"], [])).toHaveLength(1);
+    expect(validateCards([{ ...ok, missedKey: "M1" }], ["T1"], [], ["M1"])).toEqual([]);
+  });
+});
+
+describe("spaced repetition", () => {
+  const now = new Date("2026-11-16T09:00:00Z");
+  it("Got it moves up a box (to 5 at most); Not yet goes back to box 1", () => {
+    expect(nextBox(1, "got_it")).toBe(2);
+    expect(nextBox(5, "got_it")).toBe(5);
+    expect(nextBox(4, "not_yet")).toBe(1);
+  });
+  it("due again after 1, 2, 4, 8, 16 days", () => {
+    expect(dueAfter(1, now).toISOString()).toBe("2026-11-17T09:00:00.000Z");
+    expect(dueAfter(5, now).toISOString()).toBe("2026-12-02T09:00:00.000Z");
+  });
+});

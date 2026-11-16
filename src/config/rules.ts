@@ -96,6 +96,34 @@ export const rules = {
     pauseAfterDays: 30,
   },
 
+  /**
+   * 0.3 Flashcards (docs/plan-0.3-flashcards.md; owner approved the defaults, 2026-11-16). Practice only: cards
+   * never change scores, topic strength or goals.
+   */
+  flashcards: {
+    /** Starter deck when a track is created or gets new topics: cards per active topic, and at most this many. */
+    starterPerTopic: 6,
+    starterMax: 60,
+    /** Revision topics (after a restart) get this many each. */
+    revisionPerTopic: 2,
+    /** A deck never grows past this. */
+    deckMax: 200,
+    /** After a marked exam, up to this many missed questions (on topics needing work) become cards. */
+    missedPerExam: 3,
+    /** Cards written when a learner practises and too few are due. */
+    topUp: 10,
+    /** About this many cards in a session. */
+    sessionSize: 10,
+    /** Days until a card is due again, by Leitner box 1–5 ("Got it" moves up a box, "Not yet" back to box 1). */
+    boxDays: [1, 2, 4, 8, 16],
+    /** Points for finishing a session of at least `minCards` cards; at most `maxSessionsPerDay` count per track. */
+    points: { perSession: 5, minCards: 8, maxSessionsPerDay: 2 },
+    /** Card lengths the writer must keep to (characters). */
+    maxFront: 200,
+    maxAnswer: 120,
+    maxExplanation: 300,
+  },
+
   /** §3 Goals: "score X / 10 or better in N exams in a row" */
   goal: {
     defaultThreshold: 8, // X

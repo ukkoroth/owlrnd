@@ -168,7 +168,7 @@ export const signInFailures = pgTable(
 
 // ── AI cost controls ────────────────────────────────────────────────────────
 
-export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers"]);
+export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers", "write_flashcards"]);
 
 /**
  * One row per Claude call, with its estimated cost. The family link is cleared if the account is deleted, so the
@@ -485,7 +485,7 @@ export const topicResults = pgTable(
   (t) => [index("topic_results_topic_idx").on(t.studentId, t.topicId, t.answeredAt)],
 );
 
-export const pointsKind = pgEnum("points_kind", ["finish", "correct", "improvement", "topic_strong", "perfect", "streak"]);
+export const pointsKind = pgEnum("points_kind", ["finish", "correct", "improvement", "topic_strong", "perfect", "streak", "flashcards"]);
 
 /** Points only add up (rules §8): the total is the sum of these rows. */
 export const pointsEvents = pgTable(
@@ -570,4 +570,76 @@ export const consentEvents = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("consent_events_request_idx").on(t.requestId, t.at), index("consent_events_student_idx").on(t.studentId, t.at)],
+);
+
+// ── 0.3 Flashcards (docs/plan-0.3-flashcards.md) ────────────────────────────
+
+export const flashcardSource = pgEnum("flashcard_source", ["material", "missed_question"]);
+
+/**
+ * A track's deck. Cards belong to the track (and so to one learner's account; terms, "Your material") and go with
+ * it. `box` and `dueAt` are the spaced-repetition state: box 1–5, due again after rules.flashcards.boxDays.
+ */
+export const flashcards = pgTable(
+  "flashcards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trackId: uuid("track_id")
+      .notNull()
+      .references(() => tracks.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    front: text("front").notNull(),
+    answer: text("answer").notNull(),
+    explanation: text("explanation").notNull(),
+    source: flashcardSource("source").notNull().default("material"),
+    /** For a card made from a missed exam question: that question (so it becomes a card only once). */
+    sourceQuestionId: uuid("source_question_id").references(() => questions.id, { onDelete: "set null" }),
+    box: integer("box").notNull().default(1),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("flashcards_track_due_idx").on(t.trackId, t.dueAt),
+    index("flashcards_topic_idx").on(t.topicId),
+    uniqueIndex("flashcards_source_question_unique").on(t.trackId, t.sourceQuestionId),
+  ],
+);
+
+/** One practice session on a track's deck. */
+export const flashcardSessions = pgTable(
+  "flashcard_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    trackId: uuid("track_id")
+      .notNull()
+      .references(() => tracks.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    cardsSeen: integer("cards_seen").notNull().default(0),
+    gotIt: integer("got_it").notNull().default(0),
+  },
+  (t) => [index("flashcard_sessions_student_idx").on(t.studentId, t.startedAt), index("flashcard_sessions_track_idx").on(t.trackId, t.startedAt)],
+);
+
+export const flashcardResult = pgEnum("flashcard_result", ["got_it", "not_yet"]);
+
+/** Each card shown in a session and how the learner said it went. */
+export const flashcardReviews = pgTable(
+  "flashcard_reviews",
+  {
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => flashcardSessions.id, { onDelete: "cascade" }),
+    cardId: uuid("card_id")
+      .notNull()
+      .references(() => flashcards.id, { onDelete: "cascade" }),
+    result: flashcardResult("result").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.sessionId, t.cardId] })],
 );

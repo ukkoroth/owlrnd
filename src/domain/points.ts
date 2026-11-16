@@ -1,6 +1,6 @@
 import { rules } from "@/config/rules";
 
-export type PointsKind = "finish" | "correct" | "improvement" | "topic_strong" | "perfect" | "streak";
+export type PointsKind = "finish" | "correct" | "improvement" | "topic_strong" | "perfect" | "streak" | "flashcards";
 export type PointsLine = { kind: PointsKind; points: number; label: string };
 
 export type ExamPointsInput = {
@@ -85,5 +85,6 @@ export function todaysBreakdown(events: PointsEventLike[], today: string, dayOf:
   add("topic_strong", (es) => `${plural(es.length, "weak topic", "weak topics")} became strong`);
   add("perfect", (es) => plural(es.length, "perfect 10 / 10", "perfect 10 / 10s"));
   add("streak", (es) => `${Math.max(...es.map((e) => lead(e.label.replace(/^\D+/, ""))))} days in a row`);
+  add("flashcards", (es) => `Finished ${plural(es.length, "flashcard session", "flashcard sessions")}`);
   return { lines, total: lines.reduce((s, l) => s + l.points, 0) };
 }
