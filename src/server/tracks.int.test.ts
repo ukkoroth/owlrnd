@@ -75,10 +75,13 @@ describe("track chat (2e/2f)", () => {
 });
 
 describe("creating a track", () => {
-  it("only goes live once the preview is agreed, then writes the first exam in the background", async () => {
+  it("goes live as soon as the preview has a name, topics and a goal, agreed or not (owner, 2026-11-16)", async () => {
     const { parent, student } = await family();
-    await sendChatTurn(parentActor(parent.id), student.id, "Physics chapter 12: Ohm's law, resistors in series and resistors in parallel.", []);
-    expect(await createTrackFromDraft(parentActor(parent.id), student.id)).toEqual({ ok: false, error: "Agree the name, topics and goal in the chat first." });
+    expect(await createTrackFromDraft(parentActor(parent.id), student.id)).toEqual({ ok: false, error: "There is no track to create yet." });
+    const res = await sendChatTurn(parentActor(parent.id), student.id, "Physics chapter 12: Ohm's law, resistors in series and resistors in parallel.", []);
+    if (!res.ok) throw new Error("chat");
+    expect(res.preview.ready).toBe(false); // not agreed in the chat yet…
+    expect((await createTrackFromDraft(parentActor(parent.id), student.id)).ok).toBe(true); // …but complete, so it can be created
 
     const agreed = await agreedDraft(parent.id, (await makeStudent(parent.id)).id);
     expect(agreed.preview.ready).toBe(true);

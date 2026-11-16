@@ -46,7 +46,22 @@ export function formatTestDate(iso: string): string {
     .replace(",", "");
 }
 
-/** Rules §2: the preview must name the track, list topics and agree a goal before Create track is enabled. */
+/**
+ * What a preview still needs before "Create track" works, in the preview card's words (owner, 2026-11-16: enable it
+ * as soon as the minimum is in, and show what's missing). Empty when it can be created.
+ */
+export function missingForTrack(p: TrackPreview): ("Name" | "Topics found" | "Goal")[] {
+  const out: ("Name" | "Topics found" | "Goal")[] = [];
+  if (!p.name?.trim() || p.name.trim().length > rules.track.maxNameLength) out.push("Name");
+  if (!p.topics.length || p.topics.length > rules.track.maxTopics || !p.topics.every((t) => t.name.trim().length > 0)) out.push("Topics found");
+  if (!isValidGoal(p.goal)) out.push("Goal");
+  return out;
+}
+
+/**
+ * Rules §2: the preview must name the track, list topics and have a goal before Create track is enabled. From
+ * 2026-11-16 (owner) that's all: the button works the moment these are in, without waiting for the chat to agree.
+ */
 export function canCreateTrack(p: TrackPreview): boolean {
   return (
     !!p.name?.trim() &&

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { createTrack, sendTurn, startOver } from "@/app/_actions/tracks";
 import { rules } from "@/config/rules";
-import { canCreateTrack, formatTestDate, goalLabel, type StoredPreview } from "@/domain/tracks";
+import { canCreateTrack, formatTestDate, goalLabel, missingForTrack, type StoredPreview } from "@/domain/tracks";
 import { tracksHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { ChatMessage } from "@/server/tracks";
 import { ChatThread, PanelRows } from "./chat/ChatThread";
@@ -54,7 +54,8 @@ export function TrackChat({ studentId, audience, firstName, isFirst: isFirstProp
       } else setError(res.error);
     });
 
-  const ready = preview.ready && canCreateTrack(preview);
+  // Owner, 2026-11-16: Create track works as soon as the minimum is in; the chat can keep refining until then.
+  const ready = canCreateTrack(preview);
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -133,7 +134,7 @@ function PreviewPanel(props: {
         </span>
       </div>
       {!props.hasDraft && <p className="mb-2 text-sm text-ink-muted">Fills in as you chat.</p>}
-      <PanelRows rows={rows} />
+      <PanelRows rows={rows} needed={props.hasDraft && !created ? missingForTrack(p) : []} />
       {created ? (
         <Link href={`${tracksHref(props.audience)}?created=1`} className="btn-primary mt-4 w-full">
           {trackWords(props.audience).openTracks}
@@ -143,7 +144,12 @@ function PreviewPanel(props: {
           <button type="button" className="btn-primary mt-4 w-full" disabled={!ready || props.creating} onClick={props.onCreate}>
             {props.creating ? "Creating…" : "Create track"}
           </button>
-          {!ready && props.hasDraft && <p className="mt-2 text-[13px] text-ink-muted">Agree the name, topics and goal in the chat to create the track.</p>}
+          {!ready && props.hasDraft && (
+            <p className="mt-2 text-[13px] font-semibold text-danger-text">
+              Still needed: {missingForTrack(p).map((m) => (m === "Topics found" ? "topics" : m.toLowerCase())).join(", ")}. Add them in the chat.
+            </p>
+          )}
+          {ready && !props.creating && <p className="mt-2 text-[13px] text-ink-muted">You can create it now, or keep changing it in the chat.</p>}
           {props.hasDraft && (
             <button
               type="button"

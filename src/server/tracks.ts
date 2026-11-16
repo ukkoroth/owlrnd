@@ -243,7 +243,7 @@ export async function createTrack(input: { trackId: string; studentName: string 
   await enqueue("write_flashcards", { trackId: input.trackId, reason: "starter" });
 }
 
-/** "Create track" (2f). Only an agreed, complete preview can go live (rules §2). */
+/** "Create track" (2f). Any complete preview can go live: a name, topics and a goal (rules §2, owner 2026-11-16). */
 export async function createTrackFromDraft(actor: Actor, studentId: string) {
   const own = await authorizeLearner(actor, "manageTracks", studentId);
   if (!own) return { ok: false as const, error: "Student not found." };
@@ -251,7 +251,7 @@ export async function createTrackFromDraft(actor: Actor, studentId: string) {
   const draft = await findDraft(studentId);
   if (!draft) return { ok: false as const, error: "There is no track to create yet." };
   const { preview } = await loadChat(draft.id);
-  if (!preview.ready || !canCreateTrack(preview)) return { ok: false as const, error: "Agree the name, topics and goal in the chat first." };
+  if (!canCreateTrack(preview)) return { ok: false as const, error: "The track still needs a name, topics and a goal." };
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
     .from(tracks)

@@ -36,8 +36,10 @@ test("M3 done-when: a parent creates a track from a description and photos, agre
     await expect(preview(page)).toContainText("Ohm's law, Resistors in series, Resistors in parallel");
     await expect(preview(page)).toContainText("Fri 20 Nov");
     await expect(preview(page)).toContainText("8 / 10 or better in 3 exams in a row");
-    await expect(preview(page)).toContainText("Draft");
-    await expect(page.getByRole("button", { name: "Create track" })).toBeDisabled();
+    // Name, topics and goal are in: Create track works now (owner, 2026-11-16), though the chat can go on.
+    await expect(preview(page)).toContainText("Ready");
+    await expect(preview(page)).not.toContainText("Still needed");
+    await expect(page.getByRole("button", { name: "Create track" })).toBeEnabled();
 
     // The conversation survives a reload.
     await page.reload();

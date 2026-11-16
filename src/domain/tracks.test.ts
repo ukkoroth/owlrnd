@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCreateTrack, emptyPreview, formatTestDate, goalLabel, isIsoDate, trackStatusLine, type TrackPreview } from "./tracks";
+import { canCreateTrack, emptyPreview, formatTestDate, goalLabel, isIsoDate, missingForTrack, trackStatusLine, type TrackPreview } from "./tracks";
 
 const ready: TrackPreview = {
   name: "Physics: Current electricity",
@@ -41,6 +41,15 @@ describe("canCreateTrack", () => {
     expect(canCreateTrack({ ...ready, goal: null })).toBe(false);
     expect(canCreateTrack({ ...ready, goal: { threshold: 11, runLength: 3 } })).toBe(false);
     expect(canCreateTrack({ ...ready, testDate: "next Friday" })).toBe(false);
+  });
+});
+
+describe("missingForTrack (the preview card's 'Still needed')", () => {
+  it("lists what's missing in the card's words; nothing once it can be created", () => {
+    expect(missingForTrack(emptyPreview)).toEqual(["Name", "Topics found", "Goal"]);
+    expect(missingForTrack({ ...ready, goal: null })).toEqual(["Goal"]);
+    expect(missingForTrack({ ...ready, testDate: null })).toEqual([]); // the date is optional
+    expect(missingForTrack(ready)).toEqual([]);
   });
 });
 

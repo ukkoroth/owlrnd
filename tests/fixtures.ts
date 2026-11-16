@@ -52,7 +52,7 @@ export async function ageConsentRequests(studentId: string, days: number) {
 }
 
 export async function deleteSelfLearner(studentId: string) {
-  await pool.query(`delete from students where id = $1 and type = 'self_managed'`, [studentId]);
+  await withDeadlockRetry(() => pool.query(`delete from students where id = $1 and type = 'self_managed'`, [studentId]));
 }
 
 /** A self-managed learner by email, as sign-up stored them (or null). */
@@ -90,8 +90,20 @@ export async function addAiSpend(holder: { parentId: string } | { studentId: str
   );
 }
 
+/** Retries a cleanup that deadlocks with a background job still writing for the same family (e.g. flashcards). */
+async function withDeadlockRetry(run: () => Promise<unknown>) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (e) {
+      if ((e as { code?: string }).code !== "40P01" || attempt >= 4) throw e;
+      await new Promise((r) => setTimeout(r, 200 * attempt));
+    }
+  }
+}
+
 export async function deleteParentByEmail(email: string) {
-  await pool.query(`delete from parents where lower(email) = lower($1)`, [email]);
+  await withDeadlockRetry(() => pool.query(`delete from parents where lower(email) = lower($1)`, [email]));
   await pool.query(`delete from invitations where lower(email) = lower($1)`, [email]);
   await pool.query(`delete from access_requests where lower(email) = lower($1)`, [email]);
 }

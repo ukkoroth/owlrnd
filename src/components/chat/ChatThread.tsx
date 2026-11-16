@@ -241,15 +241,19 @@ function CameraIcon() {
 }
 
 /** The side panel's rows (New track / Track update). */
-export function PanelRows({ rows }: { rows: [string, string | null][] }) {
+/** The preview card's rows. Rows named in `needed` are still missing and show "Still needed" in red. */
+export function PanelRows({ rows, needed = [] }: { rows: [string, string | null][]; needed?: string[] }) {
   return (
     <dl className="divide-y divide-line border-b border-line">
-      {rows.map(([label, value]) => (
-        <div key={label} className="py-2.5">
-          <dt className="text-[13px] text-ink-muted">{label}</dt>
-          <dd className={`font-semibold ${value ? "" : "text-ink-muted/60"}`}>{value ?? "—"}</dd>
-        </div>
-      ))}
+      {rows.map(([label, value]) => {
+        const missing = needed.includes(label);
+        return (
+          <div key={label} className={`py-2.5 ${missing ? "-mx-2 rounded bg-danger-fill px-2" : ""}`}>
+            <dt className={`text-[13px] ${missing ? "font-semibold text-danger-text" : "text-ink-muted"}`}>{label}</dt>
+            <dd className={`font-semibold ${missing ? "text-danger-text" : value ? "" : "text-ink-muted/60"}`}>{missing ? (value ? `${value} (check this)` : "Still needed") : (value ?? "—")}</dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }

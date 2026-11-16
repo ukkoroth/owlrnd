@@ -59,6 +59,7 @@ From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as b
 - **Status:** `active`, `paused` (by the parent) or `goal reached` (stopped).
 - Only active tracks produce new exams. Paused and goal-reached tracks keep their history.
 - The parent creates tracks in the AI chat (2e, 2f). Nothing goes live until the parent confirms.
+- **Create track** works as soon as the preview has a name, at least one topic and a goal (the test date is optional), whether or not the chat has finished agreeing it; the parent can create it then or keep refining. Until then the preview card marks what's still needed in red (owner, 2026-11-16).
 - Pause and resume are parent actions. Archive (on goal-reached tracks) hides the track from the student's lists but keeps its history.
 - "Select from packages" is not available in 0.1; show it as Coming soon (2c).
 
