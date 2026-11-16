@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { PageHeader } from "@/components/PageHeader";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getOwnStudent } from "@/server/students";
 
 export const metadata: Metadata = { title: "Set up practice · owlrnd" };
@@ -16,9 +16,9 @@ const Tick = () => (
 
 // 2c: "Set up from scratch" is active; "Select from packages" is Coming soon (rules §2).
 export default async function SetupChoicePage({ params }: { params: Promise<{ id: string }> }) {
-  const { parent } = await requireParent();
+  const { actor } = await requireShell("parent");
   const { id } = await params;
-  const student = await getOwnStudent(parent.id, id);
+  const student = await getOwnStudent(actor, id);
   if (!student) notFound();
   const name = student.name;
 

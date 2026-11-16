@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress, NeedsWork, ScoreBars, StrengthLegend, TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getStudentTracks, type StudentTrack } from "@/server/exams";
 
 export const metadata: Metadata = { title: "Your tracks · owlrnd" };
@@ -18,7 +18,7 @@ const statusLine = (t: StudentTrack) => {
 
 // 4.1a. Score bars and needs-work come with marking (M5).
 export default async function YourTracksPage() {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const list = await getStudentTracks(student.id);
 
   return (

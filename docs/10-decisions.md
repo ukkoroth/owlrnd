@@ -6,6 +6,7 @@ Use the default until the owner decides. Keep each one configurable.
 | --- | --- | --- |
 | Technology stack | Not decided. Confirm with the owner before starting. | none |
 | Goal form | "X / 10 or better in N exams in a row", X = 8, N = 3; parent can change | §3 |
+| Goal coverage *(owner, 2026-11-15, 0.2)* | Every active topic strong as well as the score run (`all_strong`); alternatives `all_tested` or `off` | §3 |
 | Strong topic | At least 80% of its last 5 questions correct, with at least 3 answered | §4 |
 | Topic mix per exam | 50% needs work, 30% not tested, 20% strong repeats | §4 |
 | Revision after adding topics | About 2 questions per exam from earlier topics | §3 |
@@ -19,7 +20,9 @@ Use the default until the owner decides. Keep each one configurable.
 | Level thresholds | 500, 2,000, 5,000, 10,000, 20,000 | §8 |
 | Time zone for "today" | The student's time zone, set from the parent's device at sign-up | §9 |
 | What Archive does | Hides a goal-reached track from the student; history kept | §2 |
-| Session length *(owner, M1)* | Signed in until Sign out, or 30 days without use (sliding) | §1 |
+| Session length *(0.2 plan, M7; was 30 days in 0.1)* | Signed in until Sign out, or without use for 7 days (parents, self-managed learners) or 12 hours (parent-managed learners), sliding | §1 |
+| One email, one account *(owner, 2026-11-16)* | An email belongs to a parent or a self-managed learner, never both; sign-up refuses an email the other kind of account uses | §1 |
+| AI allowance *(owner, 2026-11-15)* | $10 of Claude use per account holder (a family, or a self-managed learner) for the whole demo, not per month. At the limit new chats and exams pause (marking still finishes) and the account is asked to contact owlrnd to buy a package. The owner can raise one account's limit with `npm run ai:allowance` | §1 |
 | Forgot password, unknown account *(owner, M1)* | Say "We couldn't find that username or email." | §1 |
 | Code scope | A new code cancels earlier unused codes for the same person and purpose only (a student's sign-in code doesn't cancel the parent's or a sibling's); the 5-per-hour limit is counted the same way | §1 |
 | Wrong passwords | 10 failed sign-ins for a username or email within 15 minutes pauses sign-in for it | §1 |

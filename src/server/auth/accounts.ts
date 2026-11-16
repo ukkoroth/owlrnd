@@ -8,20 +8,41 @@ import { parents, signInFailures, students } from "../db/schema";
 
 export type Parent = typeof parents.$inferSelect;
 export type Student = typeof students.$inferSelect;
-export type Account = { kind: "parent"; parent: Parent } | { kind: "student"; student: Student; parent: Parent };
+/** A student is parent-managed (with their parent) or self-managed (parent null). */
+export type Account = { kind: "parent"; parent: Parent } | { kind: "student"; student: Student; parent: Parent | null };
 
-/** Look up "username or email" (screens 3a, 5g). */
+/**
+ * Look up "username or email" (screens 3a, 5g). An email belongs to at most one account (owner, 2026-11-16): a
+ * parent, or a self-managed learner. Usernames belong to parent-managed learners.
+ */
 export async function findAccount(id: Identifier): Promise<Account | null> {
   if (id.kind === "email") {
     const parent = await findParentByEmail(id.value);
-    return parent ? { kind: "parent", parent } : null;
+    if (parent) return { kind: "parent", parent };
+    const learner = await findSelfManagedByEmail(id.value);
+    return learner ? { kind: "student", student: learner, parent: null } : null;
   }
   const [row] = await db
     .select({ student: students, parent: parents })
     .from(students)
     .innerJoin(parents, eq(parents.id, students.parentId))
-    .where(eq(sql`lower(${students.username})`, id.value.toLowerCase()));
+    .where(and(eq(sql`lower(${students.username})`, id.value.toLowerCase()), eq(students.type, "parent_managed")));
   return row ? { kind: "student", ...row } : null;
+}
+
+export async function findSelfManagedByEmail(email: string) {
+  const [learner] = await db
+    .select()
+    .from(students)
+    .where(and(eq(sql`lower(${students.email})`, email.toLowerCase()), eq(students.type, "self_managed")));
+  return learner ?? null;
+}
+
+/** The pending-step owner (pending.ts, codes.ts) for an account found at sign-in or forgot password. */
+export function codeOwnerOf(account: Account): { parentId: string | null; studentId: string | null } {
+  return account.kind === "parent"
+    ? { parentId: account.parent.id, studentId: null }
+    : { parentId: account.student.parentId, studentId: account.student.id };
 }
 
 export async function findParentByEmail(email: string) {
@@ -34,8 +55,15 @@ export async function getParent(id: string) {
   return parent ?? null;
 }
 
-/** True if a *verified* parent other than `exceptId` already uses this email. */
+/** True if a self-managed learner already signs in with this email (one email, one account). */
+async function emailTakenByLearner(email: string, tx: Pick<typeof db, "select"> = db) {
+  const [row] = await tx.select({ id: students.id }).from(students).where(eq(sql`lower(${students.email})`, email.toLowerCase()));
+  return !!row;
+}
+
+/** True if a *verified* parent other than `exceptId`, or any self-managed learner, already uses this email. */
 export async function emailTakenByVerified(email: string, exceptId?: string) {
+  if (await emailTakenByLearner(email)) return true;
   const [row] = await db
     .select({ id: parents.id })
     .from(parents)
@@ -58,6 +86,7 @@ export async function upsertUnverifiedParent(
   pendingParentId: string | null,
 ): Promise<{ ok: true; parentId: string } | { ok: false; reason: "email_taken" }> {
   return db.transaction(async (tx) => {
+    if (await emailTakenByLearner(input.email, tx)) return { ok: false, reason: "email_taken" } as const;
     const [sameEmail] = await tx.select().from(parents).where(eq(sql`lower(${parents.email})`, input.email.toLowerCase()));
     if (sameEmail?.emailVerifiedAt) return { ok: false, reason: "email_taken" } as const;
 
@@ -111,6 +140,7 @@ export async function deleteParent(parentId: string) {
  */
 export async function changeParentEmail(parentId: string, newEmail: string) {
   return db.transaction(async (tx) => {
+    if (await emailTakenByLearner(newEmail, tx)) return false;
     const [other] = await tx
       .select()
       .from(parents)

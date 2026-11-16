@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getPaper } from "@/server/exams";
 import { MarkingProgress } from "./MarkingProgress";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 // 4.1d: shown after submitting while the answers are marked; moves on to the result by itself.
 export default async function MarkingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const { id } = await params;
   const paper = await getPaper(student.id, id);
   if (!paper) notFound();

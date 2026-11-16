@@ -7,7 +7,10 @@ export type CodePurpose = "verify_email" | "sign_in" | "reset_password" | "chang
 
 export type CodeEmail = {
   to: string;
+  /** The account holder's name: the parent, or a self-managed learner. */
   parentName: string;
+  /** The code is for a self-managed learner's own account (no parent involved). */
+  selfManaged?: boolean;
   purpose: CodePurpose;
   code: string;
   /** Set when a student asked for the code (sign-in or reset for a student). */
@@ -40,7 +43,7 @@ export function renderCodeEmail(e: CodeEmail): { subject: string; text: string }
     `    ${e.code}`,
     "",
     `The code works once and expires in ${e.ttlMinutes} minutes.`,
-    "If this wasn't you or your child, you can ignore this email.",
+    e.selfManaged ? "If this wasn't you, you can ignore this email." : "If this wasn't you or your child, you can ignore this email.",
     "",
     "owlrnd",
   ].join("\n");

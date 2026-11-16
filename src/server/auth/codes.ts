@@ -3,43 +3,58 @@ import { and, count, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { canSendCode, checkCodeAttempt, codeExpiry, generateCode, initialTries, normalizeCodeInput } from "@/domain/codes";
 import { rules } from "@/config/rules";
 import { db } from "../db";
-import { codes, parents, students } from "../db/schema";
+import { codes } from "../db/schema";
+import { getParent } from "./accounts";
+import { loadLearner } from "../learners";
 import { emailSender, type CodePurpose } from "../email";
 import { hmac, randomInt, safeEqual } from "./crypto";
 
-/** Codes are scoped to who they are for: a student's sign-in code never cancels the parent's, or a sibling's. */
-export type CodeOwner = { parentId: string; studentId: string | null; purpose: CodePurpose };
+/**
+ * Codes are scoped to who they are for: a student's sign-in code never cancels the parent's, or a sibling's.
+ * A parent's own code: { parentId, studentId: null }. A child's: { parentId, studentId }. A self-managed learner's:
+ * { parentId: null, studentId }.
+ */
+export type CodeOwner = { parentId: string | null; studentId: string | null; purpose: CodePurpose };
 
 const ownerWhere = (o: CodeOwner) =>
   and(
-    eq(codes.parentId, o.parentId),
+    o.parentId ? eq(codes.parentId, o.parentId) : isNull(codes.parentId),
     o.studentId ? eq(codes.studentId, o.studentId) : isNull(codes.studentId),
     eq(codes.purpose, o.purpose),
   );
+
+/**
+ * Who receives the code (rules §1, editions §2.3): the account holder. A parent's code and a child's code go to the
+ * parent; a self-managed learner's goes to the learner. `studentName` is set when the code is for someone else.
+ */
+export async function codeRecipient(owner: Omit<CodeOwner, "purpose">): Promise<{ name: string; email: string; studentName?: string; selfManaged?: boolean }> {
+  if (owner.studentId) {
+    const learner = await loadLearner(owner.studentId);
+    if (!learner) throw new Error("issueCode: student not found");
+    if ((learner.student.parentId ?? null) !== owner.parentId) throw new Error("issueCode: owner doesn't match the student");
+    const { holder, student } = learner;
+    return holder.kind === "parent" ? { name: holder.name, email: holder.email, studentName: student.name } : { name: holder.name, email: holder.email, selfManaged: true };
+  }
+  if (!owner.parentId) throw new Error("issueCode: no owner");
+  const parent = await getParent(owner.parentId);
+  if (!parent) throw new Error("issueCode: parent not found");
+  return { name: parent.name, email: parent.email };
+}
 
 export type IssueResult = { sent: true; sentTo: string } | { sent: false; reason: "rate_limited" };
 
 /**
  * Send a new code (rules §1): invalidates earlier unused codes for the same owner and purpose,
- * allows at most 5 sends an hour, and emails the parent (or the new address, for an email change).
+ * allows at most 5 sends an hour, and emails the account holder (or the new address, for an email change).
  */
 export async function issueCode(owner: CodeOwner & { newEmail?: string }, now = new Date()): Promise<IssueResult> {
-  const [parent] = await db.select({ name: parents.name, email: parents.email }).from(parents).where(eq(parents.id, owner.parentId));
-  if (!parent) throw new Error("issueCode: parent not found");
-
-  let studentName: string | undefined;
-  if (owner.studentId) {
-    const [student] = await db.select({ name: students.name }).from(students).where(eq(students.id, owner.studentId));
-    if (!student) throw new Error("issueCode: student not found");
-    studentName = student.name;
-  }
-
-  const sentTo = owner.purpose === "change_email" ? owner.newEmail! : parent.email;
+  const { name, email, studentName, selfManaged } = await codeRecipient(owner);
+  const sentTo = owner.purpose === "change_email" ? owner.newEmail! : email;
   const code = generateCode(randomInt);
 
   const issued = await db.transaction(async (tx) => {
     // Serialise sends for this owner so the hourly limit can't be raced.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${owner.parentId}:${owner.studentId ?? "-"}:${owner.purpose}`}))`);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${owner.parentId ?? "-"}:${owner.studentId ?? "-"}:${owner.purpose}`}))`);
 
     const hourAgo = new Date(now.getTime() - 60 * 60_000);
     const [{ n } = { n: 0 }] = await tx
@@ -71,7 +86,8 @@ export async function issueCode(owner: CodeOwner & { newEmail?: string }, now = 
 
   await emailSender().sendCode({
     to: sentTo,
-    parentName: parent.name,
+    parentName: name,
+    selfManaged,
     purpose: owner.purpose,
     code,
     studentName,
@@ -123,12 +139,15 @@ export async function verifyCode(owner: CodeOwner, input: string, now = new Date
   }
 }
 
-/** The address an email change is waiting to confirm (latest change_email code still open), if any. */
-export async function pendingNewEmail(parentId: string, now = new Date()): Promise<string | null> {
+/**
+ * The address an email change is waiting to confirm (latest change_email code still open), if any.
+ * `owner` is the account changing its email: a parent ({ parentId, studentId: null }) or a self-managed learner.
+ */
+export async function pendingNewEmail(owner: Omit<CodeOwner, "purpose">, now = new Date()): Promise<string | null> {
   const [latest] = await db
     .select({ newEmail: codes.newEmail, usedAt: codes.usedAt, expiresAt: codes.expiresAt })
     .from(codes)
-    .where(and(eq(codes.parentId, parentId), isNull(codes.studentId), eq(codes.purpose, "change_email")))
+    .where(ownerWhere({ ...owner, purpose: "change_email" }))
     .orderBy(desc(codes.createdAt))
     .limit(1);
   // An expired or locked code still names the address, so "Send a new code" keeps working; a used one doesn't.

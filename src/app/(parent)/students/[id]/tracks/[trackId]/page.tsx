@@ -5,7 +5,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress } from "@/components/TrackBars";
 import { inSentence } from "@/domain/examMix";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { topicStrengths } from "@/server/progress";
 import { examHistory } from "@/server/trackUpdates";
 import { pauseTrack, resumeTrack } from "../actions";
@@ -17,9 +17,9 @@ const statusWord: Record<string, string> = { active: "Active", paused: "Paused",
 
 // 2h
 export default async function ExamHistoryPage({ params }: { params: Promise<{ id: string; trackId: string }> }) {
-  const { parent } = await requireParent();
+  const { actor } = await requireShell("parent");
   const { id, trackId } = await params;
-  const h = await examHistory(parent.id, trackId);
+  const h = await examHistory(actor, trackId);
   if (!h || h.student.id !== id) notFound();
   const { track, student, exams } = h;
   const strengths = (await topicStrengths(student.id, [trackId])).get(trackId) ?? [];

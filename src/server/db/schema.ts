@@ -39,26 +39,77 @@ export const parents = pgTable(
     consentedAt: timestamp("consented_at", { withTimezone: true }),
     /** Which version of the terms and privacy policy they agreed to (config/legal.ts). */
     consentVersion: text("consent_version"),
+    /** The owner's override of the AI allowance for this family (rules.aiLimits.perAccountUsd when null). */
+    aiLimitUsd: numeric("ai_limit_usd", { precision: 10, scale: 2, mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("parents_email_unique").on(sql`lower(${t.email})`)],
 );
 
+/** 0.2 (editions §2.3): who controls a learner. Self-managed learners control themselves; parent-managed, their parent. */
+export const learnerType = pgEnum("learner_type", ["self_managed", "parent_managed"]);
+
 export const students = pgTable(
   "students",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: learnerType("type").notNull().default("parent_managed"),
+    /** Set exactly when the learner is parent-managed. */
+    parentId: uuid("parent_id").references(() => parents.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    className: text("class_name").notNull().default(""),
+    /** Parent-managed learners sign in with a username. */
+    username: text("username"),
+    /** Self-managed learners sign in with their email, which receives their codes. */
+    email: text("email"),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    dateOfBirth: date("date_of_birth", { mode: "string" }),
+    /** Self-managed sign-up consent (as parents.consented_at). */
+    consentedAt: timestamp("consented_at", { withTimezone: true }),
+    consentVersion: text("consent_version"),
+    /** The owner's override of a self-managed learner's AI allowance (rules.aiLimits.perAccountUsd when null). */
+    aiLimitUsd: numeric("ai_limit_usd", { precision: 10, scale: 2, mode: "number" }),
+    passwordHash: text("password_hash").notNull(),
+    timeZone: text("time_zone").notNull().default("UTC"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("students_username_unique").on(sql`lower(${t.username})`),
+    uniqueIndex("students_email_unique").on(sql`lower(${t.email})`),
+    index("students_parent_idx").on(t.parentId),
+    check("students_parent_by_type", sql`(${t.type} = 'parent_managed') = (${t.parentId} is not null)`),
+    check(
+      "students_sign_in_by_type",
+      sql`(${t.type} = 'parent_managed' and ${t.username} is not null) or (${t.type} = 'self_managed' and ${t.email} is not null)`,
+    ),
+  ],
+);
+
+export const parentLinkKind = pgEnum("parent_link_kind", ["manages", "consents"]);
+export const parentLinkStatus = pgEnum("parent_link_status", ["active", "pending", "declined", "ended"]);
+
+/**
+ * Parent ↔ learner (editions §3). "manages": a parent-managed child (students.parent_id is the fast path).
+ * "consents": a parent consenting for an under-18 self-managed learner (M10).
+ */
+export const parentLinks = pgTable(
+  "parent_links",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     parentId: uuid("parent_id")
       .notNull()
       .references(() => parents.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    className: text("class_name").notNull(),
-    username: text("username").notNull(),
-    passwordHash: text("password_hash").notNull(),
-    timeZone: text("time_zone").notNull().default("UTC"),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    kind: parentLinkKind("kind").notNull(),
+    status: parentLinkStatus("status").notNull().default("active"),
+    /** "email_code" in 0.2; "manual" and "digilocker" later (roadmap items 13, 14). */
+    verificationLevel: text("verification_level"),
+    givenAt: timestamp("given_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("students_username_unique").on(sql`lower(${t.username})`), index("students_parent_idx").on(t.parentId)],
+  (t) => [uniqueIndex("parent_links_unique").on(t.parentId, t.studentId, t.kind), index("parent_links_student_idx").on(t.studentId)],
 );
 
 export const codePurpose = pgEnum("code_purpose", ["verify_email", "sign_in", "reset_password", "change_email"]);
@@ -67,9 +118,8 @@ export const codes = pgTable(
   "codes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    parentId: uuid("parent_id")
-      .notNull()
-      .references(() => parents.id, { onDelete: "cascade" }),
+    /** The parent's own codes, and their children's (with studentId). Null for a self-managed learner's codes. */
+    parentId: uuid("parent_id").references(() => parents.id, { onDelete: "cascade" }),
     /** Set when the code was requested for a student (sign-in or reset). */
     studentId: uuid("student_id").references(() => students.id, { onDelete: "cascade" }),
     purpose: codePurpose("purpose").notNull(),
@@ -83,7 +133,11 @@ export const codes = pgTable(
     invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("codes_owner_idx").on(t.parentId, t.purpose, t.createdAt)],
+  (t) => [
+    index("codes_owner_idx").on(t.parentId, t.purpose, t.createdAt),
+    index("codes_student_idx").on(t.studentId, t.purpose, t.createdAt),
+    check("codes_has_owner", sql`${t.parentId} is not null or ${t.studentId} is not null`),
+  ],
 );
 
 export const sessions = pgTable(
@@ -125,6 +179,8 @@ export const aiUsage = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     parentId: uuid("parent_id").references(() => parents.id, { onDelete: "set null" }),
+    /** The learner the call was for; for a self-managed learner (no parent) this is the account holder. */
+    studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
     purpose: aiPurpose("purpose").notNull(),
     model: text("model").notNull(),
     inputTokens: integer("input_tokens").notNull(),
@@ -134,7 +190,11 @@ export const aiUsage = pgTable(
     costUsd: numeric("cost_usd", { precision: 12, scale: 6, mode: "number" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("ai_usage_created_idx").on(t.createdAt), index("ai_usage_parent_idx").on(t.parentId, t.createdAt)],
+  (t) => [
+    index("ai_usage_created_idx").on(t.createdAt),
+    index("ai_usage_parent_idx").on(t.parentId, t.createdAt),
+    index("ai_usage_student_idx").on(t.studentId, t.createdAt),
+  ],
 );
 
 /** Budget emails already sent, so each goes once per month ("2026-11", "warn" | "reached"). */
@@ -190,6 +250,8 @@ export const invitations = pgTable(
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     claimedByParentId: uuid("claimed_by_parent_id").references(() => parents.id, { onDelete: "set null" }),
+    /** 0.2: a self-managed learner who signed up with this invitation. */
+    claimedByStudentId: uuid("claimed_by_student_id").references(() => students.id, { onDelete: "set null" }),
     usedAt: timestamp("used_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -244,7 +306,7 @@ export const topics = pgTable(
   (t) => [index("topics_track_idx").on(t.trackId, t.position)],
 );
 
-export const messageAuthor = pgEnum("message_author", ["parent", "ai"]);
+export const messageAuthor = pgEnum("message_author", ["parent", "ai", "learner"]);
 /** "create": the chat that made the track (2e/2f). "extend": later chats that add topics or material (2j, Add material). */
 export const messageKind = pgEnum("message_kind", ["create", "extend"]);
 

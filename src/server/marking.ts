@@ -1,4 +1,6 @@
 import "server-only";
+import { holderRef } from "@/domain/accounts";
+import { loadLearner } from "./learners";
 import { and, asc, desc, eq, gt, isNotNull, lt, ne, sql } from "drizzle-orm";
 import { goalProgress, goalReached } from "@/domain/goals";
 import { addDays, examPoints, streakDays } from "@/domain/points";
@@ -47,8 +49,8 @@ export async function markExamJob(payload: unknown) {
   }
   if (toAi.length) {
     // Never limited by the daily limits or the budget: a submitted exam is always marked.
-    const [owner] = await db.select({ parentId: students.parentId }).from(students).where(eq(students.id, exam.studentId));
-    const marked = await withAiContext({ purpose: "mark_answers", parentId: owner?.parentId ?? null }, () =>
+    const learner = await loadLearner(exam.studentId);
+    const marked = await withAiContext({ purpose: "mark_answers", holder: learner ? holderRef(learner.holder) : null, studentId: exam.studentId }, () =>
       ai().markAnswers(toAi.map(({ key, question, expected, given }) => ({ key, question, expected, given }))),
     );
     for (const m of marked) {

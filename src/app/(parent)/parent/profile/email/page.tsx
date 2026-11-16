@@ -1,11 +1,11 @@
 import { PageHeader } from "@/components/PageHeader";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { EmailForm } from "../ProfileForms";
 
 export const metadata = { title: "Change email · owlrnd" };
 
 export default async function ChangeEmailPage() {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   return (
     <div className="max-w-[480px]">
       <PageHeader

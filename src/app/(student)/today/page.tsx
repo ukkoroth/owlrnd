@@ -4,7 +4,7 @@ import { TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
 import { completedToday } from "@/domain/suggestions";
 import { inSentence } from "@/domain/examMix";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examTopicLines, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
@@ -21,7 +21,7 @@ const TABS: [Tab, string][] = [
 
 // 3c Today, 3d Recent exams, 3e All tracks; 3f first day and 3g nothing to practise. Charts come in M6.
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const { tab: raw } = await searchParams;
   const tab: Tab = raw === "recent" || raw === "tracks" ? raw : "today";
   const dash = await getStudentDashboard(student.id);

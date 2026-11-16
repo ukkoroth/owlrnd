@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Notice } from "@/components/forms";
 import { Avatar, PageHeader } from "@/components/PageHeader";
 import { formatClass } from "@/domain/identity";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { listStudents } from "@/server/students";
 import { lastExamSummary, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
@@ -21,8 +21,8 @@ const PlusIcon = () => (
 
 // 2k: the parent's home. Last exam, needs work (M4/M5) and the activity charts (M6) are added later.
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<{ removed?: string }> }) {
-  const { parent } = await requireParent();
-  const kids = await listStudents(parent.id);
+  const { actor } = await requireShell("parent");
+  const kids = await listStudents(actor);
   const { removed } = await searchParams;
   const trackCounts = kids.length
     ? await db

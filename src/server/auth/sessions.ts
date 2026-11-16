@@ -1,17 +1,33 @@
 import "server-only";
 import { and, eq, gt, ne } from "drizzle-orm";
 import { rules } from "@/config/rules";
+import type { LearnerType } from "@/domain/permissions";
 import { db } from "../db";
 import { parents, sessions, students } from "../db/schema";
 import { randomToken, sha256 } from "./crypto";
 
-const IDLE_MS = rules.accounts.sessionIdleDays * 24 * 60 * 60_000;
-const TOUCH_EVERY_MS = 60 * 60_000; // refresh last_seen_at at most hourly
+const HOUR_MS = 60 * 60_000;
+
+/** How long a session lasts without use, by account type (rules.accounts.sessionIdleHours). */
+export function idleMs(type: "parent" | LearnerType): number {
+  return rules.accounts.sessionIdleHours[type] * HOUR_MS;
+}
+
+/** last_seen_at is refreshed at most this often: hourly, or sooner for short sessions. */
+const touchEveryMs = (type: "parent" | LearnerType) => Math.min(HOUR_MS, idleMs(type) / 4);
 
 export type SessionOwner = { parentId: string } | { studentId: string };
 
+async function ownerType(owner: SessionOwner): Promise<"parent" | LearnerType> {
+  if ("parentId" in owner) return "parent";
+  const [row] = await db.select({ type: students.type }).from(students).where(eq(students.id, owner.studentId));
+  if (!row) throw new Error("createSession: student not found");
+  return row.type;
+}
+
 export async function createSession(owner: SessionOwner, userAgent: string | null, now = new Date()): Promise<string> {
   const token = randomToken();
+  const type = await ownerType(owner);
   await db.insert(sessions).values({
     tokenHash: sha256(token),
     parentId: "parentId" in owner ? owner.parentId : null,
@@ -19,16 +35,24 @@ export async function createSession(owner: SessionOwner, userAgent: string | nul
     userAgent: userAgent?.slice(0, 300) ?? null,
     createdAt: now,
     lastSeenAt: now,
-    expiresAt: new Date(now.getTime() + IDLE_MS),
+    expiresAt: new Date(now.getTime() + idleMs(type)),
   });
   return token;
 }
 
-export type CurrentUser =
-  | { role: "parent"; sessionId: string; parent: typeof parents.$inferSelect }
-  | { role: "student"; sessionId: string; student: typeof students.$inferSelect; parent: typeof parents.$inferSelect };
+export type Parent = typeof parents.$inferSelect;
+export type Student = typeof students.$inferSelect;
 
-/** The signed-in user for a session token, sliding the 30-day idle expiry. Null if unknown or expired. */
+/** A signed-in student: parent-managed learners carry their parent; self-managed learners have none. */
+export type CurrentUser =
+  | { role: "parent"; sessionId: string; parent: Parent }
+  | { role: "student"; sessionId: string; student: Student; parent: Parent | null };
+
+/**
+ * The signed-in user for a session token, sliding the idle expiry for their account type. Null if unknown or
+ * expired. The idle window is checked against last use as well as the stored expiry, so shortening it in the rules
+ * applies to sessions already open.
+ */
 export async function validateSession(token: string, now = new Date()): Promise<CurrentUser | null> {
   const [row] = await db
     .select()
@@ -36,23 +60,32 @@ export async function validateSession(token: string, now = new Date()): Promise<
     .where(and(eq(sessions.tokenHash, sha256(token)), gt(sessions.expiresAt, now)));
   if (!row) return null;
 
-  if (now.getTime() - row.lastSeenAt.getTime() > TOUCH_EVERY_MS) {
-    await db
-      .update(sessions)
-      .set({ lastSeenAt: now, expiresAt: new Date(now.getTime() + IDLE_MS) })
-      .where(eq(sessions.id, row.id));
-  }
-
+  let user: CurrentUser | null;
   if (row.parentId) {
     const [parent] = await db.select().from(parents).where(eq(parents.id, row.parentId));
-    return parent ? { role: "parent", sessionId: row.id, parent } : null;
+    user = parent ? { role: "parent", sessionId: row.id, parent } : null;
+  } else {
+    const [found] = await db
+      .select({ student: students, parent: parents })
+      .from(students)
+      .leftJoin(parents, eq(parents.id, students.parentId))
+      .where(eq(students.id, row.studentId!));
+    user = found ? { role: "student", sessionId: row.id, ...found } : null;
   }
-  const [found] = await db
-    .select({ student: students, parent: parents })
-    .from(students)
-    .innerJoin(parents, eq(parents.id, students.parentId))
-    .where(eq(students.id, row.studentId!));
-  return found ? { role: "student", sessionId: row.id, ...found } : null;
+  if (!user) return null;
+
+  const type = user.role === "parent" ? "parent" : user.student.type;
+  if (now.getTime() - row.lastSeenAt.getTime() > idleMs(type)) {
+    await db.delete(sessions).where(eq(sessions.id, row.id));
+    return null;
+  }
+  if (now.getTime() - row.lastSeenAt.getTime() > touchEveryMs(type)) {
+    await db
+      .update(sessions)
+      .set({ lastSeenAt: now, expiresAt: new Date(now.getTime() + idleMs(type)) })
+      .where(eq(sessions.id, row.id));
+  }
+  return user;
 }
 
 export async function revokeSession(token: string) {

@@ -7,17 +7,20 @@ import { ai, type ChatAttachmentInput } from "./ai";
 import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { discardFiles } from "./jobs/files";
-import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
+import { attachments, exams, topics, trackMessages, tracks } from "./db/schema";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
 import { topicStrengths, type TopicWithStrength } from "./progress";
 import { recentScores } from "./results";
-import { getOwnStudent } from "./students";
+import type { Actor } from "@/domain/permissions";
+import { holderRef } from "@/domain/accounts";
+import { authorizeLearner, authorizeTrack } from "./learners";
 
 export type Track = typeof tracks.$inferSelect;
 export type ChatMessage = {
   id: string;
-  author: "parent" | "ai";
+  /** "parent" or "learner": whoever controls the track wrote it. */
+  author: "parent" | "learner" | "ai";
   text: string;
   attachments: { id: string; label: string; unreadable: boolean }[];
 };
@@ -38,8 +41,8 @@ async function findDraft(studentId: string) {
 }
 
 /** The student's draft chat: messages with their attachments, and the latest preview. Null if none started. */
-export async function getDraftChat(parentId: string, studentId: string) {
-  if (!(await getOwnStudent(parentId, studentId))) return null;
+export async function getDraftChat(actor: Actor, studentId: string) {
+  if (!(await authorizeLearner(actor, "manageTracks", studentId))) return null;
   const draft = await findDraft(studentId);
   if (!draft) return { draft: null, messages: [] as ChatMessage[], preview: { ...emptyPreview, ready: false } as StoredPreview };
   return { draft, ...(await loadChat(draft.id)) };
@@ -85,20 +88,20 @@ export function checkFiles(files: UploadedFile[]): string | null {
 export type TurnResult = { ok: true; messages: ChatMessage[]; preview: StoredPreview } | { ok: false; error: string };
 
 /**
- * One parent turn in the track chat (2e/2f): store the files, ask the AI, then save both messages together.
- * If the AI fails nothing is saved, so the parent can simply send again.
+ * One turn by the account holder in the track chat (2e/2f): store the files, ask the AI, then save both messages
+ * together. If the AI fails nothing is saved, so they can simply send again.
  */
-export async function sendParentTurn(parentId: string, studentId: string, text: string, files: UploadedFile[]): Promise<TurnResult> {
-  const student = await getOwnStudent(parentId, studentId);
-  if (!student) return { ok: false, error: "Student not found." };
+export async function sendChatTurn(actor: Actor, studentId: string, text: string, files: UploadedFile[]): Promise<TurnResult> {
+  const own = await authorizeLearner(actor, "manageTracks", studentId);
+  if (!own) return { ok: false, error: "Student not found." };
+  const { student, holder } = own;
   const message = text.trim().slice(0, 4000);
   if (!message && !files.length) return { ok: false, error: "Write a message or attach a file." };
   const fileError = checkFiles(files);
   if (fileError) return { ok: false, error: fileError };
-  const blocked = await chatBlocked(parentId);
+  const blocked = await chatBlocked(holder);
   if (blocked) return { ok: false, error: blocked };
 
-  const [parent] = await db.select().from(parents).where(eq(parents.id, parentId));
   let draft: Track | null = await findDraft(studentId);
   const { messages, preview, rows } = draft ? await loadChat(draft.id) : { messages: [], preview: { ...emptyPreview, ready: false } as StoredPreview, rows: { msgs: [], atts: [] } };
   const [{ n: liveTracks } = { n: 0 }] = await db
@@ -108,18 +111,19 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
 
   const earlier: ChatAttachmentInput[] = rows.atts.map((a) => ({ kind: "earlier", label: a.label ?? a.originalName, text: a.extractedText, unreadable: a.unreadable }));
   const fresh: ChatAttachmentInput[] = files.map((f) => ({ kind: "new", label: f.name, mediaType: f.type, data: f.data }));
-  const today = todayIn(parent!.timeZone);
+  const today = todayIn(holder.timeZone);
 
   let out;
   try {
-    out = await withAiContext({ purpose: "track_chat", parentId }, () => ai().trackChat({
-      parentName: parent!.name.split(" ")[0]!,
+    out = await withAiContext({ purpose: "track_chat", holder: holderRef(holder), studentId }, () => ai().trackChat({
+      parentName: holder.name.split(" ")[0]!,
       studentName: student.name,
       className: formatClass(student.className),
       today,
       mode: liveTracks === 0 ? "first" : "new",
       preview: { ...preview },
-      history: messages.map((m) => ({ author: m.author, text: m.text })),
+      // The account holder's turns, parent or learner (AI wording for learners comes in M9).
+      history: messages.map((m) => ({ author: m.author === "ai" ? ("ai" as const) : ("parent" as const), text: m.text })),
       attachments: [...earlier, ...fresh],
       message,
     }));
@@ -140,7 +144,7 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
     const sentAt = new Date();
     await db.transaction(async (tx) => {
       if (!draft) draft = (await tx.insert(tracks).values({ studentId }).returning())[0]!;
-      const [pm] = await tx.insert(trackMessages).values({ trackId: draft!.id, author: "parent", text: message, createdAt: sentAt }).returning();
+      const [pm] = await tx.insert(trackMessages).values({ trackId: draft!.id, author: authorOf(actor), text: message, createdAt: sentAt }).returning();
       if (files.length) {
         await tx.insert(attachments).values(
           files.map((f, i) => {
@@ -169,9 +173,12 @@ export async function sendParentTurn(parentId: string, studentId: string, text: 
   return { ok: true, messages: chat.messages, preview: chat.preview };
 }
 
+/** Who a chat message is from: the parent, or a self-managed learner setting up their own track. */
+export const authorOf = (actor: Actor) => (actor.kind === "parent" ? ("parent" as const) : ("learner" as const));
+
 /** "Start over": deletes the draft, its messages, attachments and files. */
-export async function discardDraft(parentId: string, studentId: string) {
-  if (!(await getOwnStudent(parentId, studentId))) return;
+export async function discardDraft(actor: Actor, studentId: string) {
+  if (!(await authorizeLearner(actor, "manageTracks", studentId))) return;
   const draft = await findDraft(studentId);
   if (!draft) return;
   const { rows } = await loadChat(draft.id);
@@ -223,10 +230,11 @@ export async function createTrack(input: { trackId: string; studentName: string;
   await enqueue("write_exam", { trackId: input.trackId });
 }
 
-/** The parent pressed "Create track" (2f). Only an agreed, complete preview can go live (rules §2). */
-export async function createTrackFromDraft(parentId: string, studentId: string) {
-  const student = await getOwnStudent(parentId, studentId);
-  if (!student) return { ok: false as const, error: "Student not found." };
+/** "Create track" (2f). Only an agreed, complete preview can go live (rules §2). */
+export async function createTrackFromDraft(actor: Actor, studentId: string) {
+  const own = await authorizeLearner(actor, "manageTracks", studentId);
+  if (!own) return { ok: false as const, error: "Student not found." };
+  const { student } = own;
   const draft = await findDraft(studentId);
   if (!draft) return { ok: false as const, error: "There is no track to create yet." };
   const { preview } = await loadChat(draft.id);
@@ -240,8 +248,8 @@ export async function createTrackFromDraft(parentId: string, studentId: string) 
 }
 
 /** The chat of a track that was just created (2f after Create track), so the confirmation stays on screen. */
-export async function getTrackChat(parentId: string, studentId: string, trackId: string) {
-  if (!(await getOwnStudent(parentId, studentId))) return null;
+export async function getTrackChat(actor: Actor, studentId: string, trackId: string) {
+  if (!(await authorizeLearner(actor, "manageTracks", studentId))) return null;
   const [t] = await db
     .select()
     .from(tracks)
@@ -254,8 +262,8 @@ export async function getTrackChat(parentId: string, studentId: string, trackId:
 
 export type TrackSummary = Track & { topicNames: string[]; topics: TopicWithStrength[]; scores: number[]; examsTaken: number; examReady: boolean };
 
-export async function listTracks(parentId: string, studentId: string): Promise<TrackSummary[] | null> {
-  if (!(await getOwnStudent(parentId, studentId))) return null;
+export async function listTracks(actor: Actor, studentId: string): Promise<TrackSummary[] | null> {
+  if (!(await authorizeLearner(actor, "viewProgress", studentId))) return null;
   const rows = await db
     .select()
     .from(tracks)
@@ -277,16 +285,13 @@ export async function listTracks(parentId: string, studentId: string): Promise<T
   }));
 }
 
-async function ownTrack(parentId: string, trackId: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(trackId)) return null;
-  const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
-  if (!t || !(await getOwnStudent(parentId, t.studentId))) return null;
-  return t;
+async function ownTrack(actor: Actor, trackId: string) {
+  return (await authorizeTrack(actor, "manageTracks", trackId))?.track ?? null;
 }
 
-/** Rules §2: pause and resume are parent actions; paused tracks keep their history and produce no new exams. */
-export async function setTrackPaused(parentId: string, trackId: string, paused: boolean) {
-  const t = await ownTrack(parentId, trackId);
+/** Rules §2: pause and resume are for whoever controls the track; paused tracks keep their history and produce no new exams. */
+export async function setTrackPaused(actor: Actor, trackId: string, paused: boolean) {
+  const t = await ownTrack(actor, trackId);
   if (!t || !(paused ? t.status === "active" : t.status === "paused")) return null;
   await db
     .update(tracks)
@@ -301,8 +306,8 @@ export async function setTrackPaused(parentId: string, trackId: string, paused: 
 }
 
 /** "Try again" when the first exam couldn't be written. */
-export async function retryExamWriting(parentId: string, trackId: string) {
-  const t = await ownTrack(parentId, trackId);
+export async function retryExamWriting(actor: Actor, trackId: string) {
+  const t = await ownTrack(actor, trackId);
   if (!t || t.nextExam !== "failed") return null;
   await db.update(tracks).set({ nextExam: "writing" }).where(eq(tracks.id, trackId));
   await enqueue("write_exam", { trackId });

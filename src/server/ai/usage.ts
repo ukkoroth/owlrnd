@@ -1,25 +1,29 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { and, count, eq, gte, lt, sql, sum } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, lt, sql, sum } from "drizzle-orm";
 import { aiPrices, CACHE_WRITE_MULTIPLIER, DEFAULT_PRICED_MODEL } from "@/config/aiPrices";
 import { rules } from "@/config/rules";
+import { allowanceState, type AllowanceState } from "@/domain/allowance";
+import type { Holder, HolderRef } from "@/domain/accounts";
 import { db } from "../db";
-import { aiBudgetAlerts, aiUsage, exams, parents, students, trackMessages, tracks } from "../db/schema";
+import { aiBudgetAlerts, aiUsage, exams, students, trackMessages, tracks } from "../db/schema";
 import { emailSender } from "../email";
 import { env } from "../env";
 
 /**
- * AI cost controls (release plan, Phase 1 item 4): every Claude call is recorded with its estimated cost, families
- * have daily limits, and the month has a budget. Marking submitted exams is never limited.
+ * AI cost controls (release plan, Phase 1 item 4; 0.2 plan, M7): every Claude call is recorded with its estimated
+ * cost against the account holder (a family, or a self-managed learner). Each holder has daily limits and a demo
+ * allowance, and the month has a budget. Marking submitted exams is never limited.
  */
 
 export type AiPurpose = (typeof aiUsage.$inferInsert)["purpose"];
-type AiContext = { purpose: AiPurpose; parentId: string | null };
+/** `holder` is who pays (null for calls outside any account); `studentId` the learner the call was for, if any. */
+type AiContext = { purpose: AiPurpose; holder: HolderRef | null; studentId?: string | null };
 type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
 
 const context = new AsyncLocalStorage<AiContext>();
 
-/** Runs `fn` with the purpose and family that Claude calls inside it are recorded against. */
+/** Runs `fn` with the purpose and account holder that Claude calls inside it are recorded against. */
 export function withAiContext<T>(ctx: AiContext, fn: () => Promise<T>): Promise<T> {
   return context.run(ctx, fn);
 }
@@ -41,7 +45,8 @@ export async function recordUsage(model: string, u: Usage) {
   }
   try {
     await db.insert(aiUsage).values({
-      parentId: ctx.parentId,
+      parentId: ctx.holder && "parentId" in ctx.holder ? ctx.holder.parentId : null,
+      studentId: ctx.holder && "studentId" in ctx.holder ? ctx.holder.studentId : (ctx.studentId ?? null),
       purpose: ctx.purpose,
       model,
       inputTokens: u.input_tokens,
@@ -105,56 +110,84 @@ export async function alertOwnerIfNeeded(now = new Date()) {
   }
 }
 
-// ── Daily limits per family ─────────────────────────────────────────────────
+// ── Demo allowance per account holder ───────────────────────────────────────
 
-/** True when `column` falls on the family's current day, in the family's time zone. */
-const familyToday = (column: typeof trackMessages.createdAt | typeof exams.createdAt) =>
-  sql`(${column} at time zone ${parents.timeZone})::date = (now() at time zone ${parents.timeZone})::date`;
+/** Rows that count towards a holder: the whole family, or the self-managed learner's own (no parent). */
+const usageOf = (h: HolderRef) =>
+  "parentId" in h ? eq(aiUsage.parentId, h.parentId) : and(eq(aiUsage.studentId, h.studentId), isNull(aiUsage.parentId));
 
-export async function chatTurnsToday(parentId: string) {
+/** Everything this holder has spent on Claude, all time (the demo allowance is not monthly). */
+export async function allowanceUsed(h: HolderRef): Promise<number> {
+  const [row] = await db.select({ total: sum(aiUsage.costUsd) }).from(aiUsage).where(usageOf(h));
+  return Number(row?.total ?? 0);
+}
+
+export const allowanceLimit = (h: Pick<Holder, "aiLimitUsd">) => h.aiLimitUsd ?? rules.aiLimits.perAccountUsd;
+
+/** For the sidebar tracker and the limit checks. */
+export async function allowanceOf(h: Holder): Promise<AllowanceState> {
+  const ref = h.kind === "parent" ? { parentId: h.parentId } : { studentId: h.studentId };
+  return allowanceState(await allowanceUsed(ref), allowanceLimit(h));
+}
+
+// ── Daily limits per account holder ─────────────────────────────────────────
+
+/** The learners whose activity counts towards a holder: a family's children, or the self-managed learner. */
+const learnersOf = (h: Holder) =>
+  h.kind === "parent" ? eq(students.parentId, h.parentId) : eq(students.id, h.studentId);
+
+/** True when `column` falls on the holder's current day, in the holder's time zone. */
+const holderToday = (h: Holder, column: typeof trackMessages.createdAt | typeof exams.createdAt) =>
+  sql`(${column} at time zone ${h.timeZone})::date = (now() at time zone ${h.timeZone})::date`;
+
+export async function chatTurnsToday(h: Holder) {
   const [row] = await db
     .select({ n: count() })
     .from(trackMessages)
     .innerJoin(tracks, eq(tracks.id, trackMessages.trackId))
     .innerJoin(students, eq(students.id, tracks.studentId))
-    .innerJoin(parents, eq(parents.id, students.parentId))
-    .where(and(eq(parents.id, parentId), eq(trackMessages.author, "parent"), familyToday(trackMessages.createdAt)));
+    .where(and(learnersOf(h), inArray(trackMessages.author, ["parent", "learner"]), holderToday(h, trackMessages.createdAt)));
   return row?.n ?? 0;
 }
 
-export async function examsWrittenToday(parentId: string) {
+export async function examsWrittenToday(h: Holder) {
   const [row] = await db
     .select({ n: count() })
     .from(exams)
     .innerJoin(students, eq(students.id, exams.studentId))
-    .innerJoin(parents, eq(parents.id, students.parentId))
-    .where(and(eq(parents.id, parentId), familyToday(exams.createdAt)));
+    .where(and(learnersOf(h), holderToday(h, exams.createdAt)));
   return row?.n ?? 0;
 }
 
-/** The start of the family's next day, as an instant. */
-async function familyNextMidnight(parentId: string): Promise<Date> {
-  const [row] = await db
-    .select({ at: sql<Date>`(date_trunc('day', now() at time zone ${parents.timeZone}) + interval '1 day') at time zone ${parents.timeZone}` })
-    .from(parents)
-    .where(eq(parents.id, parentId));
-  return new Date(row?.at ?? Date.now() + 86_400_000);
+/** The start of the holder's next day, as an instant. */
+async function nextMidnight(h: Holder): Promise<Date> {
+  const res = await db.execute<{ at: Date }>(
+    sql`select (date_trunc('day', now() at time zone ${h.timeZone}) + interval '1 day') at time zone ${h.timeZone} as at`,
+  );
+  return new Date(res.rows[0]?.at ?? Date.now() + 86_400_000);
 }
 
 export const CHAT_PAUSED = "The track chat is paused for a little while. Your chat is saved, so please try again later.";
 export const chatLimitReached = () =>
   `You've reached today's limit of ${rules.aiLimits.chatTurnsPerDay} messages in track chats. Your chat is saved, so you can carry on tomorrow.`;
+export const ALLOWANCE_USED_UP = "Your demo AI allowance is used up. Your chat is saved. Contact us to buy a package and carry on.";
 
-/** Before a parent's chat message goes to Claude. Null when allowed, otherwise the message to show. */
-export async function chatBlocked(parentId: string): Promise<string | null> {
+/** Before a holder's chat message goes to Claude. Null when allowed, otherwise the message to show. */
+export async function chatBlocked(h: Holder): Promise<string | null> {
   if (!(await budgetLeft())) return CHAT_PAUSED;
-  if ((await chatTurnsToday(parentId)) >= rules.aiLimits.chatTurnsPerDay) return chatLimitReached();
+  if ((await allowanceOf(h)).usedUp) return ALLOWANCE_USED_UP;
+  if ((await chatTurnsToday(h)) >= rules.aiLimits.chatTurnsPerDay) return chatLimitReached();
   return null;
 }
 
+export type ExamWriteBlock = { retryAt: Date; reason: "budget" | "allowance" | "daily_limit" };
+
 /** Before an exam is written. When not allowed, says when to try again (the job is rescheduled, not failed). */
-export async function examWriteBlocked(parentId: string): Promise<{ retryAt: Date; reason: "budget" | "daily_limit" } | null> {
-  if (!(await budgetLeft())) return { retryAt: new Date(Date.now() + rules.aiLimits.budgetRetryMinutes * 60_000), reason: "budget" };
-  if ((await examsWrittenToday(parentId)) >= rules.aiLimits.examsWrittenPerDay) return { retryAt: await familyNextMidnight(parentId), reason: "daily_limit" };
+export async function examWriteBlocked(h: Holder): Promise<ExamWriteBlock | null> {
+  const retrySoon = () => new Date(Date.now() + rules.aiLimits.budgetRetryMinutes * 60_000);
+  if (!(await budgetLeft())) return { retryAt: retrySoon(), reason: "budget" };
+  // Retried like the budget, so raising the account's limit lets the exam be written without anyone asking again.
+  if ((await allowanceOf(h)).usedUp) return { retryAt: retrySoon(), reason: "allowance" };
+  if ((await examsWrittenToday(h)) >= rules.aiLimits.examsWrittenPerDay) return { retryAt: await nextMidnight(h), reason: "daily_limit" };
   return null;
 }

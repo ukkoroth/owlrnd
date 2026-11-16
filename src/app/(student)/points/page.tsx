@@ -3,7 +3,7 @@ import { rules } from "@/config/rules";
 import { levelProgress } from "@/domain/levels";
 import { todaysBreakdown } from "@/domain/points";
 import { todayIn } from "@/domain/tracks";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { pointsEventsOf } from "@/server/results";
 
 export const metadata: Metadata = { title: "Points · owlrnd" };
@@ -17,7 +17,7 @@ const StarIcon = ({ className }: { className?: string }) => (
 
 // 4.3a (rules §8)
 export default async function PointsPage() {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const events = await pointsEventsOf(student.id);
   const total = events.reduce((s, e) => s + e.points, 0);
   const lp = levelProgress(total);

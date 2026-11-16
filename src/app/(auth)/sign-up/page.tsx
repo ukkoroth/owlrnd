@@ -24,7 +24,7 @@ const headline = (
 export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ change?: string; invite?: string }> }) {
   const { change, invite } = await searchParams;
   const pending = change ? await getPending("verify_email") : null;
-  const parent = pending ? await getParent(pending.parentId) : null;
+  const parent = pending?.parentId ? await getParent(pending.parentId) : null;
 
   let invitedEmail: string | undefined;
   if (rules.access.inviteOnly && !(parent && (await hasOpenClaim(parent.id)))) {

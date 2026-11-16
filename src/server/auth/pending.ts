@@ -7,7 +7,8 @@ import { hmac, safeEqual } from "./crypto";
  * Kept in a short-lived signed cookie, so no table is needed.
  */
 export type PendingKind = "sign_in" | "verify_email" | "reset_password";
-export type Pending = { kind: PendingKind; parentId: string; studentId: string | null; exp: number };
+/** The account the step is for (codes.ts CodeOwner): parentId is null for a self-managed learner. */
+export type Pending = { kind: PendingKind; parentId: string | null; studentId: string | null; exp: number };
 
 export function signPending(p: Omit<Pending, "exp">, now = Date.now()): string {
   const payload: Pending = { ...p, exp: now + rules.accounts.pendingStepMinutes * 60_000 };

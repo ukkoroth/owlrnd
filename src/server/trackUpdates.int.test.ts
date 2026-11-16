@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { cleanup, makeParent, makeStudent, makeTrackWithExam } from "../../tests/db-helpers";
+import { cleanup, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
 import { db } from "./db";
 import { examQuestions, exams, jobs, questions, topics, tracks } from "./db/schema";
 import { writeExamJob } from "./examWriter";
@@ -49,16 +49,16 @@ describe("restarting a track (2j, rules §3)", () => {
     expect(before!.goalReachedAt).not.toBeNull();
     expect((await getStudentTracks(student.id))[0]!.exam).toBeNull(); // no Start for the student
 
-    const chat = await getUpdateChat(parent.id, trackId);
+    const chat = await getUpdateChat(parentActor(parent.id), trackId);
     expect(chat!.mode).toBe("restart");
-    const t1 = await sendUpdateTurn(parent.id, trackId, "Add chapter 13: magnetic field lines, electromagnets.", []);
+    const t1 = await sendUpdateTurn(parentActor(parent.id), trackId, "Add chapter 13: magnetic field lines, electromagnets.", []);
     if (!t1.ok) throw new Error(t1.error);
     expect(t1.update).toMatchObject({ ready: false, goal: { threshold: 8, runLength: 3 } });
     expect(t1.update.newTopics.map((t) => t.name)).toEqual(["Magnetic field lines", "Electromagnets"]);
-    expect(await applyTrackUpdate(parent.id, trackId)).toEqual({ ok: false, error: "Agree the change in the chat first." });
+    expect(await applyTrackUpdate(parentActor(parent.id), trackId)).toEqual({ ok: false, error: "Agree the change in the chat first." });
 
-    await sendUpdateTurn(parent.id, trackId, "Yes, start it.", []);
-    const applied = await applyTrackUpdate(parent.id, trackId);
+    await sendUpdateTurn(parentActor(parent.id), trackId, "Yes, start it.", []);
+    const applied = await applyTrackUpdate(parentActor(parent.id), trackId);
     expect(applied.ok).toBe(true);
 
     const [after] = await db.select().from(tracks).where(eq(tracks.id, trackId));
@@ -85,10 +85,10 @@ describe("adding material to an active track (owner decision, M6)", () => {
     const student = await makeStudent(parent.id);
     const { trackId, examId } = await makeTrackWithExam(parent.id, student.id);
     await takeAndMark(student.id, examId); // 10/10 → progress 1 of 3
-    expect((await getUpdateChat(parent.id, trackId))!.mode).toBe("add");
-    await sendUpdateTurn(parent.id, trackId, "Add chapter 13: electromagnets.", []);
-    await sendUpdateTurn(parent.id, trackId, "Yes please.", []);
-    expect((await applyTrackUpdate(parent.id, trackId)).ok).toBe(true);
+    expect((await getUpdateChat(parentActor(parent.id), trackId))!.mode).toBe("add");
+    await sendUpdateTurn(parentActor(parent.id), trackId, "Add chapter 13: electromagnets.", []);
+    await sendUpdateTurn(parentActor(parent.id), trackId, "Yes please.", []);
+    expect((await applyTrackUpdate(parentActor(parent.id), trackId)).ok).toBe(true);
     const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
     expect(t).toMatchObject({ status: "active", goalProgress: 1, goalThreshold: 8, goalRunLength: 3, goalSinceExam: 0 });
     const tps = await db.select().from(topics).where(eq(topics.trackId, trackId));
@@ -101,9 +101,9 @@ describe("adding material to an active track (owner decision, M6)", () => {
     const student = await makeStudent(parent.id);
     const { trackId, examId } = await makeTrackWithExam(parent.id, student.id);
     await takeAndMark(student.id, examId);
-    await sendUpdateTurn(parent.id, trackId, "Make the goal 9 / 10 in 2 exams in a row.", []);
-    await sendUpdateTurn(parent.id, trackId, "Yes.", []);
-    expect((await applyTrackUpdate(parent.id, trackId)).ok).toBe(true);
+    await sendUpdateTurn(parentActor(parent.id), trackId, "Make the goal 9 / 10 in 2 exams in a row.", []);
+    await sendUpdateTurn(parentActor(parent.id), trackId, "Yes.", []);
+    expect((await applyTrackUpdate(parentActor(parent.id), trackId)).ok).toBe(true);
     const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
     expect(t).toMatchObject({ goalProgress: 0, goalThreshold: 9, goalRunLength: 2, goalSinceExam: 1 });
   });
@@ -113,19 +113,19 @@ describe("archive and history", () => {
   it("archives only goal-reached tracks, hiding them from the student but keeping history", async () => {
     const { parent, student, trackId } = await reachedTrack();
     const other = await makeParent();
-    expect(await archiveTrack(other.id, trackId)).toBe(false);
-    expect(await archiveTrack(parent.id, trackId)).toBe(true);
+    expect(await archiveTrack(parentActor(other.id), trackId)).toBe(false);
+    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(true);
     expect(await getStudentTracks(student.id)).toHaveLength(0);
-    const hist = await examHistory(parent.id, trackId);
+    const hist = await examHistory(parentActor(parent.id), trackId);
     expect(hist!.exams).toHaveLength(1);
     expect(hist!.exams[0]).toMatchObject({ number: 1, score: 10 });
-    expect(await examHistory(other.id, trackId)).toBeNull();
+    expect(await examHistory(parentActor(other.id), trackId)).toBeNull();
   });
 
   it("won't archive an active track", async () => {
     const parent = await makeParent();
     const student = await makeStudent(parent.id);
     const { trackId } = await makeTrackWithExam(parent.id, student.id);
-    expect(await archiveTrack(parent.id, trackId)).toBe(false);
+    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(false);
   });
 });

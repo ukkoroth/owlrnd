@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Notice } from "@/components/forms";
 import { PageHeader, SectionLabel } from "@/components/PageHeader";
 import { formatClass } from "@/domain/identity";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { db } from "@/server/db";
 import { students } from "@/server/db/schema";
 
@@ -18,7 +18,7 @@ const UPDATED: Record<string, string> = {
 
 // 5d
 export default async function ParentProfilePage({ searchParams }: { searchParams: Promise<{ updated?: string }> }) {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   const { updated } = await searchParams;
   const kids = await db.select().from(students).where(eq(students.parentId, parent.id)).orderBy(asc(students.createdAt));
 

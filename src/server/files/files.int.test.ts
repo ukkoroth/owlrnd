@@ -1,12 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { cleanup, makeParent, makeStudent } from "../../../tests/db-helpers";
+import { cleanup, makeParent, makeStudent, parentActor } from "../../../tests/db-helpers";
 import { deleteParent } from "../auth/accounts";
 import { db } from "../db";
 import { attachments, jobs, trackMessages, tracks } from "../db/schema";
 import { deleteFilesJob } from "../jobs/files";
 import { removeStudent } from "../students";
-import { discardDraft, sendParentTurn } from "../tracks";
+import { discardDraft, sendChatTurn } from "../tracks";
 import { fileStore } from "./index";
 
 // Release plan, Phase 1 item 3: deleting data also deletes its uploaded files, through a retried job.
@@ -24,7 +24,7 @@ const noneExist = async (keys: string[]) => !(await Promise.all(keys.map(exists)
 /** A child with a draft track whose first message carries two photos; returns their file keys. */
 async function childWithPhotos(parentId: string) {
   const student = await makeStudent(parentId);
-  const res = await sendParentTurn(parentId, student.id, "Physics chapter 12: Ohm's law.", [page(1), page(2)]);
+  const res = await sendChatTurn(parentActor(parentId), student.id, "Physics chapter 12: Ohm's law.", [page(1), page(2)]);
   if (!res.ok) throw new Error(res.error);
   const rows = await db
     .select({ key: attachments.fileKey })
@@ -67,7 +67,7 @@ describe("uploaded files are deleted with the data they belong to", () => {
     const keep = await childWithPhotos(parent.id);
     const gone = await childWithPhotos(parent.id);
 
-    expect(await removeStudent(parent.id, gone.student.id)).toBe(true);
+    expect(await removeStudent(parentActor(parent.id), gone.student.id)).toBe(true);
     const job = await takeDeleteJob(gone.keys);
     expect((job!.payload as { keys: string[] }).keys.sort()).toEqual([...gone.keys].sort());
     await deleteFilesJob(job!.payload);
@@ -79,7 +79,7 @@ describe("uploaded files are deleted with the data they belong to", () => {
     const owner = await makeParent();
     const other = await makeParent();
     const child = await childWithPhotos(owner.id);
-    expect(await removeStudent(other.id, child.student.id)).toBe(false);
+    expect(await removeStudent(parentActor(other.id), child.student.id)).toBe(false);
     expect(await takeDeleteJob(child.keys)).toBeUndefined();
     expect(await allExist(child.keys)).toBe(true);
   });
@@ -87,7 +87,7 @@ describe("uploaded files are deleted with the data they belong to", () => {
   it("Start over on a draft queues its files", async () => {
     const parent = await makeParent();
     const { student, keys } = await childWithPhotos(parent.id);
-    await discardDraft(parent.id, student.id);
+    await discardDraft(parentActor(parent.id), student.id);
     const job = await takeDeleteJob(keys);
     await deleteFilesJob(job!.payload);
     expect(await noneExist(keys)).toBe(true);

@@ -5,7 +5,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Notice } from "@/components/forms";
 import { PageHeader } from "@/components/PageHeader";
 import { TrackCard } from "@/components/TrackCard";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getOwnStudent } from "@/server/students";
 import { getDraftChat, listTracks } from "@/server/tracks";
 
@@ -20,12 +20,12 @@ const Plus = () => (
 
 // 2d (none yet) and 2g (with tracks).
 export default async function TracksPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
-  const { parent } = await requireParent();
+  const { actor } = await requireShell("parent");
   const { id } = await params;
-  const student = await getOwnStudent(parent.id, id);
+  const student = await getOwnStudent(actor, id);
   if (!student) notFound();
-  const list = (await listTracks(parent.id, id)) ?? [];
-  const draft = (await getDraftChat(parent.id, id))?.draft;
+  const list = (await listTracks(actor, id)) ?? [];
+  const draft = (await getDraftChat(actor, id))?.draft;
   const { created } = await searchParams;
   const name = student.name;
   const newHref = `/students/${id}/tracks/new`;

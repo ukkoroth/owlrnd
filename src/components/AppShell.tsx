@@ -3,6 +3,8 @@ import { Logo } from "./Logo";
 import { NavLinks, type NavItem } from "./NavLinks";
 import { ProfileMenu } from "./ProfileMenu";
 import { PointsBox } from "./PointsBox";
+import { AiAllowanceBox } from "./AiAllowanceBox";
+import type { AllowanceState } from "@/domain/allowance";
 
 export type { NavItem };
 
@@ -11,6 +13,8 @@ type Props = {
   nav: NavItem[];
   /** Students only: the points box above the profile button. Links to the points page once it exists (M6). */
   points?: { total: number; levelName: string | null; href?: string };
+  /** The account holder's AI allowance (parents and self-managed learners), above the profile button. */
+  allowance?: AllowanceState;
   children: ReactNode;
 };
 
@@ -18,7 +22,7 @@ type Props = {
  * Blue sidebar + content area used by every signed-in screen.
  * On narrow screens the sidebar stacks above the content (docs/08-design.md, Layout).
  */
-export function AppShell({ user, nav, points, children }: Props) {
+export function AppShell({ user, nav, points, allowance, children }: Props) {
   const isStudent = user.role === "student";
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -31,6 +35,7 @@ export function AppShell({ user, nav, points, children }: Props) {
           {isStudent && points && (
             <PointsBox points={points} />
           )}
+          {allowance && <AiAllowanceBox allowance={allowance} />}
           <ProfileMenu
             name={user.name}
             roleLabel={isStudent ? "Student" : "Parent"}

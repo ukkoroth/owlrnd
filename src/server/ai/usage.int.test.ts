@@ -1,12 +1,13 @@
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { rules } from "@/config/rules";
-import { cleanup, makeParent, makeStudent, makeTrackWithExam } from "../../../tests/db-helpers";
+import { holderForParent } from "@/domain/accounts";
+import { cleanup, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../../tests/db-helpers";
 import { db } from "../db";
 import { aiBudgetAlerts, aiUsage, exams, jobs, trackMessages, tracks } from "../db/schema";
 import { env } from "../env";
 import { writeExamJob } from "../examWriter";
-import { sendParentTurn } from "../tracks";
+import { sendChatTurn } from "../tracks";
 import { alertOwnerIfNeeded, chatBlocked, chatLimitReached, chatTurnsToday, costOf, examWriteBlocked, examsWrittenToday, recordUsage, spendThisMonth, withAiContext } from "./usage";
 
 // Release plan, Phase 1 item 4. Tests that need a full month of spend use January 2099, so they never touch the
@@ -45,7 +46,7 @@ describe("cost of a call", () => {
 describe("recording usage", () => {
   it("records each call with its purpose and family, and nothing outside a context", async () => {
     const parent = await makeParent();
-    await withAiContext({ purpose: "write_exam", parentId: parent.id }, () => recordUsage("claude-opus-5-5", { input_tokens: 5_000, output_tokens: 6_000 }));
+    await withAiContext({ purpose: "write_exam", holder: { parentId: parent.id } }, () => recordUsage("claude-opus-5-5", { input_tokens: 5_000, output_tokens: 6_000 }));
     await recordUsage("claude-opus-5-5", { input_tokens: 1, output_tokens: 1 }); // no context: skipped
     const rows = await db.select().from(aiUsage).where(eq(aiUsage.parentId, parent.id));
     expect(rows).toHaveLength(1);
@@ -82,15 +83,15 @@ describe("daily limits per family", () => {
   it("counts the parent's chat messages today and stops the chat at the limit, before calling the AI", async () => {
     const parent = await makeParent();
     const student = await makeStudent(parent.id);
-    expect(await chatTurnsToday(parent.id)).toBe(0);
-    const first = await sendParentTurn(parent.id, student.id, "Physics chapter 12: Ohm's law.", []);
+    expect(await chatTurnsToday(holderForParent(parent))).toBe(0);
+    const first = await sendChatTurn(parentActor(parent.id), student.id, "Physics chapter 12: Ohm's law.", []);
     expect(first.ok).toBe(true);
-    expect(await chatTurnsToday(parent.id)).toBe(1);
+    expect(await chatTurnsToday(holderForParent(parent))).toBe(1);
 
     limits.chatTurnsPerDay = 1;
-    expect(await chatBlocked(parent.id)).toBe(chatLimitReached());
+    expect(await chatBlocked(holderForParent(parent))).toBe(chatLimitReached());
     const before = await db.select().from(trackMessages).innerJoin(tracks, eq(tracks.id, trackMessages.trackId)).where(eq(tracks.studentId, student.id));
-    const refused = await sendParentTurn(parent.id, student.id, "And resistors in parallel.", []);
+    const refused = await sendChatTurn(parentActor(parent.id), student.id, "And resistors in parallel.", []);
     expect(refused).toEqual({ ok: false, error: chatLimitReached() });
     const after = await db.select().from(trackMessages).innerJoin(tracks, eq(tracks.id, trackMessages.trackId)).where(eq(tracks.studentId, student.id));
     expect(after).toHaveLength(before.length); // nothing stored, nothing sent
@@ -100,10 +101,10 @@ describe("daily limits per family", () => {
     const parent = await makeParent({ timeZone: "Asia/Kolkata" });
     const student = await makeStudent(parent.id);
     const { trackId } = await makeTrackWithExam(parent.id, student.id);
-    expect(await examsWrittenToday(parent.id)).toBe(1);
+    expect(await examsWrittenToday(holderForParent(parent))).toBe(1);
 
     limits.examsWrittenPerDay = 1;
-    const blocked = await examWriteBlocked(parent.id);
+    const blocked = await examWriteBlocked(holderForParent(parent));
     expect(blocked?.reason).toBe("daily_limit");
     // Next midnight in Kolkata (UTC+5:30) is 18:30 UTC.
     expect(blocked!.retryAt.toISOString()).toMatch(/T18:30:00\.000Z$/);

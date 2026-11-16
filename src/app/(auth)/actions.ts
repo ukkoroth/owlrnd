@@ -5,11 +5,11 @@ import { POLICIES_VERSION } from "@/config/legal";
 import { rules } from "@/config/rules";
 import { parseIdentifier, normalizeEmail, validateEmail, validateName, validatePassword } from "@/domain/identity";
 import { codeFrom, text, type FormState } from "@/lib/form";
-import { findAccount, getParent, markEmailVerified, recordSignInFailure, tooManySignInFailures, upsertUnverifiedParent } from "@/server/auth/accounts";
+import { codeOwnerOf, findAccount, getParent, markEmailVerified, recordSignInFailure, tooManySignInFailures, upsertUnverifiedParent } from "@/server/auth/accounts";
 import { issueCode, verifyCode, type CodeOwner, type IssueResult } from "@/server/auth/codes";
 import { clearPending, clientIp, getPending, setPending, startSession } from "@/server/auth/current";
 import { hashPassword, verifyDummyPassword, verifyPassword } from "@/server/auth/passwords";
-import { revokeAllSessions } from "@/server/auth/sessions";
+import { revokeAllSessions, type SessionOwner } from "@/server/auth/sessions";
 import { db } from "@/server/db";
 import { parents, students } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -51,11 +51,7 @@ export async function signIn(_prev: FormState, form: FormData): Promise<FormStat
     redirect("/sign-up/verify");
   }
 
-  const owner: CodeOwner = {
-    parentId: account.parent.id,
-    studentId: account.kind === "student" ? account.student.id : null,
-    purpose: "sign_in",
-  };
+  const owner: CodeOwner = { ...codeOwnerOf(account), purpose: "sign_in" };
   await setPending({ kind: "sign_in", parentId: owner.parentId, studentId: owner.studentId });
   const sent = await issueCode(owner);
   redirect(sent.sent ? "/sign-in/code" : "/sign-in/code?limit=1");
@@ -71,7 +67,7 @@ export async function verifySignInCode(_prev: FormState, form: FormData): Promis
   if (result.result !== "ok") return codeMessage(result);
 
   await clearPending();
-  await startSession(pending.studentId ? { studentId: pending.studentId } : { parentId: pending.parentId });
+  await startSession(sessionOwnerOf(pending));
   redirect(pending.studentId ? "/today" : "/students");
 }
 
@@ -107,7 +103,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
 
   // Closed beta: a valid invitation link, or (for "Use a different email") the one this account was started with.
   let invitationId: string | null = null;
-  if (rules.access.inviteOnly && !(pending && (await hasOpenClaim(pending.parentId)))) {
+  if (rules.access.inviteOnly && !(pending?.parentId && (await hasOpenClaim(pending.parentId)))) {
     const invitation = await checkInvitation(text(form, "invite"));
     if (!invitation.ok) return { error: INVITE_NEEDED, values };
     invitationId = invitation.id;
@@ -128,7 +124,8 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
 export async function verifyEmail(_prev: FormState, form: FormData): Promise<FormState> {
   if (!(await allowed("codeEntry"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
-  if (!pending) redirect("/sign-in?expired=1");
+  // Parents only until M8 adds "For me" sign-up.
+  if (!pending?.parentId) redirect("/sign-in?expired=1");
   const result = await verifyCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }, codeFrom(form));
   if (result.result !== "ok") return codeMessage(result);
 
@@ -142,7 +139,7 @@ export async function verifyEmail(_prev: FormState, form: FormData): Promise<For
 export async function resendVerifyCode(): Promise<FormState> {
   if (!(await allowed("codeSend"))) return { error: RATE_LIMITED };
   const pending = await getPending("verify_email");
-  if (!pending) redirect("/sign-in?expired=1");
+  if (!pending?.parentId) redirect("/sign-in?expired=1");
   return resendResult(await issueCode({ parentId: pending.parentId, studentId: null, purpose: "verify_email" }));
 }
 
@@ -158,11 +155,7 @@ export async function forgotPassword(_prev: FormState, form: FormData): Promise<
   // Owner decision (M1): say plainly when the account doesn't exist.
   if (!account) return { error: "We couldn't find that username or email.", values: { identifier: rawId } };
 
-  const owner: CodeOwner = {
-    parentId: account.parent.id,
-    studentId: account.kind === "student" ? account.student.id : null,
-    purpose: "reset_password",
-  };
+  const owner: CodeOwner = { ...codeOwnerOf(account), purpose: "reset_password" };
   await setPending({ kind: "reset_password", parentId: owner.parentId, studentId: owner.studentId });
   const sent = await issueCode(owner);
   redirect(sent.sent ? "/reset-password" : "/reset-password?limit=1");
@@ -187,7 +180,7 @@ export async function resetPassword(_prev: FormState, form: FormData): Promise<F
   if (pending.studentId) {
     await db.update(students).set({ passwordHash }).where(eq(students.id, pending.studentId));
     await revokeAllSessions({ studentId: pending.studentId });
-  } else {
+  } else if (pending.parentId) {
     // The code reached the parent's inbox, which also proves the email address.
     const parent = await getParent(pending.parentId);
     await db
@@ -198,7 +191,7 @@ export async function resetPassword(_prev: FormState, form: FormData): Promise<F
   }
 
   await clearPending();
-  await startSession(pending.studentId ? { studentId: pending.studentId } : { parentId: pending.parentId });
+  await startSession(sessionOwnerOf(pending));
   redirect(pending.studentId ? "/today" : "/students");
 }
 
@@ -210,6 +203,13 @@ export async function resendResetCode(): Promise<FormState> {
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
+
+/** A student's session is theirs (parent-managed or self-managed); otherwise the parent's. */
+function sessionOwnerOf(p: { parentId: string | null; studentId: string | null }): SessionOwner {
+  if (p.studentId) return { studentId: p.studentId };
+  if (!p.parentId) throw new Error("sessionOwnerOf: no owner");
+  return { parentId: p.parentId };
+}
 
 function resendResult(sent: IssueResult): FormState {
   return sent.sent ? { notice: "We sent a new code. Use the code in the latest email." } : { error: sendLimitMessage };

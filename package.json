@@ -27,7 +27,8 @@
     "ai:usage": "tsx --conditions=react-server scripts/ai-usage.ts",
     "s3:check": "tsx --conditions=react-server scripts/s3-check.ts",
     "access": "tsx --conditions=react-server scripts/access.ts",
-    "invite": "tsx --conditions=react-server scripts/access.ts invite"
+    "invite": "tsx --conditions=react-server scripts/access.ts invite",
+    "ai:allowance": "tsx --conditions=react-server scripts/access.ts allowance"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

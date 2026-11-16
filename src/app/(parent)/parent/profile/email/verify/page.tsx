@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { pendingNewEmail } from "@/server/auth/codes";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { CodeForm } from "@/components/CodeForm";
 import { resendEmailChange, verifyEmailChange } from "../../actions";
 
 export const metadata = { title: "Confirm new email · owlrnd" };
 
 export default async function VerifyNewEmailPage() {
-  const { parent } = await requireParent();
-  const newEmail = await pendingNewEmail(parent.id);
+  const { user: { parent } } = await requireShell("parent");
+  const newEmail = await pendingNewEmail({ parentId: parent.id, studentId: null });
   if (!newEmail) redirect("/parent/profile/email");
   return (
     <div className="max-w-[480px]">

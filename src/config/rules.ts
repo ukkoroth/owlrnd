@@ -12,8 +12,11 @@ export const rules = {
       maxWrongTries: 3,
       maxSendsPerHour: 5,
     },
-    /** Owner decision (M1): signed in until Sign out, or this many days without use. */
-    sessionIdleDays: 30,
+    /**
+     * Signed in until Sign out, or this many hours without use, by account type (0.2 plan, M7). Children on a
+     * shared family computer are signed out sooner.
+     */
+    sessionIdleHours: { parent: 7 * 24, self_managed: 7 * 24, parent_managed: 12 },
     /** Failed password attempts allowed per username/email before sign-in is paused. */
     signInFailures: { max: 10, windowMinutes: 15 },
     /** The step between password and code (or sign-up and verify) expires after this. */
@@ -32,6 +35,7 @@ export const rules = {
     signUp: { max: 10, windowMinutes: 60 },
     passwordReset: { max: 10, windowMinutes: 60 },
     getAccess: { max: 5, windowMinutes: 60 },
+    contact: { max: 5, windowMinutes: 60 },
   },
 
   /**
@@ -47,6 +51,13 @@ export const rules = {
     budgetWarnAt: 0.8,
     /** While the monthly budget is used up, paused exam writing is retried this often (marking never pauses). */
     budgetRetryMinutes: 60,
+    /**
+     * AI allowance per account holder for the whole demo (0.2 plan, M7): a running total, not per month. The owner can
+     * raise it for one account (parents.ai_limit_usd / students.ai_limit_usd, `npm run ai:allowance`).
+     */
+    perAccountUsd: 10,
+    /** The sidebar tracker turns amber from this share of the allowance, and red at 100%. */
+    allowanceWarnAt: 0.8,
   },
 
   /** Closed beta (docs/release-plan.md, Phase 1 item 1). Set inviteOnly to false to open sign-up to everyone. */

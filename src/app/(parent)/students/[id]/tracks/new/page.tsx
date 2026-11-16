@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { PageHeader } from "@/components/PageHeader";
 import { TrackChat } from "@/components/TrackChat";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getOwnStudent } from "@/server/students";
 import { getDraftChat, listTracks } from "@/server/tracks";
 
@@ -12,13 +12,13 @@ export const dynamic = "force-dynamic";
 
 // 2e (start of the chat) → 2f (agreed). The chat is kept as a draft track, so a reload keeps it.
 export default async function NewTrackPage({ params }: { params: Promise<{ id: string }> }) {
-  const { parent } = await requireParent();
+  const { user: { parent }, actor } = await requireShell("parent");
   const { id } = await params;
-  const student = await getOwnStudent(parent.id, id);
+  const student = await getOwnStudent(actor, id);
   if (!student) notFound();
-  const chat = (await getDraftChat(parent.id, id))!;
+  const chat = (await getDraftChat(actor, id))!;
   // The first track while the student has no live track (the draft being created isn't live yet).
-  const isFirst = ((await listTracks(parent.id, id)) ?? []).length === 0;
+  const isFirst = ((await listTracks(actor, id)) ?? []).length === 0;
 
   return (
     <div className="lg:-mr-10">

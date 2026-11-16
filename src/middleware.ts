@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// Keeps the session cookie's 30-day window sliding on the browser side; the database decides if the session is valid.
+// Keeps the session cookie's window sliding on the browser side; the database decides if the session is valid.
 const SESSION_COOKIE = "owlrnd_session";
-const MAX_AGE = 30 * 24 * 60 * 60; // rules.accounts.sessionIdleDays (middleware runs on the edge and can't import server code)
+// The longest of rules.accounts.sessionIdleHours (middleware runs on the edge and can't import server code).
+const MAX_AGE = 7 * 24 * 60 * 60;
 
 /**
  * Content-Security-Policy with a fresh nonce per request (release plan, Phase 1 item 5): only this site's own

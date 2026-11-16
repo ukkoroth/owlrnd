@@ -6,21 +6,20 @@ import { ai, type ChatAttachmentInput } from "./ai";
 import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { discardFiles } from "./jobs/files";
-import { attachments, exams, parents, topics, trackMessages, tracks } from "./db/schema";
+import { attachments, exams, topics, trackMessages, tracks } from "./db/schema";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
 import { topicStrengths } from "./progress";
 import { examTopicLines } from "./results";
-import { getOwnStudent } from "./students";
-import { checkFiles, type ChatMessage, type UploadedFile } from "./tracks";
+import type { Action, Actor } from "@/domain/permissions";
+import { holderRef } from "@/domain/accounts";
+import { authorizeTrack } from "./learners";
+import { authorOf, checkFiles, type ChatMessage, type UploadedFile } from "./tracks";
 
-/** The track if it belongs to one of this parent's students. */
-export async function ownLiveTrack(parentId: string, trackId: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(trackId)) return null;
-  const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
-  if (!t || t.status === "draft") return null;
-  const student = await getOwnStudent(parentId, t.studentId);
-  return student ? { track: t, student } : null;
+/** A live (not draft) track, if `actor` may do `action` to its learner (domain/permissions.ts). */
+export async function ownLiveTrack(actor: Actor, trackId: string, action: Action = "manageTracks") {
+  const own = await authorizeTrack(actor, action, trackId);
+  return own && own.track.status !== "draft" ? own : null;
 }
 
 /** Rules §3: a goal-reached track restarts (2j); any other live track takes more material. */
@@ -50,8 +49,8 @@ async function loadUpdateChat(trackId: string) {
   return { messages, update, atts };
 }
 
-export async function getUpdateChat(parentId: string, trackId: string) {
-  const own = await ownLiveTrack(parentId, trackId);
+export async function getUpdateChat(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId);
   if (!own) return null;
   const strengths = (await topicStrengths(own.student.id, [trackId])).get(trackId) ?? [];
   return { ...own, mode: modeOf(own.track.status), topics: strengths, ...(await loadUpdateChat(trackId)) };
@@ -61,30 +60,31 @@ export type UpdateTurnResult = { ok: true; messages: ChatMessage[]; update: Stor
 
 const fmtDay = (d: Date, tz: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: tz }).format(d);
 
-/** One parent turn in an update chat. Like the create chat: nothing is saved if the AI fails. */
-export async function sendUpdateTurn(parentId: string, trackId: string, text: string, files: UploadedFile[]): Promise<UpdateTurnResult> {
-  const own = await ownLiveTrack(parentId, trackId);
+/** One turn by the account holder in an update chat. Like the create chat: nothing is saved if the AI fails. */
+export async function sendUpdateTurn(actor: Actor, trackId: string, text: string, files: UploadedFile[]): Promise<UpdateTurnResult> {
+  const own = await ownLiveTrack(actor, trackId);
   if (!own) return { ok: false, error: "Track not found." };
-  const { track, student } = own;
+  const { track, student, holder } = own;
+  // Restarting a goal-reached track is "add topics" (§2.3); both are allowed to the same accounts today.
   const message = text.trim().slice(0, 4000);
   if (!message && !files.length) return { ok: false, error: "Write a message or attach a file." };
   const fileError = checkFiles(files);
   if (fileError) return { ok: false, error: fileError };
-  const blocked = await chatBlocked(parentId);
+  if (modeOf(track.status) === "restart" && !(await ownLiveTrack(actor, trackId, "addTopics"))) return { ok: false, error: "Track not found." };
+  const blocked = await chatBlocked(holder);
   if (blocked) return { ok: false, error: blocked };
 
-  const [parent] = await db.select().from(parents).where(eq(parents.id, parentId));
   const { messages, update, atts } = await loadUpdateChat(trackId);
   const strengths = (await topicStrengths(student.id, [trackId])).get(trackId) ?? [];
-  const today = todayIn(parent!.timeZone);
+  const today = todayIn(holder.timeZone);
   const mode = modeOf(track.status);
   const earlier: ChatAttachmentInput[] = atts.map((a) => ({ kind: "earlier", label: a.label ?? a.originalName, text: a.extractedText, unreadable: a.unreadable }));
 
   let out;
   try {
-    out = await withAiContext({ purpose: "track_update", parentId }, () => ai().trackUpdate({
+    out = await withAiContext({ purpose: "track_update", holder: holderRef(holder), studentId: student.id }, () => ai().trackUpdate({
       mode,
-      parentName: parent!.name.split(" ")[0]!,
+      parentName: holder.name.split(" ")[0]!,
       studentName: student.name,
       className: formatClass(student.className),
       today,
@@ -96,7 +96,8 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
         goalReachedOn: track.goalReachedAt ? fmtDay(track.goalReachedAt, student.timeZone) : null,
       },
       update,
-      history: messages.map((m) => ({ author: m.author, text: m.text })),
+      // The account holder's turns, parent or learner (AI wording for learners comes in M9).
+      history: messages.map((m) => ({ author: m.author === "ai" ? ("ai" as const) : ("parent" as const), text: m.text })),
       attachments: [...earlier, ...files.map((f): ChatAttachmentInput => ({ kind: "new", label: f.name, mediaType: f.type, data: f.data }))],
       message,
     }));
@@ -112,7 +113,7 @@ export async function sendUpdateTurn(parentId: string, trackId: string, text: st
     for (const f of files) keys.push((await fileStore().put(f.data, { contentType: f.type, prefix: "track-material" })).key);
     const sentAt = new Date();
     await db.transaction(async (tx) => {
-      const [pm] = await tx.insert(trackMessages).values({ trackId, author: "parent", kind: "extend", text: message, createdAt: sentAt }).returning();
+      const [pm] = await tx.insert(trackMessages).values({ trackId, author: authorOf(actor), kind: "extend", text: message, createdAt: sentAt }).returning();
       if (files.length) {
         await tx.insert(attachments).values(
           files.map((f, i) => {
@@ -156,7 +157,7 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
     const [lastParentMsg] = await tx
       .select({ id: trackMessages.id })
       .from(trackMessages)
-      .where(and(eq(trackMessages.trackId, trackId), eq(trackMessages.kind, "extend"), eq(trackMessages.author, "parent")))
+      .where(and(eq(trackMessages.trackId, trackId), eq(trackMessages.kind, "extend"), inArray(trackMessages.author, ["parent", "learner"])))
       .orderBy(desc(trackMessages.createdAt))
       .limit(1);
 
@@ -199,10 +200,11 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
 }
 
 /** "Start the track again" (2j) / "Apply changes" (Add material). Only an agreed, complete update is applied. */
-export async function applyTrackUpdate(parentId: string, trackId: string) {
-  const own = await ownLiveTrack(parentId, trackId);
+export async function applyTrackUpdate(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId);
   if (!own) return { ok: false as const, error: "Track not found." };
   const mode = modeOf(own.track.status);
+  if (mode === "restart" && !(await ownLiveTrack(actor, trackId, "addTopics"))) return { ok: false as const, error: "Track not found." };
   const { update } = await loadUpdateChat(trackId);
   if (!update.ready || !canApplyUpdate(mode, update)) return { ok: false as const, error: "Agree the change in the chat first." };
   await updateTrack({ trackId, mode, update, studentName: own.student.name });
@@ -234,8 +236,8 @@ async function loadUpdateChatIncludingApplied(trackId: string) {
 }
 
 /** "Start over" in an update chat: deletes its messages (and attachment rows) since the last applied update. */
-export async function discardUpdateChat(parentId: string, trackId: string) {
-  if (!(await ownLiveTrack(parentId, trackId))) return;
+export async function discardUpdateChat(actor: Actor, trackId: string) {
+  if (!(await ownLiveTrack(actor, trackId))) return;
   const msgs = await db
     .select()
     .from(trackMessages)
@@ -252,16 +254,16 @@ export async function discardUpdateChat(parentId: string, trackId: string) {
 }
 
 /** Rules §2: Archive is for goal-reached tracks; it hides the track from the student and keeps its history. */
-export async function archiveTrack(parentId: string, trackId: string) {
-  const own = await ownLiveTrack(parentId, trackId);
+export async function archiveTrack(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId);
   if (!own || own.track.status !== "goal_reached") return false;
   await db.update(tracks).set({ status: "archived" }).where(eq(tracks.id, trackId));
   return true;
 }
 
 /** 2h: every marked exam of a track, newest first, with strong and needs-work topics. */
-export async function examHistory(parentId: string, trackId: string) {
-  const own = await ownLiveTrack(parentId, trackId);
+export async function examHistory(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId, "viewProgress");
   if (!own) return null;
   const rows = await db
     .select({ id: exams.id, number: exams.number, score: exams.score, submittedAt: exams.submittedAt })

@@ -35,6 +35,31 @@ export async function createFamily(opts: { password?: string; studentPassword?: 
   return { parentId, studentId: st.rows[0].id as string, parent, student };
 }
 
+/** A self-managed learner (0.2): signs in with their own email, which receives their codes. */
+export async function createSelfLearner(opts: { password?: string; name?: string } = {}) {
+  const tag = uid();
+  const learner = { name: opts.name ?? `Learner ${tag}`, email: `learner-${tag}@test.owlrnd`, password: opts.password ?? "learnerpass1" };
+  const { rows } = await pool.query(
+    `insert into students (type, parent_id, name, email, email_verified_at, password_hash) values ('self_managed', null, $1, $2, now(), $3) returning id`,
+    [learner.name, learner.email, await hash(learner.password)],
+  );
+  return { studentId: rows[0].id as string, learner };
+}
+
+export async function deleteSelfLearner(studentId: string) {
+  await pool.query(`delete from students where id = $1 and type = 'self_managed'`, [studentId]);
+}
+
+/** AI spend recorded against an account holder (a family, or a self-managed learner), as one usage row. */
+export async function addAiSpend(holder: { parentId: string } | { studentId: string }, usd: number) {
+  const parentId = "parentId" in holder ? holder.parentId : null;
+  const studentId = "studentId" in holder ? holder.studentId : null;
+  await pool.query(
+    `insert into ai_usage (parent_id, student_id, purpose, model, input_tokens, output_tokens, cost_usd) values ($1, $2, 'track_chat', 'claude-opus-5-5', 0, 0, $3)`,
+    [parentId, studentId, usd],
+  );
+}
+
 export async function deleteParentByEmail(email: string) {
   await pool.query(`delete from parents where lower(email) = lower($1)`, [email]);
   await pool.query(`delete from invitations where lower(email) = lower($1)`, [email]);

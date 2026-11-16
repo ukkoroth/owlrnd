@@ -2,6 +2,7 @@
 # Runs the access/invite tool inside the live app on owlrnd.com.
 #   npm run live:access -- list [--pending]
 #   npm run live:invite -- someone@example.com [...]
+#   npm run live:access -- allowance someone@example.com [<usd> | default]
 # Uses your admin SSH key (OWLRND_SSH_KEY, default ~/.ssh/owlrnd-lightsail.pem).
 set -euo pipefail
 args=$(printf '%q ' "$@")

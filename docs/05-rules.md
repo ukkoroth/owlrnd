@@ -5,6 +5,7 @@ These rules are the source of truth. Values marked **(default)** are working def
 ## §1 Accounts and sign-in
 
 **Roles.** Two roles: parent and student. A parent has many students. A student belongs to exactly one parent.
+From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as below) or **self-managed**: they sign in with their own email, receive their own codes and control their own tracks. The **account holder** is whoever controls an account: the parent for a parent-managed learner, the learner themselves when self-managed. One email belongs to one account, parent or self-managed learner, never both *(owner, 2026-11-16)*.
 
 **Parent sign-up.**
 - Name, email and password. Password at least 8 characters **(default)**.
@@ -17,7 +18,7 @@ These rules are the source of truth. Values marked **(default)** are working def
 
 **Sign-in (both roles).**
 1. One screen (3a): username or email, plus password.
-2. If they are correct, a new 6-digit code is emailed to the **parent's** email: for a parent, their own; for a student, their parent's.
+2. If they are correct, a new 6-digit code is emailed to the **account holder's** email: for a parent, their own; for a parent-managed student, their parent's; for a self-managed learner, their own.
 3. The code screen (3b) shows the parent's email masked (for example `u•••@example.com`). For students the text says to ask their parent for the code.
 4. On success, a parent lands on Your students (2k) and a student on their dashboard (3c).
 
@@ -27,9 +28,11 @@ These rules are the source of truth. Values marked **(default)** are working def
 - Wrong code: show an error with the tries left. After 3 wrong tries **(default)** the code is invalidated and a new one is sent automatically (5f).
 - "Send a new code" is available at any time; limit resends to 5 per hour **(default)**.
 
-**Password reset** (5g, 5h). Enter username or email; a reset code goes to the parent's email; enter the code and a new password twice.
+**Password reset** (5g, 5h). Enter username or email; a reset code goes to the account holder's email; enter the code and a new password twice.
 
 **Sign-out.** From the profile menu at the bottom of the sidebar (5a, 5c). It ends the session on that device.
+
+**Staying signed in** *(0.2)*. A session ends at Sign out, or after this long without use: parents and self-managed learners 7 days, parent-managed learners 12 hours **(default)**. Using the app restarts the clock.
 
 **Email change** (parent). Needs a code sent to the new address before it takes effect.
 
@@ -47,9 +50,10 @@ These rules are the source of truth. Values marked **(default)** are working def
 
 ## §3 Goals
 
-- Every track has one goal of the form **"score X / 10 or better in N exams in a row"**. Suggested default: X = 8, N = 3 **(default)**. The parent can change X and N in the chat.
+- Every track has one goal of the form **"score X / 10 or better in N exams in a row, with every topic strong"**. Suggested default: X = 8, N = 3 **(default)**. The parent can change X and N in the chat.
 - Goal progress counts consecutive qualifying exams in that track and resets to 0 on an exam below X.
-- When progress reaches N, the track's status becomes `goal reached`: it stops producing exams, the student sees "Goal reached" with no Start button, and the parent sees "Add topics to continue".
+- **Coverage (0.2, owner 2026-11-15):** every active topic on the track must also be strong (§4). Revision topics after a restart don't count. Setting: `all_strong` **(default)**, `all_tested` (each topic answered at least 3 times and none needs work) or `off` (score run only, as in 0.1).
+- When progress reaches N **and** coverage holds, the track's status becomes `goal reached`: it stops producing exams, the student sees "Goal reached" with no Start button, and the parent sees "Add topics to continue".
 - **Restarting** (2j): the parent adds material in a chat; the AI finds the new topics; earlier topics stay as revision (about 2 questions per exam **(default)**); the parent agrees a new goal; status returns to `active` with progress 0.
 
 ## §4 Building exams (adaptivity)
@@ -134,6 +138,8 @@ The sidebar shows the total and current level on every student screen. The paren
 - Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data.
 
 ## §10 Permissions
+
+From 0.2 the full table, with self-managed learners, is editions §2.3, enforced by one policy (`src/domain/permissions.ts`). For a parent and a parent-managed student it matches the table below.
 
 | Action | Parent | Student |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 import { count, eq } from "drizzle-orm";
 import { PageHeader } from "@/components/PageHeader";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { db } from "@/server/db";
 import { students } from "@/server/db/schema";
 import { DeleteForm } from "../ProfileForms";
@@ -8,7 +8,7 @@ import { DeleteForm } from "../ProfileForms";
 export const metadata = { title: "Delete account · owlrnd" };
 
 export default async function DeleteAccountPage() {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(students).where(eq(students.parentId, parent.id));
   return (
     <div className="max-w-[520px]">

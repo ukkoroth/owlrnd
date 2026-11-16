@@ -16,7 +16,8 @@ The earlier "All-rounder" prototype (single student, θ/3PL engine, follow-up ch
 | M5 Marking and results | ✅ done |
 | M6 Goals, history, points | ✅ done |
 | Release: closed beta on AWS Lightsail ([docs/release-plan.md](docs/release-plan.md)) | ✅ live at owlrnd.com |
-| Version 0.2: two kinds of account ([docs/plan-0.2.md](docs/plan-0.2.md)) | planned |
+| Version 0.2: two kinds of account ([docs/plan-0.2.md](docs/plan-0.2.md)) | in progress |
+| M7 Shared core (0.2) | ✅ done 2026-11-16 |
 
 Source-of-truth order: `docs/05-rules.md` → `docs/04-screens.md` / `docs/03-flows.md` → `screens/*.png` → `mockups/*.html`.
 

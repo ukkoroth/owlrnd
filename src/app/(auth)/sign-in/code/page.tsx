@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthHeading, AuthLayout } from "@/components/AuthLayout";
 import { maskEmail } from "@/domain/codes";
-import { getParent } from "@/server/auth/accounts";
+import { codeRecipient } from "@/server/auth/codes";
 import { getPending } from "@/server/auth/current";
 import { resendSignInCode, verifySignInCode } from "../../actions";
 import { CodeForm } from "@/components/CodeForm";
@@ -14,16 +14,24 @@ export const metadata: Metadata = { title: "Sign-in code · owlrnd" };
 export default async function SignInCodePage({ searchParams }: { searchParams: Promise<{ limit?: string }> }) {
   const pending = await getPending("sign_in");
   if (!pending) redirect("/sign-in?expired=1");
-  const parent = await getParent(pending.parentId);
-  if (!parent) redirect("/sign-in");
+  const recipient = await codeRecipient(pending).catch(() => null);
+  if (!recipient) redirect("/sign-in");
   const { limit } = await searchParams;
-  const masked = maskEmail(parent.email);
+  const masked = maskEmail(recipient.email);
 
   return (
     <AuthLayout variant="tagline">
       <AuthHeading title="Enter your sign-in code">
-        A new 6-digit code was sent to the parent&apos;s registered email, <strong className="text-ink">{masked}</strong>.
-        {pending.studentId ? " Ask your parent for the code and enter it below." : " Enter it below."}
+        {recipient.selfManaged ? (
+          <>
+            A new 6-digit code was sent to your email, <strong className="text-ink">{masked}</strong>. Enter it below.
+          </>
+        ) : (
+          <>
+            A new 6-digit code was sent to the parent&apos;s registered email, <strong className="text-ink">{masked}</strong>.
+            {pending.studentId ? " Ask your parent for the code and enter it below." : " Enter it below."}
+          </>
+        )}
       </AuthHeading>
       <CodeForm
         action={verifySignInCode}

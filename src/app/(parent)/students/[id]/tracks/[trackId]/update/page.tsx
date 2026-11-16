@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { PageHeader } from "@/components/PageHeader";
 import { TrackUpdateChat } from "@/components/TrackUpdateChat";
-import { requireParent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getUpdateChat } from "@/server/trackUpdates";
 
 export const metadata: Metadata = { title: "Update track · owlrnd" };
@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 
 // 2j (restart a goal-reached track) and Add material (active or paused track).
 export default async function UpdateTrackPage({ params }: { params: Promise<{ id: string; trackId: string }> }) {
-  const { parent } = await requireParent();
+  const { actor } = await requireShell("parent");
   const { id, trackId } = await params;
-  const chat = await getUpdateChat(parent.id, trackId);
+  const chat = await getUpdateChat(actor, trackId);
   if (!chat || chat.student.id !== id || chat.track.status === "archived") notFound();
   const { track, student, mode } = chat;
   const restart = mode === "restart";

@@ -33,7 +33,13 @@ Finish and test each before starting the next, as in 0.1. M7 continues the 0.1 n
 | **M11 · Moving to self-managed** | A parent releases a child, or a child turns 18; the learner adds their own email and takes over | History, tracks and points stay; the parent loses control; codes now go to the learner (can slip to 0.2.x) |
 | **Release 0.2** | Docs, beta for learners, release notes | `v0.2.0` released; monitoring shows sign-ups by account type |
 
-### M7 · Shared core
+### M7 · Shared core · ✅ done 2026-11-16
+
+Built as planned, with these notes:
+- `requireParent` / `requireStudent` are replaced by `requireActor()` and `requireShell("parent" | "learner")`. The shell only picks which screens to show; every server function checks `can` through `src/server/learners.ts` (`authorizeLearner`, `authorizeTrack`). The policy is `src/domain/permissions.ts`.
+- The account holder is `controllerOf` in `src/domain/accounts.ts`. Codes, AI usage, the allowance and the daily limits all go through it.
+- The allowance override is set with `npm run ai:allowance -- <email> <usd>` (live: `npm run live:access -- allowance <email> <usd>`). The package request form is at `/contact?topic=package` and needs `OWNER_EMAIL` on the server, which is still empty on owlrnd.com.
+- Until M9, a self-managed learner's chat turns are passed to the AI as the account holder's ("Parent:" in the prompt).
 
 1. **Schema** (additive, one migration):
    - `students`: add `type` (default `parent_managed`), `email` (unique when not null), `email_verified_at`, `date_of_birth`, `consented_at` / `consent_version` (for self-managed adults), and make `parent_id` nullable with a check that it is set exactly when `type = 'parent_managed'`.
@@ -85,6 +91,43 @@ Owner's decisions: an under-18 learner **practises straight away**, consent is c
 
 - The parent chooses "Let Scout manage their own practice" on 5e, or the learner turns 18 and the parent is prompted. The learner adds and verifies their own email; `type` becomes `self_managed`; the `manages` link ends; codes now go to the learner. History, tracks and points stay.
 - The parent's view of that learner ends unless the learner keeps it on (that switch is built later along with the read-only view).
+
+### Also in 0.2 · Answer sheet survives the Back button (owner, 2026-11-15)
+
+Every recorded answer is kept automatically, so pressing the browser's Back (or Forward, or reloading) never loses work or shows an older copy of the paper. This applies to both paths and doesn't change rules §4–§5.
+
+Today, choices save to the server at once (`saveAnswer`) and typed answers save after a short pause or when the box loses focus (`ExamPaper.tsx`). The gaps:
+
+- **Back is a client-side navigation**, so `beforeunload` doesn't fire. A typed answer still waiting for its pause is dropped when the paper unmounts.
+- **Coming back** with Back or Forward can show the paper from the router cache or the browser's back-forward cache, with the answers it had when it first loaded, not the latest saved ones. Typing then overwrites newer answers.
+
+To build:
+
+1. **Save on leaving:** when the paper unmounts or the page is hidden (`pagehide`, `visibilitychange`), send every pending answer at once (`navigator.sendBeacon` to a small route that uses the same `exams.saveAnswer` checks).
+2. **Local copy as a safety net:** also keep each answer in `sessionStorage` (keyed by exam), written on every change. On opening the paper, use the newer of the server answer and the local copy per question, and save any newer local copy to the server. Clear it on submit. Wrap reads and writes in try/catch; the paper must work without it.
+3. **Always fresh on return:** the exam page is never served from a cache (`dynamic`, no-store), and on `pageshow` with `persisted` the paper reloads its answers from the server.
+4. **Submitted or expired:** coming back to a submitted exam goes to its marking or result page, never an editable paper.
+
+Done when (Playwright): answer multiple choice and short-answer questions on both pages, press Back straight after typing, press Forward, and every answer is there; reload mid-exam and every answer is there; Back after submit lands on marking or the result.
+
+### Also in 0.2 · A goal also needs every topic covered (owner, 2026-11-15)
+
+Today a track stops on its score alone (8/10 or better in 3 exams in a row). That can happen while topics are still untested or weak: a 12-topic track can reach its goal in 30 questions, about 2.5 per topic, and a student who misses the same topic every time can still score 8/10. From 0.2 the goal has two parts, and **both** must hold:
+
+1. **Score run**, as today: X/10 or better in N exams in a row.
+2. **Coverage:** every topic on the track is **strong** (rules §4: at least 80% of its last 5 questions right, with at least 3 answered).
+
+To build:
+
+- `goalReached` (`src/domain/goals.ts`) takes the track's topic strengths as well as the run. Marking (`src/server/marking.ts`) passes them in the same transaction it already uses for goal progress. The rule is `rules.goal.coverage` = `all_strong` (default), with `all_tested` (every topic answered at least 3 times and none still needs work) and `off` (0.1 behaviour) as settings that need no code change.
+- **Which topics count:** the track's active topics. After a restart (2j), earlier topics are revision and don't count towards the new goal.
+- **Exams keep aiming at the gap.** Nothing changes in the exam mix (rules §4): it already puts 80% of questions on weak and untested topics. When the score run is met but coverage isn't, the track stays active and the result screen's "Your next exam" line names the topics still to make strong.
+- **Progress shows both parts** wherever goal progress appears today (2g–2i, 4.1a, 3c and the learner's sm-2f/sm-2h): "3 of 3 exams · 10 of 12 topics strong". The bar fills only when both are complete. The "goal reached" notice is unchanged.
+- **The goal sentence** in the track chat and preview (2e, 2f, 2j) reads "Score 8/10 or better in 3 exams in a row, with every topic strong". The AI explains the coverage part when it proposes a goal. The account holder can still change X and N, but not switch coverage off (that is the setting).
+- **Live tracks:** tracks already at `goal reached` stay stopped. Active tracks follow the new rule from the next marked exam, so a few may keep going longer than they would have. Mention it in the release notes.
+- **Tests:** a run of 3 with one topic needing work → not reached; every topic strong with a run of 2 → not reached; both → reached; revision topics ignored after a restart; `off` matches 0.1.
+
+Not in 0.2: tracking subtopics inside a chapter (the AI's topics are the finest level tracked). That belongs with subjects (roadmap item 15).
 
 ## Testing
 

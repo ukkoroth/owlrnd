@@ -71,6 +71,13 @@
       "when": 1794726149549,
       "tag": "0009_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794796978259,
+      "tag": "0010_learner_types",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { rules } from "@/config/rules";
 import { readPending, signPending, type Pending, type PendingKind } from "./pending";
-import { createSession, revokeSession, validateSession, type CurrentUser, type SessionOwner } from "./sessions";
+import { can, type Actor } from "@/domain/permissions";
+import { createSession, idleMs, revokeSession, validateSession, type CurrentUser, type SessionOwner } from "./sessions";
 
 export const SESSION_COOKIE = "owlrnd_session";
 const PENDING_COOKIE = "owlrnd_pending";
@@ -16,18 +17,36 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return token ? validateSession(token) : null;
 });
 
-export async function requireParent() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/sign-in");
-  if (user.role !== "parent") redirect("/today");
-  return user;
+/** The permission-policy actor for a signed-in user (domain/permissions.ts). */
+export function actorOf(user: CurrentUser): Actor {
+  return user.role === "parent"
+    ? { kind: "parent", parentId: user.parent.id }
+    : { kind: "learner", studentId: user.student.id, type: user.student.type, parentId: user.student.parentId };
 }
 
-export async function requireStudent() {
+type ParentUser = Extract<CurrentUser, { role: "parent" }>;
+type StudentUser = Extract<CurrentUser, { role: "student" }>;
+
+/** Any signed-in user, or a redirect to sign-in. What they may do is decided by `can` (server/learners.ts). */
+export async function requireActor(): Promise<{ user: CurrentUser; actor: Actor }> {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
-  if (user.role !== "student") redirect("/students");
-  return user;
+  return { user, actor: actorOf(user) };
+}
+
+/**
+ * Which set of screens to show: the parent's (Your students) or the learner's (Exams). This only picks the shell;
+ * permissions are checked by the server functions through `can`.
+ */
+export async function requireShell(shell: "parent"): Promise<{ user: ParentUser; actor: Actor }>;
+export async function requireShell(shell: "learner"): Promise<{ user: StudentUser; actor: Actor }>;
+export async function requireShell(shell: "parent" | "learner") {
+  const { user, actor } = await requireActor();
+  const inShell = shell === "parent" ? user.role === "parent" : user.role === "student";
+  if (!inShell) redirect(homeFor(user));
+  // Every screen in the learner's shell is practice: exams, results, points (editions §2.3).
+  if (user.role === "student" && !can(actor, "practise", user.student)) redirect("/sign-in");
+  return { user, actor };
 }
 
 /** Where each role lands after signing in (rules §1: parent → 2k, student → 3c). */
@@ -43,7 +62,8 @@ export async function startSession(owner: SessionOwner) {
     sameSite: "lax",
     secure,
     path: "/",
-    maxAge: rules.accounts.sessionIdleDays * 24 * 60 * 60,
+    // The longest idle window; the database ends shorter sessions (sessions.ts). Kept in step with middleware.ts.
+    maxAge: idleMs("parent") / 1000,
   });
 }
 

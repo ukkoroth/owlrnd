@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Avatar, PageHeader, SectionLabel } from "@/components/PageHeader";
 import { formatClass } from "@/domain/identity";
 import { levelFor } from "@/domain/levels";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { pointsTotal } from "@/server/results";
 
 export const metadata: Metadata = { title: "Your profile · owlrnd" };
 
 // 5b: read-only for the student.
 export default async function StudentProfilePage() {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const total = await pointsTotal(student.id);
   const level = levelFor(total).current;
 
@@ -26,7 +26,8 @@ export default async function StudentProfilePage() {
       <section className="card">
         <SectionLabel>Your account</SectionLabel>
         <dl className="divide-y divide-line">
-          <Row label="Username" value={student.username} />
+          {/* Parent-managed learners sign in with a username, self-managed learners with their email. */}
+          <Row label={student.username ? "Username" : "Email"} value={student.username ?? student.email ?? ""} />
           <Row label="Password" value="••••••••" />
           <Row label="Points" value={`${total.toLocaleString("en-GB")}${level ? ` · ${level} level` : ""}`} />
         </dl>

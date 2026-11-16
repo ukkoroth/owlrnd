@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACT_EMAIL, LegalPage, Mail, P, Section } from "@/components/landing/LegalPage";
 import { rules } from "@/config/rules";
+import { currentHolder } from "@/server/packageRequests";
+import { PackageRequestForm } from "./PackageRequestForm";
 
 export const metadata: Metadata = { title: "Contact · owlrnd" };
 
-export default function ContactPage() {
+export default async function ContactPage({ searchParams }: { searchParams: Promise<{ topic?: string; sent?: string }> }) {
+  const { topic, sent } = await searchParams;
+  // A signed-in account holder (a parent, or a self-managed learner) has their details filled in.
+  const holder = topic === "package" ? await currentHolder().catch(() => null) : null;
   return (
     <LegalPage
       title="Contact"
@@ -15,6 +20,21 @@ export default function ContactPage() {
         </p>
       }
     >
+      {topic === "package" && (
+        <Section title="Buy a package">
+          {sent ? (
+            <div role="status" className="card flex flex-col gap-2">
+              <p className="m-0 font-semibold">Thanks, we&apos;ve got your message.</p>
+              <p className="m-0 text-ink-muted">We&apos;ll email you about packages soon.</p>
+            </div>
+          ) : (
+            <>
+              <P>Used up your demo AI allowance? Tell us and we&apos;ll get back to you about a package. Nothing is charged here.</P>
+              <PackageRequestForm name={holder?.name} email={holder?.email} />
+            </>
+          )}
+        </Section>
+      )}
       <Section title="Email">
         <P>
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-[22px] font-semibold text-brand underline underline-offset-4 hover:text-sidebar">

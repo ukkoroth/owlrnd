@@ -7,7 +7,7 @@ import { normalizeEmail, validateEmail, validateName, validatePassword } from "@
 import { codeFrom, text, type FormState } from "@/lib/form";
 import { changeParentEmail, deleteParent, emailTakenByVerified } from "@/server/auth/accounts";
 import { issueCode, pendingNewEmail, verifyCode } from "@/server/auth/codes";
-import { requireParent, SESSION_COOKIE } from "@/server/auth/current";
+import { requireShell, SESSION_COOKIE } from "@/server/auth/current";
 import { hashPassword, verifyPassword } from "@/server/auth/passwords";
 import { revokeAllSessions } from "@/server/auth/sessions";
 import { db } from "@/server/db";
@@ -15,7 +15,7 @@ import { parents } from "@/server/db/schema";
 import { codeMessage, sendLimitMessage } from "@/lib/codeMessages";
 
 export async function updateName(_prev: FormState, form: FormData): Promise<FormState> {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   const name = text(form, "name").trim();
   const err = validateName(name);
   if (err) return { fieldErrors: { name: err }, values: { name } };
@@ -25,7 +25,7 @@ export async function updateName(_prev: FormState, form: FormData): Promise<Form
 
 // Rules §1: changing the email needs a code sent to the new address before it takes effect.
 export async function startEmailChange(_prev: FormState, form: FormData): Promise<FormState> {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   const raw = text(form, "email");
   const email = normalizeEmail(raw);
   const err = validateEmail(email);
@@ -40,7 +40,7 @@ export async function startEmailChange(_prev: FormState, form: FormData): Promis
 }
 
 export async function verifyEmailChange(_prev: FormState, form: FormData): Promise<FormState> {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   const result = await verifyCode({ parentId: parent.id, studentId: null, purpose: "change_email" }, codeFrom(form));
   if (result.result !== "ok") return codeMessage(result);
   if (!result.newEmail || !(await changeParentEmail(parent.id, result.newEmail))) {
@@ -50,15 +50,15 @@ export async function verifyEmailChange(_prev: FormState, form: FormData): Promi
 }
 
 export async function resendEmailChange(): Promise<FormState> {
-  const { parent } = await requireParent();
-  const newEmail = await pendingNewEmail(parent.id);
+  const { user: { parent } } = await requireShell("parent");
+  const newEmail = await pendingNewEmail({ parentId: parent.id, studentId: null });
   if (!newEmail) redirect("/parent/profile/email");
   const sent = await issueCode({ parentId: parent.id, studentId: null, purpose: "change_email", newEmail });
   return sent.sent ? { notice: "We sent a new code. Use the code in the latest email." } : { error: sendLimitMessage };
 }
 
 export async function changePassword(_prev: FormState, form: FormData): Promise<FormState> {
-  const user = await requireParent();
+  const { user } = await requireShell("parent");
   const current = text(form, "current");
   const password = text(form, "password");
   const confirm = text(form, "confirm");
@@ -73,7 +73,7 @@ export async function changePassword(_prev: FormState, form: FormData): Promise<
 }
 
 export async function deleteAccount(_prev: FormState, form: FormData): Promise<FormState> {
-  const { parent } = await requireParent();
+  const { user: { parent } } = await requireShell("parent");
   if (!(await verifyPassword(parent.passwordHash, text(form, "password")))) {
     return { fieldErrors: { password: "That isn't your password." } };
   }

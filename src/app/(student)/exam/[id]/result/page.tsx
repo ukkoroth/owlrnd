@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { requireStudent } from "@/server/auth/current";
+import { requireShell } from "@/server/auth/current";
 import { getPaper } from "@/server/exams";
 import { getResult } from "@/server/results";
 import type { TopicTally } from "@/domain/topicStrength";
@@ -40,7 +40,7 @@ function TopicBar({ t, weak }: { t: TopicTally; weak: boolean }) {
 
 // 4.1e
 export default async function ResultPage({ params }: { params: Promise<{ id: string }> }) {
-  const { student } = await requireStudent();
+  const { user: { student } } = await requireShell("learner");
   const { id } = await params;
   const r = await getResult(student.id, id);
   if (!r) {

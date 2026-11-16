@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Verify your email · owlrnd" };
 // 1b
 export default async function VerifyEmailPage({ searchParams }: { searchParams: Promise<{ limit?: string }> }) {
   const pending = await getPending("verify_email");
-  if (!pending) redirect("/sign-up");
+  if (!pending?.parentId) redirect("/sign-up");
   const parent = await getParent(pending.parentId);
   if (!parent) redirect("/sign-up");
   const { limit } = await searchParams;

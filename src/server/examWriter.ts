@@ -1,4 +1,6 @@
 import "server-only";
+import { holderRef } from "@/domain/accounts";
+import { loadLearner } from "./learners";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { firstExamPlan, type PlanSlot } from "@/domain/examPlan";
 import { planWithRevision } from "@/domain/examMix";
@@ -8,7 +10,7 @@ import { ai } from "./ai";
 import { enqueue } from "./jobs/queue";
 import { examWriteBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
-import { attachments, examQuestions, exams, marks, questions, students, topics, trackMessages, tracks } from "./db/schema";
+import { attachments, examQuestions, exams, marks, questions, topics, trackMessages, tracks } from "./db/schema";
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
 
@@ -102,9 +104,11 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       await db.update(tracks).set({ nextExam: "ready" }).where(eq(tracks.id, trackId));
       return;
     }
-    const [student] = await db.select().from(students).where(eq(students.id, track.studentId));
-    // AI cost controls: over the family's daily limit or the monthly budget, try again later instead of writing.
-    const blocked = await examWriteBlocked(student!.parentId);
+    const learner = await loadLearner(track.studentId);
+    if (!learner) return;
+    const { student, holder } = learner;
+    // AI cost controls: over the holder's daily limit or allowance, or the monthly budget, try again later.
+    const blocked = await examWriteBlocked(holder);
     if (blocked) {
       await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });
       console.info(`[owlrnd ai] exam for track ${trackId} postponed (${blocked.reason}) until ${blocked.retryAt.toISOString()}`);
@@ -115,9 +119,9 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     const { plan, avoid } = await planNextExam(trackId, track.studentId, keyed);
 
     const material = await trackMaterial(trackId);
-    const written = await withAiContext({ purpose: "write_exam", parentId: student!.parentId }, () => ai().writeQuestions({
+    const written = await withAiContext({ purpose: "write_exam", holder: holderRef(holder), studentId: student.id }, () => ai().writeQuestions({
       trackName: track.name ?? "",
-      className: formatClass(student!.className),
+      className: formatClass(student.className),
       topics: keyed,
       focusNotes: track.focusNotes,
       material,
