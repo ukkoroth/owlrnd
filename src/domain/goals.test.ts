@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageMet, goalProgress, goalReached, topicCoverage, type CoverageTopic } from "./goals";
+import { coverageMet, goalProgress, goalReached, topicCoverage, trackCompletion, type CoverageTopic } from "./goals";
 
 describe("goal progress (rules §3)", () => {
   it("counts qualifying exams in a row, newest backwards, and resets on a lower score", () => {
@@ -36,5 +36,16 @@ describe("goal coverage (rules §3, 0.2)", () => {
     expect(coverageMet([t("strong"), t("needs_work")], "all_tested")).toBe(false);
     expect(coverageMet([t("strong"), t("strong")], "all_tested")).toBe(true);
     expect(coverageMet([t("needs_work"), t("not_tested")], "off")).toBe(true);
+  });
+});
+
+describe("trackCompletion (the card's left-edge bar)", () => {
+  const strong = { strength: "strong" as const, revisionOnly: false };
+  const weak = { strength: "needs_work" as const, revisionOnly: false };
+  it("is half the score run and half the strong topics; full once reached", () => {
+    expect(trackCompletion({ progress: 0, runLength: 3, topics: [weak, weak], reached: false }, "all_strong")).toBe(0);
+    expect(trackCompletion({ progress: 3, runLength: 3, topics: [strong, weak], reached: false }, "all_strong")).toBe(0.75);
+    expect(trackCompletion({ progress: 1, runLength: 2, topics: [weak], reached: true }, "all_strong")).toBe(1);
+    expect(trackCompletion({ progress: 1, runLength: 2, topics: [weak], reached: false }, "off")).toBe(0.5);
   });
 });

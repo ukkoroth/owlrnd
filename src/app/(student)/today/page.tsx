@@ -5,7 +5,8 @@ import { formatTestDate } from "@/domain/tracks";
 import { completedToday } from "@/domain/suggestions";
 import { inSentence } from "@/domain/examMix";
 import { learnerWords } from "@/domain/trackView";
-import { TrackTag, trackBorder } from "@/components/TrackTag";
+import { TrackEdge, TrackTag } from "@/components/TrackTag";
+import { trackCompletion } from "@/domain/goals";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examTopicLines, practiceTimes } from "@/server/results";
@@ -58,10 +59,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-8">
         {firstDay ? (
-          <FirstDay suggestion={dash.suggestions[0]!} overall={dash.overall[0]!} w={w} />
+          <FirstDay suggestion={dash.suggestions[0]!} w={w} />
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} overall={dash.overall} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
+            <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
             {dash.recent.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
@@ -92,18 +93,15 @@ function StartLink({ t, primary }: { t: StudentTrack; primary: boolean }) {
 
 type Words = ReturnType<typeof learnerWords>;
 
-function FirstDay({ suggestion: t, overall, w }: { suggestion: StudentTrack; overall: number; w: Words }) {
+function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) {
   return (
     <div className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
-      <section className="card" style={trackBorder(t.colorIndex)}>
+      <section className="card relative overflow-hidden">
+        <TrackEdge colorIndex={t.colorIndex} completion={completionOf(t)} />
         <p className="text-ink-muted">
           {w.firstTrackReady} Your first exam is ready: {t.exam?.questionCount ?? 10} questions, about 10 minutes.
         </p>
-        <div className="mt-5 flex items-center gap-3">
-          <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-pale px-2 text-lg font-semibold text-sidebar">
-            <span className="sr-only">Your exam number </span>
-            {overall}
-          </span>
+        <div className="mt-5">
           <TrackTag name={t.name} colorIndex={t.colorIndex} />
         </div>
         <p className="mt-3 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
@@ -126,15 +124,15 @@ function FirstDay({ suggestion: t, overall, w }: { suggestion: StudentTrack; ove
 
 function Today({
   suggestions,
-  overall,
+  completed,
   tracks,
   done,
   selfManaged,
   w,
 }: {
   suggestions: StudentTrack[];
-  /** The learner's overall exam number for each suggestion (fixed once started, predicted before). */
-  overall: number[];
+  /** Exams the learner has finished on owlrnd, all tracks. */
+  completed: number;
   tracks: StudentTrack[];
   done: number;
   selfManaged: boolean;
@@ -160,27 +158,24 @@ function Today({
         <h2 id="suggested" className="text-xl">
           Suggested practice exams
         </h2>
-        {done > 0 && (
+        {completed > 0 && (
           <p className="flex items-center gap-1.5 text-[15px] font-semibold text-ink-muted">
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.6">
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>
-            {done} completed today
+            {/* The total on owlrnd (owner, 2026-11-16), with today's count when there is one. */}
+            {completed} {completed === 1 ? "exam" : "exams"} completed{done > 0 ? ` · ${done} today` : ""}
           </p>
         )}
       </div>
       <ol className="grid gap-4 md:grid-cols-3">
         {suggestions.map((t, i) => (
-          <li key={t.id} className="card flex flex-col" style={trackBorder(t.colorIndex)}>
-            <div className="flex items-center gap-3">
-              {/* The learner's nth exam on owlrnd, across all tracks (owner, 2026-11-16). */}
-              <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-pale px-2 text-lg font-semibold text-sidebar">
-                <span className="sr-only">Your exam number </span>
-                {overall[i]}
-              </span>
+          <li key={t.id} className="card relative flex flex-col overflow-hidden">
+            <TrackEdge colorIndex={t.colorIndex} completion={completionOf(t)} />
+            <div>
               <TrackTag name={t.name} colorIndex={t.colorIndex} />
             </div>
-            <p className="mt-5 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
+            <p className="mt-4 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
             <h3 className="text-[21px] leading-snug">{t.name}</h3>
             <p className="mb-5 mt-1 text-ink-muted">{examLine(t)}</p>
             <div className="mt-auto">
@@ -376,3 +371,7 @@ function AllTracks({ tracks, w }: { tracks: StudentTrack[]; w: Words }) {
     </div>
   );
 }
+
+/** How far a track is towards its goal, for the card's left edge. */
+const completionOf = (t: StudentTrack) =>
+  trackCompletion({ progress: t.goalProgress, runLength: t.goalRunLength, topics: t.topics, reached: t.status === "goal_reached" });

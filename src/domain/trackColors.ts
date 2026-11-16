@@ -1,14 +1,15 @@
 /**
  * A colour per track (owner, 2026-11-16): a small tag and a left border on the track's cards, the same everywhere
  * the track appears. Eight light fills with dark text (at least 4.5:1 contrast), told apart by hue and lightness
- * so neighbouring tags stay distinct for colour-blind users too. Amber is left out: it is the landing page's accent.
+ * so neighbouring tags stay distinct for colour-blind users too. No reds or pinks (owner, 2026-11-16): red means
+ * "needs work" in the app. Amber is left out too: it is the landing page's accent.
  */
 export type TrackColor = { name: string; fill: string; text: string; border: string };
 
 export const TRACK_COLORS: readonly TrackColor[] = [
   { name: "teal", fill: "#D3F1EC", text: "#0B4D45", border: "#159A88" },
   { name: "purple", fill: "#ECE4FB", text: "#45288A", border: "#7C4DDB" },
-  { name: "rose", fill: "#FBE2EA", text: "#851A3A", border: "#D2456E" },
+  { name: "lime", fill: "#E9F4CC", text: "#3D520D", border: "#7A9E1A" },
   { name: "sky", fill: "#DCEFFB", text: "#0B4568", border: "#2B8FC9" },
   { name: "green", fill: "#DFF2DB", text: "#22531C", border: "#3E9A34" },
   { name: "orange", fill: "#FCE6D5", text: "#743708", border: "#DA6F1D" },

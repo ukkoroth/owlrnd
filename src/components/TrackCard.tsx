@@ -4,7 +4,8 @@ import type { TrackSummary } from "@/server/tracks";
 import Link from "next/link";
 import { pauseTrack, resumeTrack, retryExam } from "@/app/_actions/tracks";
 import { ArchiveButton } from "./ArchiveButton";
-import { TrackTag, trackBorder } from "./TrackTag";
+import { TrackEdge, TrackTag } from "./TrackTag";
+import { trackCompletion } from "@/domain/goals";
 import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
 
 /**
@@ -24,7 +25,8 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
           : "";
 
   return (
-    <article className={`card flex flex-col ${highlight || t.status === "goal_reached" ? "border-2 border-brand" : ""}`} aria-labelledby={`track-${t.id}`} style={trackBorder(t.colorIndex)}>
+    <article className={`card relative flex flex-col overflow-hidden ${highlight || t.status === "goal_reached" ? "border-2 border-brand" : ""}`} aria-labelledby={`track-${t.id}`}>
+      <TrackEdge colorIndex={t.colorIndex} completion={trackCompletion({ progress: t.goalProgress, runLength, topics: t.topics, reached: t.status === "goal_reached" })} />
       <div className="mb-2">
         <TrackTag name={t.name ?? ""} colorIndex={t.colorIndex} />
       </div>

@@ -38,3 +38,16 @@ export function coverageMet(topics: CoverageTopic[], mode: CoverageMode = rules.
 export function goalReached(progress: number, runLength: number, covered = true): boolean {
   return progress >= runLength && covered;
 }
+
+/**
+ * How far a track is towards its goal, 0 to 1, for the bar on the card's left edge (owner, 2026-11-16): half for
+ * the score run, half for the topics made strong (or all of it for the run, when coverage is off). 1 once reached.
+ */
+export function trackCompletion(t: { progress: number; runLength: number; topics: CoverageTopic[]; reached: boolean }, mode: CoverageMode = rules.goal.coverage): number {
+  if (t.reached) return 1;
+  const run = t.runLength > 0 ? Math.min(t.progress, t.runLength) / t.runLength : 0;
+  if (mode === "off") return run;
+  const { strong, total } = topicCoverage(t.topics);
+  const topics = total > 0 ? strong / total : 0;
+  return Math.min(1, (run + topics) / 2);
+}

@@ -1,6 +1,5 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
-import { overallNumbers } from "@/domain/exam";
 import { suggestExams } from "@/domain/suggestions";
 import { todayIn } from "@/domain/tracks";
 import { db } from "./db";
@@ -123,15 +122,15 @@ export async function getStudentDashboard(studentId: string) {
   const recent = await recentExams(studentId);
   const today = todayIn(student!.timeZone);
   const suggestions = suggestExams(list, today);
-  const [{ started } = { started: 0 }] = await db
-    .select({ started: sql<number>`coalesce(max(${exams.overallNumber}), 0)::int` })
+  const [{ completed } = { completed: 0 }] = await db
+    .select({ completed: sql<number>`count(*)::int` })
     .from(exams)
-    .where(eq(exams.studentId, studentId));
+    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)));
   return {
     tracks: list,
     suggestions,
-    /** The overall number on each suggestion card, in order (domain/exam.ts overallNumbers). */
-    overall: overallNumbers(suggestions.map((s) => s.exam?.overallNumber ?? null), started),
+    /** Exams finished on owlrnd, all tracks (top right of the dashboard, owner 2026-11-16). */
+    completed,
     recent,
     firstDay: recent.length === 0,
   };
