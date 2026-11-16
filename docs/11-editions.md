@@ -90,6 +90,8 @@ India's Digital Personal Data Protection Rules (notified 14 November 2025, comin
 
 ### 2.5 Moving from parent-managed to self-managed
 
+*0.2 (owner, 2026-11-16): not in 0.2; parked on the roadmap (`09-roadmap.md` item 18). A parent-created account stays the parent's.*
+
 A parent-managed learner can become self-managed, for example at 18 or when the parent releases them. Their history, tracks and points stay. They add their own email, and from then on they receive their own codes and control their own tracks. The parent loses control, and their view of that child ends unless the learner keeps it on.
 
 ### 2.6 Packages
@@ -107,7 +109,7 @@ The app shows each person the packages for their account type. A package is just
 Parents and children often share one computer. So:
 - The account menu always shows who is signed in (name and role), as in the designs.
 - After signing out, the sign-in page doesn't pre-fill the last user.
-- Sessions time out after a period of inactivity. Working default: 7 days for self-managed learners and parents, 12 hours for parent-managed learners.
+- Sessions time out after a period of inactivity. Working default: 7 days for self-managed learners and parents, 12 hours for parent-managed learners. *0.2 (owner, 2026-11-16): 30 days for everyone, as in 0.1.*
 
 ## 3. Data model changes
 

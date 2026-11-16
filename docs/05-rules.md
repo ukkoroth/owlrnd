@@ -46,7 +46,7 @@ From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as b
 
 **Sign-out.** From the profile menu at the bottom of the sidebar (5a, 5c). It ends the session on that device.
 
-**Staying signed in** *(0.2)*. A session ends at Sign out, or after this long without use: parents and self-managed learners 7 days, parent-managed learners 12 hours **(default)**. Using the app restarts the clock.
+**Staying signed in.** A session ends at Sign out, or after 30 days without use, for every account type **(default; owner, 2026-11-16)**. Using the app restarts the clock.
 
 **Email change** (parent). Needs a code sent to the new address before it takes effect.
 

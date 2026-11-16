@@ -30,8 +30,8 @@ Finish and test each before starting the next, as in 0.1. M7 continues the 0.1 n
 | **M8 · Sign-up and sign-in for both** | "Who is this account for?"; For me sign-up with date of birth and verification; one sign-in page; landing page for learners with a `#parents` section (1a–1c, 3a, 3b, 5a–5e) | Someone can sign up For me or For my child and lands on the right home; no last user is pre-filled after sign-out |
 | **M9 · Learners set up their own tracks** | Track chat, tracks pages, pause, archive, goal reached and add topics, all in the learner's own shell (2a with packages as Coming soon, 2c–2i, 4.1a, 3c–3g) | A self-managed learner creates a track from a description and photos, practises it to its goal and restarts it by adding topics |
 | **M10 · Under-18 consent** | Parent's details (1d); pending banner (1e); parent's consent page with an email code (1f); reminders, expiry, decline; audit record | An under-18 learner practises straight away; the parent agrees or declines from the email; declining closes the account and deletes its data; one setting switches to "block until consent" |
-| **M11 · Moving to self-managed** | A parent releases a child, or a child turns 18; the learner adds their own email and takes over | History, tracks and points stay; the parent loses control; codes now go to the learner (can slip to 0.2.x) |
-| **Release 0.2** | Docs, beta for learners, release notes | `v0.2.0` released; monitoring shows sign-ups by account type |
+| ~~M11 · Moving to self-managed~~ | **Parked to the roadmap (owner, 2026-11-16).** See M11 below | — |
+| **Release 0.2** | M7–M10; docs, beta for learners, release notes | `v0.2.0` released; monitoring shows sign-ups by account type |
 
 ### M7 · Shared core · ✅ done 2026-11-16
 
@@ -48,7 +48,7 @@ Built as planned, with these notes:
    - `codes`, `sessions`, `invitations`: allow a self-managed learner as the owner, using the existing `student_id` columns.
 2. **One permission policy** in `src/domain/permissions.ts`: `can(actor, action, target)` with the actions from brief §2.3 (`practise`, `manageTracks`, `addPackage`, `addTopics`, `changeOwnPassword`, `viewProgress`, `manageChildren`, `deleteAccount`). It is pure and table-tested. `requireParent` and `requireStudent` (used in about 34 files) are replaced by `requireActor()` plus `can(...)` in server actions and pages. Screens hide what `can` refuses, and the server refuses it anyway.
 3. **Codes to the account holder:** `issueCode` resolves the address through `controllerOf`. Rules §1 (expiry, tries, resend) don't change.
-4. **Sessions:** idle timeout per type in `rules.ts`: 7 days for parents and self-managed learners, 12 hours for parent-managed (today 30 days for everyone).
+4. **Sessions:** idle timeout per type in `rules.ts`. Built as 7 days (parents, self-managed learners) and 12 hours (parent-managed); **changed back to 30 days for everyone (owner, 2026-11-16)**, so 0.2 doesn't change sign-in time from 0.1. The per-type setting stays.
 5. **AI spend limit per account (demo): $10.** Every Claude call is already costed in `ai_usage`; add the account holder to each row (the parent's family, or the self-managed learner) and sum it. The $10 (`rules.aiLimits.perAccountUsd`, configurable) is a running total for the **whole demo**, not per month. At $10, new track chats and new exams pause, while marking of exams already submitted still finishes, as the monthly budget does today. The message says the demo allowance is used up and offers **Contact us to buy a package**, which opens the contact page (`/contact`) with the request filled in and emails the owner, the same way Get access requests do today. Pricing plans will be ready by then; 0.2 takes no payments. Each account can carry its own limit (an override on the account holder, set with an `npm run` script), so the owner can raise it for someone who buys a package. The account page shows how much of the allowance is used.
    - **Usage tracker in the sidebar (owner, 2026-11-15):** a small box in the side menu (`AppShell`), directly above the profile menu (below the points box where there is one). It reads "AI allowance", shows "$3.20 of $10 used" and a thin bar. The bar turns amber at 80% and red at 100%, and at 100% the box links to **Contact us to buy a package**. It's an accessible progress bar (`role="progressbar"` with a label and the values), with text at least 4.5:1 on the dark sidebar. Shown to the account holder only: a parent and a self-managed learner. A parent-managed learner doesn't see it, since the allowance is the parent's; if it runs out, their exams pause with a message to ask their parent. The figure updates on each page load. The limit shown is the account's own (so it rises when an owner raises it). The existing daily limits and the overall monthly budget (`AI_MONTHLY_BUDGET_USD`) stay as a safety net; raise the monthly budget in step with sign-ups, since open sign-up × $10 can pass $150 quickly.
 
@@ -93,7 +93,13 @@ Owner's decisions: an under-18 learner **practises straight away**, consent is c
 - **Read-only progress view:** the parent's choice is stored; the view itself is a small page for the parent (scores and activity, no answers). Build it last in M10, or move it to 0.2.x if time is short.
 - **Before launch:** legal review of practising before consent and of email-only verification (editions §2.4).
 
-### M11 · Moving from parent-managed to self-managed
+### M11 · Moving from parent-managed to self-managed · parked (owner, 2026-11-16)
+
+Not in 0.2; moved to the roadmap (`09-roadmap.md` item 18). The owner's account model for 0.2:
+- Whoever signs up for their own practice ("For me") gets the codes at their own email; under-18s add a parent for consent (M10).
+- When a parent signs up ("For my child"), the account is always the parent's: codes go to the parent and the parent sets up the tracks. A child's account isn't handed over, and the child doesn't manage tracks.
+
+The original M11 notes, kept for the roadmap:
 
 - The parent chooses "Let Scout manage their own practice" on 5e, or the learner turns 18 and the parent is prompted. The learner adds and verifies their own email; `type` becomes `self_managed`; the `manages` link ends; codes now go to the learner. History, tracks and points stay.
 - The parent's view of that learner ends unless the learner keeps it on (that switch is built later along with the read-only view).

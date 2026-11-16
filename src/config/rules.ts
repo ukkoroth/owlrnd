@@ -13,10 +13,10 @@ export const rules = {
       maxSendsPerHour: 5,
     },
     /**
-     * Signed in until Sign out, or this many hours without use, by account type (0.2 plan, M7). Children on a
-     * shared family computer are signed out sooner.
+     * Signed in until Sign out, or this many hours without use, by account type. 30 days for everyone, as in 0.1
+     * (owner, 2026-11-16); kept per type so a shorter time for children on shared computers is a one-line change.
      */
-    sessionIdleHours: { parent: 7 * 24, self_managed: 7 * 24, parent_managed: 12 },
+    sessionIdleHours: { parent: 30 * 24, self_managed: 30 * 24, parent_managed: 30 * 24 },
     /** Failed password attempts allowed per username/email before sign-in is paused. */
     signInFailures: { max: 10, windowMinutes: 15 },
     /** The step between password and code (or sign-up and verify) expires after this. */

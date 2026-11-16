@@ -20,7 +20,8 @@ Use the default until the owner decides. Keep each one configurable.
 | Level thresholds | 500, 2,000, 5,000, 10,000, 20,000 | §8 |
 | Time zone for "today" | The student's time zone, set from the parent's device at sign-up | §9 |
 | What Archive does | Hides a goal-reached track from the student; history kept | §2 |
-| Session length *(0.2 plan, M7; was 30 days in 0.1)* | Signed in until Sign out, or without use for 7 days (parents, self-managed learners) or 12 hours (parent-managed learners), sliding | §1 |
+| Session length *(owner, 2026-11-16)* | Signed in until Sign out, or 30 days without use, for every account type (as 0.1), sliding. Set per type in `rules.ts` | §1 |
+| Parent-created accounts *(owner, 2026-11-16)* | Always the parent's: codes go to the parent and the parent sets up the tracks. No handover to the child in 0.2 (roadmap item 18) | §1 |
 | Open sign-up *(owner, 2026-11-15; built in M8)* | No invitation needed on either path. `rules.access.inviteOnly` closes sign-up again; `/get-access` then works as before. At 0.2 release, `npm run access -- announce` emails everyone still on the waiting list | §1 |
 | Ages from the date of birth *(M8, M10)* | "For me" from 13 (owner, 2026-11-16); 13–17 with a parent's consent; children a parent adds 3–18. Optional for children added in 0.1 (set on 5e) | §1 |
 | Under-18 consent *(owner, 2026-11-15; built in M10)* | Practise while pending (`rules.consent.under18Mode`; `block_until_consent` is the alternative). Link valid 7 days, one reminder after 3 days, practice pauses after 30 days without an answer. Email code only. Declining also needs the code. The read-only progress view is stored only; its page comes in 0.2.x. **Legal review before launch** (editions §2.4) | §1 |

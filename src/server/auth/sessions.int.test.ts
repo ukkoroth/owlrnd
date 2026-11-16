@@ -8,8 +8,7 @@ import { createSession, revokeAllSessions, revokeSession, validateSession } from
 
 afterAll(cleanup);
 
-const HOUR = 60 * 60_000;
-const DAY = 24 * HOUR;
+const DAY = 24 * 60 * 60_000;
 const T0 = new Date("2030-01-01T09:00:00Z");
 const at = (ms: number) => new Date(T0.getTime() + ms);
 
@@ -24,37 +23,30 @@ describe("sessions", () => {
     expect(await validateSession("not-a-token", at(1000))).toBeNull();
   });
 
-  it("parents expire after 7 days without use, and slide while in use", async () => {
+  it("every account type expires after 30 days without use, and slides while in use", async () => {
     const parent = await makeParent();
-    const idle = await createSession({ parentId: parent.id }, null, T0);
-    expect(await validateSession(idle, at(7 * DAY - 1000))).not.toBeNull(); // used just before expiry → slides
-    expect(await validateSession(idle, at(13 * DAY))).not.toBeNull();
-    expect(await validateSession(idle, at(21 * DAY))).toBeNull();
+    const child = await makeStudent(parent.id);
+    const learner = await makeSelfLearner();
+    for (const owner of [{ parentId: parent.id }, { studentId: child.id }, { studentId: learner.id }]) {
+      const t = await createSession(owner, null, T0);
+      expect(await validateSession(t, at(30 * DAY - 1000))).not.toBeNull(); // used just before expiry → slides
+      expect(await validateSession(t, at(59 * DAY))).not.toBeNull();
+      expect(await validateSession(t, at(90 * DAY))).toBeNull();
+    }
   });
 
-  it("self-managed learners expire after 7 days without use", async () => {
+  it("a self-managed learner's session has no parent", async () => {
     const learner = await makeSelfLearner();
     const t = await createSession({ studentId: learner.id }, null, T0);
     expect(await validateSession(t, at(1000))).toMatchObject({ role: "student", student: { id: learner.id }, parent: null });
-    expect(await validateSession(t, at(7 * DAY + 2000))).toBeNull();
   });
 
-  it("parent-managed learners expire after 12 hours without use", async () => {
+  it("a session stored with a longer expiry still ends once idle past the rule", async () => {
     const parent = await makeParent();
     const child = await makeStudent(parent.id);
     const t = await createSession({ studentId: child.id }, null, T0);
-    expect(await validateSession(t, at(11 * HOUR))).not.toBeNull(); // slides
-    expect(await validateSession(t, at(22 * HOUR))).not.toBeNull();
-    expect(await validateSession(t, at(35 * HOUR))).toBeNull(); // 13 hours idle
-  });
-
-  it("a session opened under a longer rule ends once idle past the current rule", async () => {
-    const parent = await makeParent();
-    const child = await makeStudent(parent.id);
-    const t = await createSession({ studentId: child.id }, null, T0);
-    // As if created under the 0.1 rule (30 days).
-    await db.update(sessions).set({ expiresAt: at(30 * DAY) }).where(eq(sessions.studentId, child.id));
-    expect(await validateSession(t, at(13 * HOUR))).toBeNull();
+    await db.update(sessions).set({ expiresAt: at(365 * DAY) }).where(eq(sessions.studentId, child.id));
+    expect(await validateSession(t, at(31 * DAY))).toBeNull();
   });
 
   it("is ended by sign out, and by revoking all sessions except the current one", async () => {
