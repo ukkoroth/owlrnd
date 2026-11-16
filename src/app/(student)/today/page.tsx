@@ -5,6 +5,7 @@ import { formatTestDate } from "@/domain/tracks";
 import { completedToday } from "@/domain/suggestions";
 import { inSentence } from "@/domain/examMix";
 import { learnerWords } from "@/domain/trackView";
+import { TrackTag, trackBorder } from "@/components/TrackTag";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examTopicLines, practiceTimes } from "@/server/results";
@@ -57,10 +58,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-8">
         {firstDay ? (
-          <FirstDay suggestion={dash.suggestions[0]!} w={w} />
+          <FirstDay suggestion={dash.suggestions[0]!} overall={dash.overall[0]!} w={w} />
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
+            <Today suggestions={dash.suggestions} overall={dash.overall} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} />
             {dash.recent.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" />
@@ -91,14 +92,21 @@ function StartLink({ t, primary }: { t: StudentTrack; primary: boolean }) {
 
 type Words = ReturnType<typeof learnerWords>;
 
-function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) {
+function FirstDay({ suggestion: t, overall, w }: { suggestion: StudentTrack; overall: number; w: Words }) {
   return (
     <div className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
-      <section className="card">
+      <section className="card" style={trackBorder(t.colorIndex)}>
         <p className="text-ink-muted">
           {w.firstTrackReady} Your first exam is ready: {t.exam?.questionCount ?? 10} questions, about 10 minutes.
         </p>
-        <p className="mt-5 text-sm text-ink-muted">Exam {t.exam!.number}</p>
+        <div className="mt-5 flex items-center gap-3">
+          <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-pale px-2 text-lg font-semibold text-sidebar">
+            <span className="sr-only">Your exam number </span>
+            {overall}
+          </span>
+          <TrackTag name={t.name} colorIndex={t.colorIndex} />
+        </div>
+        <p className="mt-3 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
         <h2 className="text-2xl">{t.name}</h2>
         <p className="mt-1 text-ink-muted">{examLine(t)}</p>
         <div className="mt-5 max-w-[260px]">
@@ -116,7 +124,22 @@ function FirstDay({ suggestion: t, w }: { suggestion: StudentTrack; w: Words }) 
   );
 }
 
-function Today({ suggestions, tracks, done, selfManaged, w }: { suggestions: StudentTrack[]; tracks: StudentTrack[]; done: number; selfManaged: boolean; w: Words }) {
+function Today({
+  suggestions,
+  overall,
+  tracks,
+  done,
+  selfManaged,
+  w,
+}: {
+  suggestions: StudentTrack[];
+  /** The learner's overall exam number for each suggestion (fixed once started, predicted before). */
+  overall: number[];
+  tracks: StudentTrack[];
+  done: number;
+  selfManaged: boolean;
+  w: Words;
+}) {
   if (tracks.length === 0) {
     return (
       <section className="card max-w-xl">
@@ -148,11 +171,16 @@ function Today({ suggestions, tracks, done, selfManaged, w }: { suggestions: Stu
       </div>
       <ol className="grid gap-4 md:grid-cols-3">
         {suggestions.map((t, i) => (
-          <li key={t.id} className="card flex flex-col">
-            <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-pale text-lg font-semibold text-sidebar">
-              {i + 1}
-            </span>
-            <p className="mt-5 text-sm text-ink-muted">Exam {t.exam!.number}</p>
+          <li key={t.id} className="card flex flex-col" style={trackBorder(t.colorIndex)}>
+            <div className="flex items-center gap-3">
+              {/* The learner's nth exam on owlrnd, across all tracks (owner, 2026-11-16). */}
+              <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-pale px-2 text-lg font-semibold text-sidebar">
+                <span className="sr-only">Your exam number </span>
+                {overall[i]}
+              </span>
+              <TrackTag name={t.name} colorIndex={t.colorIndex} />
+            </div>
+            <p className="mt-5 text-sm text-ink-muted">Exam {t.exam!.number} in this track</p>
             <h3 className="text-[21px] leading-snug">{t.name}</h3>
             <p className="mb-5 mt-1 text-ink-muted">{examLine(t)}</p>
             <div className="mt-auto">
@@ -225,6 +253,10 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
                 <li key={r.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-4">
                   <span className={`w-[70px] shrink-0 text-xl font-semibold ${r.score === null ? "text-ink-muted" : ""}`}>{r.score === null ? "—" : `${r.score} / 10`}</span>
                   <span className="min-w-0 flex-1">
+                    <span className="mb-1 flex flex-wrap items-center gap-2">
+                      <TrackTag name={r.trackName} colorIndex={r.colorIndex} />
+                      {r.overallNumber && <span className="text-sm font-semibold text-ink-muted">Your exam {r.overallNumber}</span>}
+                    </span>
                     <span className="font-semibold">{r.trackName}</span> <span className="text-ink-muted">· Exam {r.number}</span>
                     {lines.get(r.id) && (
                       <span className="block text-sm text-ink-muted">

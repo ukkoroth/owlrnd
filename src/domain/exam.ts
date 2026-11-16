@@ -17,3 +17,13 @@ export function blankSentence(numbers: number[]): string {
   const list = `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
   return `Questions ${list} are blank.`;
 }
+
+/**
+ * The learner's overall exam number for each suggested exam, in the order shown (owner, 2026-11-16). An exam already
+ * started keeps the number it was given; the others are numbered on from the last one started, in suggestion
+ * order. Those are predictions: whichever is started next becomes that number.
+ */
+export function overallNumbers(fixed: (number | null)[], lastStarted: number): number[] {
+  let next = lastStarted;
+  return fixed.map((n) => n ?? ++next);
+}

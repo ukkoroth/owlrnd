@@ -235,7 +235,7 @@ test("0.2 goal coverage: a full score run with an untested topic keeps the track
 
     await page.goto("/tracks");
     const card = page.getByRole("article");
-    await expect(card).toContainText("1 of 1 exams · 3 of 4 topics strong");
+    await expect(card).toContainText("1 of 1 exam · 3 of 4 topics strong");
     await expect(card).toContainText("with every topic strong");
     await expect(card).not.toContainText("Reached");
   } finally {

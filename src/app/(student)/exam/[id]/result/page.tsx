@@ -54,6 +54,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <p className="text-sm text-ink-muted">
+        {r.exam.overallNumber ? `Your exam ${r.exam.overallNumber} · ` : ""}
         {r.track.name} · Exam {r.exam.number} · {date}
       </p>
       <h1 className="text-[32px] leading-tight">Exam result</h1>

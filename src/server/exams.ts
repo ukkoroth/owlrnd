@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { overallNumbers } from "@/domain/exam";
 import { suggestExams } from "@/domain/suggestions";
 import { todayIn } from "@/domain/tracks";
 import { db } from "./db";
@@ -24,8 +25,10 @@ export type StudentTrack = {
   examsTaken: number;
   lastPracticedAt: Date | null;
   weakTopics: number;
-  /** The next exam to take (ready) or to continue (in progress). */
-  exam: { id: string; number: number; status: "ready" | "in_progress"; questionCount: number } | null;
+  /** The track's colour (domain/trackColors.ts). */
+  colorIndex: number;
+  /** The next exam to take (ready) or to continue (in progress). overallNumber is set once it has started. */
+  exam: { id: string; number: number; status: "ready" | "in_progress"; questionCount: number; overallNumber: number | null } | null;
 };
 
 /** Everything the student's dashboard (3c–3g) and Your tracks (4.1a) need. Archived tracks are hidden (rules §2). */
@@ -45,6 +48,7 @@ export async function getStudentTracks(studentId: string): Promise<StudentTrack[
       id: exams.id,
       trackId: exams.trackId,
       number: exams.number,
+      overallNumber: exams.overallNumber,
       status: exams.status,
       submittedAt: exams.submittedAt,
       questionCount: sql<number>`(select count(*)::int from ${examQuestions} where ${examQuestions.examId} = ${exams.id})`,
@@ -73,17 +77,38 @@ export async function getStudentTracks(studentId: string): Promise<StudentTrack[
       examsTaken: done.length,
       lastPracticedAt: done.length ? done[done.length - 1]!.submittedAt : null,
       weakTopics: ts.filter((x) => x.strength === "needs_work").length,
-      exam: open ? { id: open.id, number: open.number, status: open.status as "ready" | "in_progress", questionCount: open.questionCount } : null,
+      colorIndex: t.colorIndex,
+      exam: open
+        ? { id: open.id, number: open.number, status: open.status as "ready" | "in_progress", questionCount: open.questionCount, overallNumber: open.overallNumber }
+        : null,
     };
   });
 }
 
-export type RecentExam = { id: string; number: number; trackName: string; status: string; submittedAt: Date; score: number | null };
+export type RecentExam = {
+  id: string;
+  number: number;
+  overallNumber: number | null;
+  trackName: string;
+  colorIndex: number;
+  status: string;
+  submittedAt: Date;
+  score: number | null;
+};
 
 export async function recentExams(studentId: string, limit = 30): Promise<RecentExam[]> {
   // Columns selected directly (not through sql``) so drizzle maps timestamps to Date objects.
   const rows = await db
-    .select({ id: exams.id, number: exams.number, trackName: tracks.name, status: exams.status, submittedAt: exams.submittedAt, score: exams.score })
+    .select({
+      id: exams.id,
+      number: exams.number,
+      overallNumber: exams.overallNumber,
+      trackName: tracks.name,
+      colorIndex: tracks.colorIndex,
+      status: exams.status,
+      submittedAt: exams.submittedAt,
+      score: exams.score,
+    })
     .from(exams)
     .innerJoin(tracks, eq(tracks.id, exams.trackId))
     .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)))
@@ -97,9 +122,16 @@ export async function getStudentDashboard(studentId: string) {
   const list = await getStudentTracks(studentId);
   const recent = await recentExams(studentId);
   const today = todayIn(student!.timeZone);
+  const suggestions = suggestExams(list, today);
+  const [{ started } = { started: 0 }] = await db
+    .select({ started: sql<number>`coalesce(max(${exams.overallNumber}), 0)::int` })
+    .from(exams)
+    .where(eq(exams.studentId, studentId));
   return {
     tracks: list,
-    suggestions: suggestExams(list, today),
+    suggestions,
+    /** The overall number on each suggestion card, in order (domain/exam.ts overallNumbers). */
+    overall: overallNumbers(suggestions.map((s) => s.exam?.overallNumber ?? null), started),
     recent,
     firstDay: recent.length === 0,
   };
@@ -164,10 +196,19 @@ export async function startExam(studentId: string, examId: string) {
   if (!row) return false;
   if (row.status === "ready") {
     if (row.trackStatus !== "active") return false;
-    await db
-      .update(exams)
-      .set({ status: "in_progress", startedAt: new Date() })
-      .where(and(eq(exams.id, examId), eq(exams.status, "ready")));
+    // Starting fixes the exam's overall number: the learner's nth exam on owlrnd (owner, 2026-11-16). One start at
+    // a time per learner, so two exams can't get the same number.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`overall:${studentId}`}))`);
+      const [{ n } = { n: 0 }] = await tx
+        .select({ n: sql<number>`coalesce(max(${exams.overallNumber}), 0)::int` })
+        .from(exams)
+        .where(eq(exams.studentId, studentId));
+      await tx
+        .update(exams)
+        .set({ status: "in_progress", startedAt: new Date(), overallNumber: n + 1 })
+        .where(and(eq(exams.id, examId), eq(exams.status, "ready")));
+    });
   }
   return true;
 }

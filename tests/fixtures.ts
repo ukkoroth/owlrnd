@@ -155,8 +155,8 @@ export async function createTrackWithExam(
         : { type: "short", prompt: `Question ${i + 1}: name the law that links V, I and R.`, expected: "Ohm's law" },
     );
   const { rows: tr } = await pool.query(
-    `insert into tracks (student_id, name, status, test_date, test_label, goal_threshold, goal_run_length, next_exam, activated_at)
-     values ($1, $2, $3, $4, 'unit test', $5, $6, 'ready', now()) returning id`,
+    `insert into tracks (student_id, name, status, test_date, test_label, goal_threshold, goal_run_length, next_exam, activated_at, color_index)
+     values ($1, $2, $3, $4, 'unit test', $5, $6, 'ready', now(), (select count(*) % 8 from tracks where student_id = $1)) returning id`,
     [studentId, opts.name ?? "Physics: Current electricity", opts.status ?? "active", opts.testDate ?? null, opts.goal?.threshold ?? 8, opts.goal?.runLength ?? 3],
   );
   const trackId = tr[0].id as string;

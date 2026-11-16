@@ -58,7 +58,7 @@ export async function getResult(studentId: string, examId: string) {
   const strongCount = strengths.filter((t) => t.strength === "strong").length;
 
   return {
-    exam: { id: exam.id, number: exam.number, score: exam.score ?? 0, submittedAt: exam.submittedAt! },
+    exam: { id: exam.id, number: exam.number, overallNumber: exam.overallNumber, score: exam.score ?? 0, submittedAt: exam.submittedAt! },
     track: { id: track.id, name: track.name ?? "", status: track.status, goalThreshold: track.goalThreshold ?? 8, goalRunLength: track.goalRunLength ?? 3, goalProgress: track.goalProgress },
     questionCount,
     right,

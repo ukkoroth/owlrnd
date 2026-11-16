@@ -284,6 +284,8 @@ export const tracks = pgTable(
     /** Parent preferences agreed in the chat, e.g. "more calculations on parallel circuits". */
     focusNotes: text("focus_notes"),
     nextExam: nextExamState("next_exam").notNull().default("none"),
+    /** Index into the track colour palette (domain/trackColors.ts), picked when the track is created (owner, 2026-11-16). */
+    colorIndex: integer("color_index").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
   },
@@ -387,6 +389,8 @@ export const exams = pgTable(
       .notNull()
       .references(() => tracks.id, { onDelete: "cascade" }),
     number: integer("number").notNull(),
+    /** The learner's nth exam on owlrnd, across all tracks; fixed when the exam is started (owner, 2026-11-16). */
+    overallNumber: integer("overall_number"),
     status: examStatus("status").notNull().default("ready"),
     score: integer("score"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -394,7 +398,11 @@ export const exams = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     markedAt: timestamp("marked_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("exams_track_number_unique").on(t.trackId, t.number), index("exams_student_idx").on(t.studentId, t.status)],
+  (t) => [
+    uniqueIndex("exams_track_number_unique").on(t.trackId, t.number),
+    index("exams_student_idx").on(t.studentId, t.status),
+    uniqueIndex("exams_student_overall_unique").on(t.studentId, t.overallNumber),
+  ],
 );
 
 export const examQuestions = pgTable(

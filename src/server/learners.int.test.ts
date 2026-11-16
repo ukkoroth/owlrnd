@@ -7,7 +7,7 @@ import { allowanceOf, ALLOWANCE_USED_UP, chatBlocked, examWriteBlocked, withAiCo
 import { changeAccountEmail, deleteOwnAccount, emailInUseByOther, findAccount, ownAccount, upsertUnverifiedLearner, upsertUnverifiedParent } from "./auth/accounts";
 import { issueCode, verifyCode, type CodeOwner } from "./auth/codes";
 import { db } from "./db";
-import { aiUsage, parents, students, trackMessages, tracks } from "./db/schema";
+import { aiUsage, exams, parents, students, trackMessages, tracks } from "./db/schema";
 import { loadLearner } from "./learners";
 import { listStudents, removeStudent, setStudentPassword, updateStudentDetails } from "./students";
 import { createTrackFromDraft, discardDraft, getDraftChat, listTracks, retryExamWriting, sendChatTurn, setTrackPaused } from "./tracks";
@@ -265,5 +265,24 @@ describe("M9: a learner's own tracks and account", () => {
     const fakeAccount = { kind: "learner" as const, id: child.id, name: "x", email: "x", passwordHash: "x", codeOwner: { parentId: null, studentId: child.id } };
     expect(await deleteOwnAccount(learnerActor(child), fakeAccount)).toBe(false);
     expect(await db.select().from(students).where(eq(students.id, child.id))).toHaveLength(1);
+  });
+});
+
+describe("track colours and the learner's overall exam number (owner, 2026-11-16)", () => {
+  it("each new track gets a different colour, and exams are numbered in the order started, across tracks", async () => {
+    const learner = await makeSelfLearner();
+    const me = learnerActor(learner);
+    const a = await makeTrackWithExam(me, learner.id, "Physics chapter 12: Ohm's law, resistors in series and resistors in parallel.");
+    const b = await makeTrackWithExam(me, learner.id, "Maths chapter 4: quadratic equations and factorisation.");
+    const colours = (await db.select({ c: tracks.colorIndex }).from(tracks).where(eq(tracks.studentId, learner.id))).map((r) => r.c);
+    expect(new Set(colours).size).toBe(2);
+
+    const { startExam } = await import("./exams");
+    await startExam(learner.id, b.examId); // the Maths exam first
+    await startExam(learner.id, a.examId);
+    await startExam(learner.id, a.examId); // starting again keeps the number
+    const rows = await db.select({ id: exams.id, n: exams.overallNumber }).from(exams).where(eq(exams.studentId, learner.id));
+    expect(rows.find((r) => r.id === b.examId)?.n).toBe(1);
+    expect(rows.find((r) => r.id === a.examId)?.n).toBe(2);
   });
 });

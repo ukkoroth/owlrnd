@@ -95,15 +95,14 @@ export function GoalProgress({
   const cover = topics ? topicCoverage(topics) : null;
   const covered = !coverageOn || coverageMet(topics!);
   const runDone = progress >= runLength;
-  const status = reached ? "Reached" : coverageOn && cover ? `${Math.min(progress, runLength)} of ${runLength} exams · ${cover.strong} of ${cover.total} topics strong` : `${progress} of ${runLength}`;
+  const status = reached ? "Reached" : coverageOn && cover ? `${Math.min(progress, runLength)} of ${runLength} ${runLength === 1 ? "exam" : "exams"} · ${cover.strong} of ${cover.total} ${cover.total === 1 ? "topic" : "topics"} strong` : `${progress} of ${runLength}`;
   return (
     <div className="rounded bg-page px-3 py-2.5">
-      <div className="flex justify-between gap-3 text-sm">
-        <span>
-          <strong>Goal:</strong> {goalLabel({ threshold, runLength })}
-        </span>
-        <span className={`shrink-0 text-right font-semibold ${reached ? "text-brand" : "text-ink-muted"}`}>{status}</span>
-      </div>
+      {/* The goal sentence, then where it stands on its own line, so neither squeezes the other on narrow cards. */}
+      <p className="text-sm">
+        <strong>Goal:</strong> {goalLabel({ threshold, runLength })}
+      </p>
+      <p className={`mt-1 text-sm font-semibold ${reached ? "text-brand" : "text-ink-muted"}`}>{status}</p>
       <ul className="mt-2 flex gap-1" aria-hidden="true">
         {Array.from({ length: runLength }, (_, i) => (
           // The last step waits for the topics too, so a full bar always means the goal is reached.

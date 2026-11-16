@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { formatClass } from "@/domain/identity";
+import { pickTrackColor } from "@/domain/trackColors";
 import { canCreateTrack, emptyPreview, goalLabel, sanitizePreview, todayIn, type StoredPreview } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
 import { chatBlocked, withAiContext } from "./ai/usage";
@@ -144,7 +145,11 @@ export async function sendChatTurn(actor: Actor, studentId: string, text: string
     // always sorts after the parent's message.
     const sentAt = new Date();
     await db.transaction(async (tx) => {
-      if (!draft) draft = (await tx.insert(tracks).values({ studentId }).returning())[0]!;
+      if (!draft) {
+        // A colour of its own: the one the learner's other tracks use least (owner, 2026-11-16).
+        const used = await tx.select({ c: tracks.colorIndex }).from(tracks).where(and(eq(tracks.studentId, studentId), ne(tracks.status, "archived")));
+        draft = (await tx.insert(tracks).values({ studentId, colorIndex: pickTrackColor(used.map((u) => u.c)) }).returning())[0]!;
+      }
       const [pm] = await tx.insert(trackMessages).values({ trackId: draft!.id, author: authorOf(actor), text: message, createdAt: sentAt }).returning();
       if (files.length) {
         await tx.insert(attachments).values(

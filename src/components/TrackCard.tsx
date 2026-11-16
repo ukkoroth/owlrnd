@@ -4,6 +4,7 @@ import type { TrackSummary } from "@/server/tracks";
 import Link from "next/link";
 import { pauseTrack, resumeTrack, retryExam } from "@/app/_actions/tracks";
 import { ArchiveButton } from "./ArchiveButton";
+import { TrackTag, trackBorder } from "./TrackTag";
 import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
 
 /**
@@ -23,7 +24,10 @@ export function TrackCard({ track: t, highlight, audience, timeZone }: { track: 
           : "";
 
   return (
-    <article className={`card flex flex-col ${highlight || t.status === "goal_reached" ? "border-2 border-brand" : ""}`} aria-labelledby={`track-${t.id}`}>
+    <article className={`card flex flex-col ${highlight || t.status === "goal_reached" ? "border-2 border-brand" : ""}`} aria-labelledby={`track-${t.id}`} style={trackBorder(t.colorIndex)}>
+      <div className="mb-2">
+        <TrackTag name={t.name ?? ""} colorIndex={t.colorIndex} />
+      </div>
       <p className={`text-sm ${t.status === "goal_reached" ? "font-semibold text-brand" : "text-ink-muted"}`}>
         {t.status === "goal_reached" && t.goalReachedAt
           ? `Goal reached on ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone }).format(t.goalReachedAt)} · stopped`

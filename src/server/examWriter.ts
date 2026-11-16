@@ -123,6 +123,8 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       return;
     }
     const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(asc(topics.position));
+    // No topics (the track was deleted meanwhile, or never got any): nothing to write.
+    if (!tps.length) return;
     const keyed = tps.map((t, i) => ({ key: `T${i + 1}`, id: t.id, name: t.name, description: t.description, revisionOnly: t.revisionOnly }));
     const { plan, avoid } = await planNextExam(trackId, track.studentId, keyed);
 
