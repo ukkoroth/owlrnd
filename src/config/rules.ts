@@ -66,8 +66,9 @@ export const rules = {
     /**
      * AI allowance per account holder for the whole demo (0.2 plan, M7): a running total, not per month. The owner can
      * raise it for one account (parents.ai_limit_usd / students.ai_limit_usd, `npm run ai:allowance`).
+     * $5 from 2026-11-16 (owner; was $10): about 15–35 exams with unlimited flashcard practice (README "Running costs").
      */
-    perAccountUsd: 10,
+    perAccountUsd: 5,
     /** The sidebar tracker turns amber from this share of the allowance, and red at 100%. */
     allowanceWarnAt: 0.8,
   },

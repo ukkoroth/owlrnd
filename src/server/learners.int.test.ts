@@ -122,7 +122,7 @@ describe("the server refuses what the policy refuses", () => {
   });
 });
 
-describe("AI allowance per account holder (demo, $10)", () => {
+describe("AI allowance per account holder (demo, $5)", () => {
   // Recorded as now, then moved to January 2020: the allowance counts all time, and test spend stays out of the
   // real month's budget (which would pause chats in the dev database).
   const spend = async (ctx: Parameters<typeof withAiContext>[0], outputTokens: number) => {
@@ -137,11 +137,11 @@ describe("AI allowance per account holder (demo, $10)", () => {
     const holder = holderForParent(parent);
     expect((await allowanceOf(holder)).usedUsd).toBe(0);
 
-    await spend({ purpose: "track_chat", holder: { parentId: parent.id }, studentId: child.id }, 400_000); // $8 at $20/M output
+    await spend({ purpose: "track_chat", holder: { parentId: parent.id }, studentId: child.id }, 200_000); // $4 at $20/M output: 80%
     expect(await allowanceOf(holder)).toMatchObject({ level: "warn", usedUp: false });
     expect(await chatBlocked(holder)).toBeNull();
 
-    await spend({ purpose: "write_exam", holder: { parentId: parent.id }, studentId: child.id }, 100_000); // $10 total
+    await spend({ purpose: "write_exam", holder: { parentId: parent.id }, studentId: child.id }, 50_000); // $5 total
     expect(await allowanceOf(holder)).toMatchObject({ level: "used_up", usedUp: true, percent: 100 });
     expect(await chatBlocked(holder)).toBe(ALLOWANCE_USED_UP);
     expect((await examWriteBlocked(holder))?.reason).toBe("allowance");
@@ -156,7 +156,7 @@ describe("AI allowance per account holder (demo, $10)", () => {
   it("a self-managed learner has their own allowance, separate from any family", async () => {
     const learner = await makeSelfLearner();
     const { holder } = (await loadLearner(learner.id))!;
-    await spend({ purpose: "track_chat", holder: { studentId: learner.id } }, 500_000); // $10
+    await spend({ purpose: "track_chat", holder: { studentId: learner.id } }, 250_000); // $5
     expect(await allowanceOf(holder)).toMatchObject({ usedUp: true });
     // Recorded against the learner, with no family.
     const rows = await db.select().from(aiUsage).where(eq(aiUsage.studentId, learner.id));

@@ -160,7 +160,7 @@ One child taking 3 exams a day for 30 days (90 exams), with about 4 new chapters
 
 Scale this by the number of active children and how often they practise. A child doing one exam a day costs roughly a third of this. Flashcards add about $2–4 of this; practising them is free.
 
-**The $10 demo allowance per account** (`rules.aiLimits.perAccountUsd`) covers setting up a track or two and roughly **35–70 exams**, with all the flashcard practice the learner wants on top.
+**The $5 demo allowance per account** (`rules.aiLimits.perAccountUsd`) covers setting up a track or two and roughly **15–35 exams**, with all the flashcard practice the learner wants on top.
 
 ### Bringing the cost down
 

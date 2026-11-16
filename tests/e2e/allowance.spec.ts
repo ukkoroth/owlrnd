@@ -16,21 +16,21 @@ test("a parent sees their family's AI allowance; at 100% it links to Contact us 
   try {
     await signInFully(page, fam.parent.email, fam.parent.password, fam.parent.email, /\/students$/);
     await expect(bar(page)).toHaveAttribute("aria-valuenow", "0");
-    await expect(page.getByText("$0 of $10 used")).toBeVisible();
+    await expect(page.getByText("$0 of $5 used")).toBeVisible();
 
-    await addAiSpend({ parentId: fam.parentId }, 3.2);
+    await addAiSpend({ parentId: fam.parentId }, 1.6);
     await page.reload();
     await expect(bar(page)).toHaveAttribute("aria-valuenow", "32");
-    await expect(page.getByText("$3.20 of $10 used")).toBeVisible();
+    await expect(page.getByText("$1.60 of $5 used")).toBeVisible();
     await expect(page.getByRole("link", { name: "Contact us to buy a package" })).toHaveCount(0);
     await snap(page, "allowance-32");
 
-    await addAiSpend({ parentId: fam.parentId }, 5.3);
+    await addAiSpend({ parentId: fam.parentId }, 2.65);
     await page.reload();
-    await expect(page.getByText("$8.50 of $10 used")).toBeVisible();
+    await expect(page.getByText("$4.25 of $5 used")).toBeVisible();
     await snap(page, "allowance-85");
 
-    await addAiSpend({ parentId: fam.parentId }, 1.5);
+    await addAiSpend({ parentId: fam.parentId }, 0.75);
     await page.reload();
     await expect(bar(page)).toHaveAttribute("aria-valuenow", "100");
     await snap(page, "allowance-100");
