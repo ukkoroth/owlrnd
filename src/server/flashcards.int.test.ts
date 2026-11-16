@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rules } from "@/config/rules";
-import { cleanup, learnerActor, makeParent, makeSelfLearner, makeStudent, makeTrackWithExam } from "../../tests/db-helpers";
+import { cleanup, learnerActor, makeParent, parentActor, makeSelfLearner, makeStudent, makeTrackWithExam } from "../../tests/db-helpers";
 import { db } from "./db";
 import { aiUsage, consentRequests, jobs, parents, questions } from "./db/schema";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
-import { deckCounts, deckOf, writeDeck } from "./flashcards";
+import { deckCounts, deckOf, finishSession, reviewCard, startSession, writeDeck } from "./flashcards";
 import { markExamJob } from "./marking";
 import { requestConsent } from "./consent";
 
@@ -97,5 +97,77 @@ describe("top-up and limits", () => {
     const b = await family();
     await writeDeck(a.trackId, "starter");
     expect(await deckOf(b.trackId)).toHaveLength(0);
+  });
+});
+
+// F2: a practice session (fc-2 to fc-4).
+const DAY = 24 * 60 * 60_000;
+
+describe("a practice session", () => {
+  it("picks up to 10 due cards; answers move boxes; the summary counts by topic", async () => {
+    const { parent, student, trackId } = await family();
+    await writeDeck(trackId, "starter");
+    const me = learnerActor(student);
+    const now = new Date();
+    const session = (await startSession(me, trackId, {}, now))!;
+    expect(session.cards).toHaveLength(rules.flashcards.sessionSize);
+    expect(session.sessionId).toBeTruthy();
+
+    const [a, b, ...rest] = session.cards;
+    expect(await reviewCard(me, session.sessionId, a!.id, "got_it", now)).toBe(true);
+    expect(await reviewCard(me, session.sessionId, b!.id, "not_yet", now)).toBe(true);
+    expect(await reviewCard(me, session.sessionId, b!.id, "got_it", now)).toBe(true); // second answer ignored
+    for (const c of rest) await reviewCard(me, session.sessionId, c.id, "got_it", now);
+
+    const deck = new Map((await deckOf(trackId)).map((c) => [c.id, c]));
+    expect(deck.get(a!.id)!.box).toBe(2);
+    expect(deck.get(a!.id)!.dueAt.getTime()).toBe(now.getTime() + rules.flashcards.boxDays[1]! * DAY);
+    expect(deck.get(b!.id)!.box).toBe(1);
+    expect(deck.get(b!.id)!.dueAt.getTime()).toBe(now.getTime() + rules.flashcards.boxDays[0]! * DAY);
+
+    const later = new Date(now.getTime() + 3 * 60_000);
+    const summary = (await finishSession(me, session.sessionId, later))!;
+    expect(summary).toMatchObject({ cardsSeen: 10, gotIt: 9, notYet: 1, minutes: 3 });
+    expect(summary.byTopic.reduce((n, t) => n + t.seen, 0)).toBe(10);
+    expect(summary.readyExam?.id).toBeTruthy();
+    expect(summary.next?.count).toBeGreaterThan(0);
+
+    // Finished: no more answers. The parent can't practise or read it.
+    expect(await reviewCard(me, session.sessionId, a!.id, "not_yet")).toBe(false);
+    expect(await startSession(parentActor(parent.id), trackId)).toBeNull();
+    expect(await finishSession(parentActor(parent.id), session.sessionId)).toBeNull();
+
+    // "Practise these again": just the "Not yet" card.
+    const again = (await startSession(me, trackId, { again: session.sessionId }, later))!;
+    expect(again.cards.map((c) => c.id)).toEqual([b!.id]);
+  });
+
+  it("another learner can't use the session, its cards or the track", async () => {
+    const mine = await family();
+    const other = await family();
+    await writeDeck(mine.trackId, "starter");
+    const session = (await startSession(learnerActor(mine.student), mine.trackId))!;
+    const them = learnerActor(other.student);
+    expect(await startSession(them, mine.trackId)).toBeNull();
+    expect(await reviewCard(them, session.sessionId, session.cards[0]!.id, "got_it")).toBe(false);
+    expect(await finishSession(them, session.sessionId)).toBeNull();
+    expect(await startSession(them, other.trackId, { again: session.sessionId })).toMatchObject({ cards: [] });
+
+    // A card from another track can't be answered in this session.
+    await writeDeck(other.trackId, "starter");
+    const [foreign] = await deckOf(other.trackId);
+    expect(await reviewCard(learnerActor(mine.student), session.sessionId, foreign!.id, "got_it")).toBe(false);
+  });
+
+  it("with nothing due, a top-up is written before the session starts", async () => {
+    const { student, trackId } = await family();
+    const session = (await startSession(learnerActor(student), trackId))!;
+    expect(session.cards).toHaveLength(rules.flashcards.topUp);
+  });
+
+  it("a learner whose practice is paused for consent can't start one", async () => {
+    const learner = await makeSelfLearner({ dateOfBirth: `${new Date().getUTCFullYear() - 15}-01-01` });
+    const { trackId } = await makeTrackWithExam(learnerActor(learner), learner.id);
+    expect(await startSession({ ...learnerActor(learner), practiseBlocked: true } as never, trackId)).toBeNull();
   });
 });

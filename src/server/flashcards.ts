@@ -1,17 +1,18 @@
 import "server-only";
-import { and, asc, count, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { holderRef } from "@/domain/accounts";
-import { planStarter, planTopUp, type CardSlot, type DeckTopic } from "@/domain/flashcards";
+import { dueAfter, nextBox, planStarter, planTopUp, type CardSlot, type DeckTopic } from "@/domain/flashcards";
+import type { Actor } from "@/domain/permissions";
 import { formatClass } from "@/domain/identity";
 import { ai } from "./ai";
 import { allowanceOf, budgetLeft, withAiContext } from "./ai/usage";
 import { learnerConsent } from "./consent";
 import { db } from "./db";
-import { flashcards, marks, questions, topics, tracks } from "./db/schema";
+import { exams, flashcardReviews, flashcardSessions, flashcards, marks, questions, topics, tracks } from "./db/schema";
 import { trackMaterial } from "./examWriter";
 import { enqueue } from "./jobs/queue";
-import { loadLearner } from "./learners";
+import { authorizeTrack, loadLearner } from "./learners";
 import { topicStrengths } from "./progress";
 
 // 0.3 Flashcards, F1 (docs/plan-0.3-flashcards.md): writing a track's deck. A starter deck when a track is created
@@ -149,4 +150,153 @@ export async function deckCounts(trackIds: string[], now = new Date()) {
     if (r.dueAt <= now) c.due++;
   }
   return out;
+}
+
+// ── F2 · A practice session (fc-2 to fc-4) ─────────────────────────────────
+
+export type SessionCard = {
+  id: string;
+  topicName: string;
+  front: string;
+  answer: string;
+  explanation: string;
+  fromMissed: boolean;
+};
+
+export type StartedSession = { sessionId: string; trackId: string; trackName: string; colorIndex: number; cards: SessionCard[] } | null;
+
+const STRENGTH_ORDER: Record<string, number> = { needs_work: 0, not_tested: 1, strong: 2 };
+
+/**
+ * Start a session on a track's deck for the learner practising (`practise`, editions §2.3, and consent, M10).
+ * Cards due come first: lower boxes first, then weaker topics, then the longest overdue. With `again`, the cards
+ * the learner said "Not yet" to in that session. With nothing due, a top-up is written first; with a few due, the
+ * session starts with those and a top-up is written in the background.
+ */
+export async function startSession(actor: Actor, trackId: string, opts: { again?: string } = {}, now = new Date()): Promise<StartedSession> {
+  const own = await authorizeTrack(actor, "practise", trackId);
+  if (!own || own.track.status === "draft" || own.track.status === "archived") return null;
+  const { track, student } = own;
+
+  let picked: (typeof flashcards.$inferSelect)[] = [];
+  if (opts.again) {
+    const rows = await db
+      .select({ card: flashcards })
+      .from(flashcardReviews)
+      .innerJoin(flashcardSessions, eq(flashcardSessions.id, flashcardReviews.sessionId))
+      .innerJoin(flashcards, eq(flashcards.id, flashcardReviews.cardId))
+      .where(and(eq(flashcardReviews.sessionId, opts.again), eq(flashcardSessions.studentId, student.id), eq(flashcardSessions.trackId, trackId), eq(flashcardReviews.result, "not_yet")));
+    picked = rows.map((r) => r.card);
+  } else {
+    let due = await dueCards(trackId, now);
+    if (!due.length) {
+      await writeDeck(trackId, "top_up");
+      // New cards are due from the moment they're written, which is after `now`.
+      due = await dueCards(trackId, new Date(Math.max(now.getTime(), Date.now())));
+    } else if (due.length < F.sessionSize) {
+      await enqueue("write_flashcards", { trackId, reason: "top_up" });
+    }
+    const strengths = (await topicStrengths(student.id, [trackId])).get(trackId) ?? [];
+    const weakness = (topicId: string) => STRENGTH_ORDER[strengths.find((s) => s.id === topicId)?.strength ?? "not_tested"]!;
+    picked = due
+      .sort((a, b) => a.box - b.box || weakness(a.topicId) - weakness(b.topicId) || a.dueAt.getTime() - b.dueAt.getTime())
+      .slice(0, F.sessionSize);
+  }
+  if (!picked.length) return { sessionId: "", trackId, trackName: track.name ?? "", colorIndex: track.colorIndex, cards: [] };
+
+  const names = new Map((await db.select({ id: topics.id, name: topics.name }).from(topics).where(eq(topics.trackId, trackId))).map((t) => [t.id, t.name]));
+  const [session] = await db.insert(flashcardSessions).values({ studentId: student.id, trackId, startedAt: now }).returning({ id: flashcardSessions.id });
+  return {
+    sessionId: session!.id,
+    trackId,
+    trackName: track.name ?? "",
+    colorIndex: track.colorIndex,
+    cards: picked.map((c) => ({ id: c.id, topicName: names.get(c.topicId) ?? "", front: c.front, answer: c.answer, explanation: c.explanation, fromMissed: c.source === "missed_question" })),
+  };
+}
+
+async function dueCards(trackId: string, now: Date) {
+  return db.select().from(flashcards).where(and(eq(flashcards.trackId, trackId), lte(flashcards.dueAt, now)));
+}
+
+/** The session, if it belongs to the learner practising and is still open. */
+async function ownSession(actor: Actor, sessionId: string) {
+  if (actor.kind !== "learner" || !/^[0-9a-f-]{36}$/i.test(sessionId)) return null;
+  const [s] = await db.select().from(flashcardSessions).where(and(eq(flashcardSessions.id, sessionId), eq(flashcardSessions.studentId, actor.studentId)));
+  if (!s || !(await authorizeTrack(actor, "practise", s.trackId))) return null;
+  return s;
+}
+
+/**
+ * "Got it" / "Not yet" on one card: recorded once per card per session, and the card moves box (Leitner): due again
+ * after rules.flashcards.boxDays. Returns false if the session or card isn't the learner's.
+ */
+export async function reviewCard(actor: Actor, sessionId: string, cardId: string, result: "got_it" | "not_yet", now = new Date()): Promise<boolean> {
+  const s = await ownSession(actor, sessionId);
+  if (!s || s.finishedAt) return false;
+  const [card] = await db.select().from(flashcards).where(and(eq(flashcards.id, cardId), eq(flashcards.trackId, s.trackId)));
+  if (!card) return false;
+  return db.transaction(async (tx) => {
+    const added = await tx.insert(flashcardReviews).values({ sessionId, cardId, result, at: now }).onConflictDoNothing().returning({ cardId: flashcardReviews.cardId });
+    if (!added.length) return true; // already answered in this session
+    const box = nextBox(card.box, result);
+    await tx.update(flashcards).set({ box, dueAt: dueAfter(box, now) }).where(eq(flashcards.id, cardId));
+    await tx
+      .update(flashcardSessions)
+      .set({ cardsSeen: sql`${flashcardSessions.cardsSeen} + 1`, gotIt: sql`${flashcardSessions.gotIt} + ${result === "got_it" ? 1 : 0}` })
+      .where(eq(flashcardSessions.id, sessionId));
+    return true;
+  });
+}
+
+export type SessionSummary = {
+  cardsSeen: number;
+  gotIt: number;
+  notYet: number;
+  minutes: number;
+  byTopic: { topicName: string; gotIt: number; seen: number }[];
+  /** When the next cards are due after the ones still being learnt, and how many. */
+  next: { at: Date; count: number } | null;
+  /** The track's exam waiting to be taken, for "Start exam N". */
+  readyExam: { id: string; number: number } | null;
+};
+
+/** Finish the session (fc-4). Points for finishing come with F3. */
+export async function finishSession(actor: Actor, sessionId: string, now = new Date()): Promise<SessionSummary | null> {
+  const s = await ownSession(actor, sessionId);
+  if (!s) return null;
+  if (!s.finishedAt) await db.update(flashcardSessions).set({ finishedAt: now }).where(eq(flashcardSessions.id, sessionId));
+  const rows = await db
+    .select({ result: flashcardReviews.result, topicName: topics.name })
+    .from(flashcardReviews)
+    .innerJoin(flashcards, eq(flashcards.id, flashcardReviews.cardId))
+    .innerJoin(topics, eq(topics.id, flashcards.topicId))
+    .where(eq(flashcardReviews.sessionId, sessionId));
+  const byTopic = new Map<string, { gotIt: number; seen: number }>();
+  for (const r of rows) {
+    const t = byTopic.get(r.topicName) ?? { gotIt: 0, seen: 0 };
+    t.seen++;
+    if (r.result === "got_it") t.gotIt++;
+    byTopic.set(r.topicName, t);
+  }
+  const later = await db
+    .select({ dueAt: flashcards.dueAt })
+    .from(flashcards)
+    .where(and(eq(flashcards.trackId, s.trackId), gt(flashcards.dueAt, now)))
+    .orderBy(asc(flashcards.dueAt));
+  const firstDay = later[0] ? later[0].dueAt.toISOString().slice(0, 10) : null;
+  const [open] = await db
+    .select({ id: exams.id, number: exams.number })
+    .from(exams)
+    .where(and(eq(exams.trackId, s.trackId), inArray(exams.status, ["ready", "in_progress"])));
+  const gotIt = rows.filter((r) => r.result === "got_it").length;
+  return {
+    cardsSeen: rows.length,
+    gotIt,
+    notYet: rows.length - gotIt,
+    minutes: Math.max(1, Math.round((now.getTime() - s.startedAt.getTime()) / 60_000)),
+    byTopic: [...byTopic.entries()].map(([topicName, v]) => ({ topicName, ...v })),
+    next: firstDay ? { at: later[0]!.dueAt, count: later.filter((l) => l.dueAt.toISOString().slice(0, 10) === firstDay).length } : null,
+    readyExam: open ?? null,
+  };
 }

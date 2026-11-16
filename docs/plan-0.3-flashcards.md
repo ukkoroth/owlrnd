@@ -77,10 +77,12 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 
 **F1 done (2026-11-16):** tables (migration `0014_flashcards`), the AI card writer with validation and a fake for tests (`src/server/ai/writeFlashcards.ts`), and the `write_flashcards` job (`src/server/flashcards.ts`): a starter deck when a track is created or gets new topics, up to 3 cards per marked exam from missed questions on weak topics (once per exam), and top-ups. It waits, like exam writing, while the monthly budget, the account's AI allowance or a parent's consent stops it. Nothing is shown to learners until F2/F3.
 
+**F2 done (2026-11-16):** the session at `/practise/[trackId]` (focus mode, `src/components/flashcards/FlashcardSession.tsx`): card front, Show answer (Space), Not yet / Got it (1 / 2) saved as they're given, Leave at any time, and the summary (fc-4) by topic with "Practise these N again", "Start exam N" and Back. Up to 10 due cards per session, lower boxes and weaker topics first; with nothing due a top-up is written first. Answers move cards between boxes already (F3 adds the buttons and counts). Not linked from anywhere yet (decision #7); reachable by URL for testing. Points come with F3.
+
 | Milestone | Builds | Done when |
 |---|---|---|
 | **F1 · Deck** ✅ 2026-11-16 | Tables; AI card writer; starter deck on track creation/restart; cards from missed questions after marking; top-up | A new track gets a starter deck in the background; a missed question becomes a card |
-| **F2 · Session** | `/practise/[trackId]`: front, Show answer, Got it / Not yet, keyboard, leave; session done (fc-2–fc-4) | A learner practises 10 cards and sees the summary; the page never scrolls at 1280×800 and 390×844 |
+| **F2 · Session** ✅ 2026-11-16 | `/practise/[trackId]`: front, Show answer, Got it / Not yet, keyboard, leave; session done (fc-2–fc-4) | A learner practises 10 cards and sees the summary; the page never scrolls at 1280×800 and 390×844 |
 | **F3 · Spaced repetition and places** | Boxes and due dates; Practise buttons with counts on the dashboard and track cards (fc-1, fc-5); the deck page (fc-6); points | "Not yet" cards come back next day, "Got it" ones later; counts on buttons match due cards; points as in the rules |
 | **F4 · Parents and charts** | Parent's line on a child's tracks page and 2k card (fc-7); activity chart series | A parent sees a child's flashcard activity; a child's session doesn't count as an exam anywhere |
 

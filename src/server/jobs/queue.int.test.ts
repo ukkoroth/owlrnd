@@ -13,11 +13,10 @@ afterAll(async () => {
 
 /** Claim until we get one of our own jobs (ignores anything else that is queued). */
 async function claimOurs() {
-  for (let i = 0; i < 50; i++) {
+  for (;;) {
     const job = await claimNext();
     if (!job || job.type === TYPE) return job;
   }
-  return null;
 }
 
 describe("job queue", () => {
