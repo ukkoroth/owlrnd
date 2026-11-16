@@ -15,7 +15,13 @@ export function AuthLayout(props: Props) {
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex flex-col gap-10 bg-sidebar px-6 py-8 text-white md:w-1/2 md:px-[102px] md:py-[58px]">
-        <Logo height={36} />
+        <Link
+          href="/"
+          aria-label="owlrnd home"
+          className="flex min-h-touch items-center self-start text-white no-underline focus-visible:outline-white"
+        >
+          <Logo height={36} />
+        </Link>
         <div className="hidden flex-1 flex-col justify-center md:flex">
           {props.variant === "tagline" ? (
             <>

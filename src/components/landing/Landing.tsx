@@ -97,7 +97,7 @@ function Hero() {
       <div className="mx-auto flex max-w-[1180px] flex-col items-center gap-7 text-center">
         <span className="inline-flex min-h-[34px] items-center gap-2 text-balance rounded border border-[#7AA2FF] bg-[#2A4DBF] px-3.5 py-1 text-sm font-semibold tracking-[0.01em]">
           <SparkleIcon className="shrink-0 text-amber" />
-          AI-Powered Automatic Continuous Testing &amp; Evaluation for Students
+          AI-Powered Continuous Testing &amp; Evaluation for Students
         </span>
         <h1 className="m-0 max-w-[14ch] text-balance text-[clamp(2.5rem,6.5vw,4.75rem)] font-bold leading-[1.02] tracking-[-0.03em]">
           Exam-ready,{" "}
