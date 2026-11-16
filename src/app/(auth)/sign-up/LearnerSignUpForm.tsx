@@ -56,7 +56,7 @@ export function LearnerSignUpForm({ initialName, initialEmail, invite, changingE
         values={{ day: v?.dobDay, month: v?.dobMonth, year: v?.dobYear }}
         hint={
           rules.accounts.ages.under18SelfSignUp
-            ? "If you are under 18, a parent will be asked to agree before you start."
+            ? `If you are under 18, a parent will be asked to agree. You need to be ${rules.accounts.ages.learner.min} or over to sign up on your own.`
             : "You need to be 18 or over to sign up on your own. A parent can set up practice for younger learners."
         }
       />

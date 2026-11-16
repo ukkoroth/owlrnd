@@ -39,3 +39,26 @@ export async function nextCode(to: string, previousCount: number, timeoutMs = 10
   }
   throw new Error(`No new email to ${to} within ${timeoutMs} ms`);
 }
+
+/** The first link matching `pattern` in the newest email to `to` (for example the parent's consent link). */
+export async function latestLink(to: string, pattern: RegExp, timeoutMs = 10_000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}&limit=1`);
+    const { messages } = (await res.json()) as { messages: Summary[] };
+    if (messages[0]) {
+      const msg = (await (await fetch(`${MAILPIT}/api/v1/message/${messages[0].ID}`)).json()) as { Text: string };
+      const link = msg.Text.match(pattern)?.[0];
+      if (link) return link;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`No link matching ${pattern} emailed to ${to} within ${timeoutMs} ms`);
+}
+
+/** Subjects of every email to `to`, newest first. */
+export async function subjects(to: string): Promise<string[]> {
+  const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}&limit=50`);
+  const { messages } = (await res.json()) as { messages: Summary[] };
+  return messages.map((m) => m.Subject);
+}

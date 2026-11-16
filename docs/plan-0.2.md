@@ -77,7 +77,9 @@ Built as planned. The parent and learner track screens are the same components (
 - **AI wording:** prompts and screen text say "you" and "your exam" to a learner and "Scout" and "your child" to a parent. Rules and limits (AI §6) stay the same: the AI stays inside the track's topics and the material the *account holder* provided.
 - **Profile (learner):** change name, email (code to the new address), password; delete account and data.
 
-### M10 · Under-18 consent (editions §2.4)
+### M10 · Under-18 consent (editions §2.4) · ✅ done 2026-11-16
+
+Built as planned, with the owner's choices: "For me" from 13, and the read-only progress view stored but not built (0.2.x). Consent lives in `consent_requests` and `consent_events` (not `parent_links`, since the parent usually has no account); the request survives the learner's deletion as audit. Practice is gated through the permission policy (`practiseBlocked` on the actor). **Before launch:** legal review of practising before consent and email-only verification, and consent wording in the privacy policy.
 
 Owner's decisions: an under-18 learner **practises straight away**, consent is collected in parallel, and in 0.2 the parent is verified by **email code only**.
 

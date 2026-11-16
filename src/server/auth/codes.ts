@@ -6,7 +6,10 @@ import { db } from "../db";
 import { codes } from "../db/schema";
 import { getParent } from "./accounts";
 import { loadLearner } from "../learners";
-import { emailSender, type CodePurpose } from "../email";
+import { emailSender, type CodePurpose as EmailCodePurpose } from "../email";
+
+/** Account codes (the `codes` table). A parent's consent code lives on its consent request instead (consent.ts). */
+type CodePurpose = Exclude<EmailCodePurpose, "parent_consent">;
 import { hmac, randomInt, safeEqual } from "./crypto";
 
 /**

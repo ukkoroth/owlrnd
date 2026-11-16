@@ -8,7 +8,18 @@ const LENGTH = 6;
  * Six one-digit boxes (screens 1b, 3b, 5f, 5h). Named d0…d5 so the form works without JavaScript;
  * with JavaScript it auto-advances, handles backspace, and spreads a pasted or autofilled code across the boxes.
  */
-export function CodeInput({ invalid = false, label = "6-digit code", autoFocus = false }: { invalid?: boolean; label?: string; autoFocus?: boolean }) {
+/** `showLabel` shows the label above the boxes (sm-1f); otherwise it is for screen readers only. */
+export function CodeInput({
+  invalid = false,
+  label = "6-digit code",
+  autoFocus = false,
+  showLabel = false,
+}: {
+  invalid?: boolean;
+  label?: string;
+  autoFocus?: boolean;
+  showLabel?: boolean;
+}) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
 
   const fill = (start: number, digits: string) => {
@@ -51,7 +62,7 @@ export function CodeInput({ invalid = false, label = "6-digit code", autoFocus =
 
   return (
     <fieldset>
-      <legend className="sr-only">{label}</legend>
+      <legend className={showLabel ? "mb-1.5 text-[13px] font-semibold text-ink-muted" : "sr-only"}>{label}</legend>
       <div className="flex justify-between gap-2">
         {Array.from({ length: LENGTH }, (_, i) => (
           <input

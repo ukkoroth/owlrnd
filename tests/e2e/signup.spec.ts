@@ -68,11 +68,11 @@ test("M8 done-when, For me: sign up, verify at your own email, land in the learn
   }
 });
 
-test("For me under 18: no account is made, and a parent is suggested", async ({ page }) => {
+test("For me under 13: no account is made, and a parent is suggested", async ({ page }) => {
   const email = `young-${uid()}@test.owlrnd`;
   try {
     await page.goto("/sign-up?for=me");
-    const year = String(new Date().getFullYear() - 15);
+    const year = String(new Date().getFullYear() - 12);
     await fillForMe(page, { name: "Scout", email, password: "learnerpass1", dob: ["1", "June", year] });
     await expect(page.getByRole("heading", { name: "Ask a parent to help you sign up" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Set up with a parent" })).toHaveAttribute("href", "/sign-up?for=child");

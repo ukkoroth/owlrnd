@@ -5,10 +5,12 @@ import { POLICIES_VERSION } from "@/config/legal";
 import { rules } from "@/config/rules";
 import { parseDateOfBirth, parseIdentifier, normalizeEmail, validateEmail, validateName, validatePassword } from "@/domain/identity";
 import { todayIn } from "@/domain/tracks";
+import { needsConsent } from "@/domain/consent";
 import { codeFrom, text, type FormState } from "@/lib/form";
 import {
   codeOwnerOf,
   findAccount,
+  getLearner,
   getParent,
   markEmailVerified,
   markLearnerEmailVerified,
@@ -153,7 +155,8 @@ export async function signUpLearner(_prev: FormState, form: FormData): Promise<F
   const nameErr = validateName(name);
   const emailErr = validateEmail(email);
   const pwErr = validatePassword(password);
-  const birth = parseDateOfBirth(dob, todayIn(timeZone), rules.accounts.ages.learner);
+  // Any real age here; who may sign up on their own is decided below.
+  const birth = parseDateOfBirth(dob, todayIn(timeZone), { min: 0, max: rules.accounts.ages.learner.max });
   if (nameErr) fieldErrors.name = nameErr;
   if (emailErr) fieldErrors.email = emailErr;
   if (pwErr) fieldErrors.password = pwErr;
@@ -161,7 +164,8 @@ export async function signUpLearner(_prev: FormState, form: FormData): Promise<F
   if (text(form, "consent") !== "yes") fieldErrors.consent = "Please agree to the terms and privacy policy to create your account.";
   if (Object.keys(fieldErrors).length || !birth.ok) return { fieldErrors, values };
 
-  // Editions §2.4: an under-18 learner needs a parent's consent, which arrives in M10. Until then, no account.
+  // Under 13: a parent sets it up (owner, 2026-11-16). 13–17: signed up now, a parent agrees in parallel (M10).
+  if (birth.age < rules.accounts.ages.learner.min) redirect("/sign-up?for=me&young=1");
   if (birth.age < rules.accounts.ages.adult && !rules.accounts.ages.under18SelfSignUp) redirect("/sign-up?for=me&under18=1");
 
   const pending = await getPending("verify_email");
@@ -193,13 +197,14 @@ export async function verifyEmail(_prev: FormState, form: FormData): Promise<For
   const result = await verifyCode({ parentId: pending.parentId, studentId: pending.studentId, purpose: "verify_email" }, codeFrom(form));
   if (result.result !== "ok") return codeMessage(result);
 
-  // A self-managed learner (sm-1c) goes on to choose their exam or build a track (sm-2a).
+  // A self-managed learner (sm-1c) goes on to choose their exam (sm-2a); under 18, first to ask a parent (sm-1d).
   if (pending.studentId) {
     await markLearnerEmailVerified(pending.studentId);
     await consumeInvitation({ studentId: pending.studentId });
     await clearPending();
     await startSession({ studentId: pending.studentId });
-    redirect("/tracks/setup");
+    const learner = await getLearner(pending.studentId);
+    redirect(learner && needsConsent(learner.dateOfBirth, todayIn(learner.timeZone)) ? "/consent/parent" : "/tracks/setup");
   }
   if (!pending.parentId) redirect("/sign-in?expired=1");
 

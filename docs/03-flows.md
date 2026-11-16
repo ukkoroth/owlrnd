@@ -14,6 +14,13 @@ Screen codes refer to `04-screens.md` and the files in `screens/`.
 3. **sm-1c Verify email:** a 6-digit code goes to the learner's own email. Wrong or expired codes behave as in rules §1.
 4. On success, **sm-2a Which exam are you preparing for?**: **Build your own** (the packages below are Coming soon in 0.2).
 
+## 0c · A learner under 18 *(0.2, editions §2.4)*
+
+1. After verifying their email, **sm-1d Ask a parent to agree:** the parent or guardian's name and email. **Send and continue** emails the parent and goes on to sm-2a. Practice starts straight away.
+2. **sm-1e:** every learner page shows "Waiting for your parent to agree" with **Resend** and **Change email**.
+3. **The parent (sm-1f):** opens the link (no account), enters the code sent to their email, ticks the consent box and chooses **I agree** (the banner goes) or **Decline** (the learner's account is closed and its data deleted).
+4. No answer for 30 days: practice pauses until the learner sends a new link and the parent agrees.
+
 ## 0b · A learner sets up and practises their own tracks *(0.2)*
 
 1. **sm-2c/2d/2e** Build your own: the AI chat, as the parent's 2e/2f, speaking to the learner ("your first track"). Attach the syllabus, notes or a past paper; agree the name, topics and goal; **Create track**.

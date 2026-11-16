@@ -29,7 +29,7 @@ const learnerHeadline = (
   </>
 );
 
-type Search = { for?: string; change?: string; invite?: string; under18?: string };
+type Search = { for?: string; change?: string; invite?: string; under18?: string; young?: string };
 
 /**
  * Sign-up starts with "Who is this account for?" (sm-1a). ?for=me is the learner's sign-up (sm-1b), ?for=child the
@@ -99,13 +99,14 @@ function ChangeLink({ label }: { label: string }) {
 
 // ── sm-1b For me ───────────────────────────────────────────────────────────
 
-async function ForMe({ change, invite, under18 }: Search) {
-  if (under18) {
+async function ForMe({ change, invite, under18, young }: Search) {
+  if (under18 || young) {
+    const age = young ? rules.accounts.ages.learner.min : rules.accounts.ages.adult;
     return (
       <AuthLayout variant="steps" headline={learnerHeadline} steps={LEARNER_STEPS}>
         <ChangeLink label="For me" />
         <AuthHeading title="Ask a parent to help you sign up">
-          You need to be 18 or over to create your own owlrnd account for now. A parent can set up practice for you, and you sign in with the username they give you.
+          You need to be {age} or over to create your own owlrnd account. A parent can set up practice for you, and you sign in with the username they give you.
         </AuthHeading>
         <Link href="/sign-up?for=child" className="btn-primary">
           Set up with a parent

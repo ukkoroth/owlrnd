@@ -36,14 +36,19 @@ export async function createFamily(opts: { password?: string; studentPassword?: 
 }
 
 /** A self-managed learner (0.2): signs in with their own email, which receives their codes. */
-export async function createSelfLearner(opts: { password?: string; name?: string } = {}) {
+export async function createSelfLearner(opts: { password?: string; name?: string; dateOfBirth?: string } = {}) {
   const tag = uid();
   const learner = { name: opts.name ?? `Learner ${tag}`, email: `learner-${tag}@test.owlrnd`, password: opts.password ?? "learnerpass1" };
   const { rows } = await pool.query(
-    `insert into students (type, parent_id, name, email, email_verified_at, password_hash) values ('self_managed', null, $1, $2, now(), $3) returning id`,
-    [learner.name, learner.email, await hash(learner.password)],
+    `insert into students (type, parent_id, name, email, email_verified_at, password_hash, date_of_birth) values ('self_managed', null, $1, $2, now(), $3, $4) returning id`,
+    [learner.name, learner.email, await hash(learner.password), opts.dateOfBirth ?? null],
   );
   return { studentId: rows[0].id as string, learner };
+}
+
+/** Moves a learner's consent requests `days` into the past (to test the 30-day pause). */
+export async function ageConsentRequests(studentId: string, days: number) {
+  await pool.query(`update consent_requests set created_at = created_at - ($2 || ' days')::interval where student_id = $1`, [studentId, String(days)]);
 }
 
 export async function deleteSelfLearner(studentId: string) {

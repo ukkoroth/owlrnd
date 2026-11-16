@@ -3,7 +3,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { ServerClient } from "postmark";
 import { env } from "../env";
 
-export type CodePurpose = "verify_email" | "sign_in" | "reset_password" | "change_email";
+export type CodePurpose = "verify_email" | "sign_in" | "reset_password" | "change_email" | "parent_consent";
 
 export type CodeEmail = {
   to: string;
@@ -33,6 +33,7 @@ export function renderCodeEmail(e: CodeEmail): { subject: string; text: string }
     sign_in: { subject: "Your owlrnd sign-in code", line: `${who} signing in to owlrnd.` },
     reset_password: { subject: "Your owlrnd password reset code", line: `${who} resetting a password on owlrnd.` },
     change_email: { subject: "Confirm your new email for owlrnd", line: "Use this code to confirm your new email address." },
+    parent_consent: { subject: "Your owlrnd consent code", line: `Use this code to confirm it's you and answer ${e.studentName ?? "the learner"}'s request.` },
   };
   const { subject, line } = what[e.purpose];
   const text = [

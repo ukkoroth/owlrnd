@@ -11,7 +11,14 @@ From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as b
 
 **Learner sign-up ("For me").**
 - Name, email, password and date of birth, and agreement to the terms and privacy policy (recorded with the policy version).
-- 18 or over **(default)**: the account is made and the email verified with a 6-digit code, as for parents. Under 18: until parent consent is built (M10), no account is made and the learner is asked to have a parent set it up.
+- 18 or over **(default)**: the account is made and the email verified with a 6-digit code, as for parents.
+- 13 to 17 *(M10; 13 is the owner's minimum, 2026-11-16)*: the account is made too, and after verifying the learner gives a parent or guardian's name and email (sm-1d). Under 13: no account; a parent sets it up ("For my child").
+
+**Parent consent for under-18 learners** *(0.2, editions §2.4)*.
+- The parent is emailed a link, valid 7 days **(default)**, and reminded once after 3 days **(default)**. The parent needs no account. Opening the link sends a 6-digit code to the parent's email (same rules as codes below); the parent ticks the consent box and chooses **I agree** or **Decline**. Both answers need the code. The parent can also ask for a read-only progress view (stored; the page comes later). The parent gets no control over tracks.
+- The parent's email can't be the learner's own or another learner account's.
+- While consent is pending the learner practises as normal **(default: `practise_while_pending`)**, with a banner offering Resend and Change email. With no answer 30 days **(default)** after the first request, practice pauses (no exams opened or written) until a parent agrees. The setting `block_until_consent` pauses practice until consent instead.
+- **Decline** closes the learner's account and deletes its data, as Delete account does. Every request, code, reminder and answer is kept as an audit record, without practice data.
 - The email can't belong to a parent or another learner (one email, one account).
 
 **Parent sign-up.**

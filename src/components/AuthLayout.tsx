@@ -11,6 +11,8 @@ type Props =
   | { variant: "tagline"; children: ReactNode }
   /** sm-1a "Who is this account for?": the Rank-ready headline. */
   | { variant: "rank"; children: ReactNode }
+  /** A headline and one paragraph (sm-1f, the parent's consent page). */
+  | { variant: "message"; headline: ReactNode; lead: ReactNode; children: ReactNode }
   /** Set-up screens 1a, 1b (step 1), 2a (step 2), 2b (step 3): headline plus three set-up steps (the parent's by default). */
   | { variant: "steps"; headline: ReactNode; steps?: string[]; currentStep?: 1 | 2 | 3; children: ReactNode };
 
@@ -27,7 +29,12 @@ export function AuthLayout(props: Props) {
           <Logo height={36} />
         </Link>
         <div className="hidden flex-1 flex-col justify-center md:flex">
-          {props.variant === "rank" ? (
+          {props.variant === "message" ? (
+            <>
+              <p className="text-[46px] font-semibold leading-[1.12] tracking-tight">{props.headline}</p>
+              <p className="mt-6 max-w-[440px] text-[17px] leading-relaxed text-sidebar-muted">{props.lead}</p>
+            </>
+          ) : props.variant === "rank" ? (
             <>
               <p className="text-[56px] font-semibold leading-[1.08] tracking-tight">
                 Rank-ready,

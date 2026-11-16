@@ -8,7 +8,14 @@ export type LearnerType = "self_managed" | "parent_managed";
 /** Who is signed in. */
 export type Actor =
   | { kind: "parent"; parentId: string }
-  | { kind: "learner"; studentId: string; type: LearnerType; parentId: string | null };
+  | {
+      kind: "learner";
+      studentId: string;
+      type: LearnerType;
+      parentId: string | null;
+      /** An under-18 learner whose parent's consent stops practice for now (editions §2.4, M10). */
+      practiseBlocked?: boolean;
+    };
 
 /** The learner an action is about. */
 export type LearnerRef = { id: string; type: LearnerType; parentId: string | null };
@@ -59,6 +66,7 @@ export function isOwnLearner(actor: Actor, learner: LearnerRef): boolean {
  */
 export function can(actor: Actor, action: Action, target?: LearnerRef): boolean {
   const kind = kindOf(actor);
+  if (action === "practise" && actor.kind === "learner" && actor.practiseBlocked) return false;
   if (!target) return ACCOUNT_ACTIONS.has(action) && ON_ACCOUNT[kind].has(action);
   return isOwnLearner(actor, target) && ON_LEARNER[kind].has(action);
 }

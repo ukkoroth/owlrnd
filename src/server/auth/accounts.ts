@@ -292,10 +292,18 @@ export async function deleteOwnAccount(actor: Actor, account: OwnAccount) {
     await deleteParent(account.id);
     return true;
   }
+  await deleteSelfManagedLearner(account.id);
+  return true;
+}
+
+/**
+ * Deletes a self-managed learner and their data: tracks, exams, points, codes and sessions by cascade, and their
+ * files queued for deletion. Used by "Delete my account" and when a parent declines consent (M10).
+ */
+export async function deleteSelfManagedLearner(studentId: string) {
   await db.transaction(async (tx) => {
-    const keys = await fileKeysForStudent(tx, account.id);
-    await tx.delete(students).where(and(eq(students.id, account.id), eq(students.type, "self_managed")));
+    const keys = await fileKeysForStudent(tx, studentId);
+    await tx.delete(students).where(and(eq(students.id, studentId), eq(students.type, "self_managed")));
     await discardFiles(keys, tx);
   });
-  return true;
 }

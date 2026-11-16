@@ -5,6 +5,7 @@ import { cache } from "react";
 import { rules } from "@/config/rules";
 import { readPending, signPending, type Pending, type PendingKind } from "./pending";
 import { can, type Actor } from "@/domain/permissions";
+import { learnerConsent, type LearnerConsent } from "../consent";
 import { createSession, idleMs, revokeSession, validateSession, type CurrentUser, type SessionOwner } from "./sessions";
 
 export const SESSION_COOKIE = "owlrnd_session";
@@ -17,11 +18,23 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return token ? validateSession(token) : null;
 });
 
+/** Consent for the signed-in learner (M10), once per request. Adults and children: not needed. */
+export const getLearnerConsent = cache(async (): Promise<LearnerConsent | null> => {
+  const user = await getCurrentUser();
+  return user?.role === "student" ? learnerConsent(user.student) : null;
+});
+
 /** The permission-policy actor for a signed-in user (domain/permissions.ts). */
-export function actorOf(user: CurrentUser): Actor {
+export function actorOf(user: CurrentUser, consent: LearnerConsent | null = null): Actor {
   return user.role === "parent"
     ? { kind: "parent", parentId: user.parent.id }
-    : { kind: "learner", studentId: user.student.id, type: user.student.type, parentId: user.student.parentId };
+    : {
+        kind: "learner",
+        studentId: user.student.id,
+        type: user.student.type,
+        parentId: user.student.parentId,
+        practiseBlocked: consent ? !consent.practiseAllowed : false,
+      };
 }
 
 type ParentUser = Extract<CurrentUser, { role: "parent" }>;
@@ -31,7 +44,7 @@ type StudentUser = Extract<CurrentUser, { role: "student" }>;
 export async function requireActor(): Promise<{ user: CurrentUser; actor: Actor }> {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
-  return { user, actor: actorOf(user) };
+  return { user, actor: actorOf(user, await getLearnerConsent()) };
 }
 
 /**
@@ -44,8 +57,16 @@ export async function requireShell(shell: "parent" | "learner") {
   const { user, actor } = await requireActor();
   const inShell = shell === "parent" ? user.role === "parent" : user.role === "student";
   if (!inShell) redirect(homeFor(user));
-  // Every screen in the learner's shell is practice: exams, results, points (editions §2.3).
-  if (user.role === "student" && !can(actor, "practise", user.student)) redirect("/sign-in");
+  return { user, actor };
+}
+
+/**
+ * Taking an exam (the paper, its actions, marking and the marked paper). Refused while a parent's consent blocks
+ * practice (M10); the dashboard's banner explains why.
+ */
+export async function requirePractice() {
+  const { user, actor } = await requireShell("learner");
+  if (!can(actor, "practise", user.student)) redirect("/today");
   return { user, actor };
 }
 

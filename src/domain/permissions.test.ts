@@ -55,3 +55,12 @@ describe("can: on the actor's own account (§2.3)", () => {
     }
   });
 });
+
+describe("can: consent (editions §2.4, M10)", () => {
+  it("an under-18 learner whose consent blocks practice can't practise, but can still manage their tracks", () => {
+    const blocked: Actor = { ...selfActor, practiseBlocked: true } as Actor;
+    expect(can(blocked, "practise", self)).toBe(false);
+    expect(can(blocked, "manageTracks", self)).toBe(true);
+    expect(can(blocked, "viewProgress", self)).toBe(true);
+  });
+});

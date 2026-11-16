@@ -497,3 +497,69 @@ export const pointsEvents = pgTable(
   },
   (t) => [index("points_events_student_idx").on(t.studentId, t.createdAt)],
 );
+
+// ── 0.2 M10 · Under-18 consent (editions §2.4) ─────────────────────────────
+
+export const consentStatus = pgEnum("consent_status", ["pending", "agreed", "declined", "expired"]);
+
+/**
+ * A parent's consent for an under-18 self-managed learner. The parent usually has no owlrnd account, so their name
+ * and email live here. One open request per learner: Resend or Change email ends the earlier one ("expired").
+ * The parent proves they read that inbox with a 6-digit code (rules §1), held here rather than in `codes`.
+ */
+export const consentRequests = pgTable(
+  "consent_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Cleared when the learner's account is deleted: the request (who was asked, the answer) stays as audit. */
+    studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+    parentName: text("parent_name").notNull(),
+    parentEmail: text("parent_email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    linkExpiresAt: timestamp("link_expires_at", { withTimezone: true }).notNull(),
+    status: consentStatus("status").notNull().default("pending"),
+    /** "email_code" in 0.2; "manual" and "digilocker" later (roadmap items 13, 14). */
+    verificationLevel: text("verification_level"),
+    /** The parent asked for a read-only progress view (the page comes in 0.2.x). */
+    progressView: boolean("progress_view").notNull().default(false),
+    policyVersion: text("policy_version"),
+    codeHash: text("code_hash"),
+    codeExpiresAt: timestamp("code_expires_at", { withTimezone: true }),
+    codeTriesLeft: integer("code_tries_left").notNull().default(0),
+    codeUsedAt: timestamp("code_used_at", { withTimezone: true }),
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("consent_requests_student_idx").on(t.studentId, t.createdAt)],
+);
+
+export const consentEventKind = pgEnum("consent_event_kind", [
+  "requested",
+  "link_resent",
+  "email_changed",
+  "reminder_sent",
+  "code_sent",
+  "code_wrong",
+  "code_verified",
+  "agreed",
+  "declined",
+  "paused_no_answer",
+]);
+
+/**
+ * The audit record of consent (editions §2.4): every request, code and answer. Kept when the learner's account is
+ * deleted (their id is cleared); it holds no answers or practice data.
+ */
+export const consentEvents = pgTable(
+  "consent_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id").references(() => consentRequests.id, { onDelete: "set null" }),
+    studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+    kind: consentEventKind("kind").notNull(),
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("consent_events_request_idx").on(t.requestId, t.at), index("consent_events_student_idx").on(t.studentId, t.at)],
+);

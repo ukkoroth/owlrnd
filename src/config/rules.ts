@@ -22,16 +22,16 @@ export const rules = {
     /** The step between password and code (or sign-up and verify) expires after this. */
     pendingStepMinutes: 30,
     /**
-     * Ages from the date of birth (0.2 plan, M8). A self-managed learner under `adult` needs a parent's consent
-     * (editions §2.4); until M10 builds it, under-18s can't sign up "For me". Children a parent adds are
-     * `child.min`–`child.max` years old.
+     * Ages from the date of birth. A self-managed learner under `adult` needs a parent's consent (editions §2.4,
+     * M10). "For me" starts at 13 (owner, 2026-11-16); younger learners are set up by a parent. Children a parent
+     * adds are `child.min`–`child.max` years old.
      */
     ages: {
       adult: 18,
-      learner: { min: 5, max: 120 },
+      learner: { min: 13, max: 120 },
       child: { min: 3, max: 18 },
-      /** M10 switches this on; until then an under-18 "For me" sign-up is stopped. */
-      under18SelfSignUp: false,
+      /** False stops every under-18 "For me" sign-up (as before M10). */
+      under18SelfSignUp: true,
     },
   },
 
@@ -80,6 +80,20 @@ export const rules = {
     inviteOnly: false,
     /** An invitation link works once, for this many days. */
     invitationDays: 14,
+  },
+
+  /**
+   * Parent consent for under-18 self-managed learners (editions §2.4, M10). The owner chose to let them practise
+   * while consent is pending; "block_until_consent" stops practice until the parent agrees.
+   */
+  consent: {
+    under18Mode: "practise_while_pending" as "practise_while_pending" | "block_until_consent",
+    /** The link in the parent's email works for this many days; the learner can send a new one. */
+    linkDays: 7,
+    /** One reminder to the parent if they haven't answered. */
+    reminderAfterDays: 3,
+    /** With no answer after this many days, practice pauses until the parent agrees. */
+    pauseAfterDays: 30,
   },
 
   /** §3 Goals: "score X / 10 or better in N exams in a row" */

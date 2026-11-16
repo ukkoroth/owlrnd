@@ -1,6 +1,7 @@
 import "server-only";
 import { holderRef } from "@/domain/accounts";
 import { loadLearner } from "./learners";
+import { learnerConsent } from "./consent";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { firstExamPlan, type PlanSlot } from "@/domain/examPlan";
 import { planWithRevision } from "@/domain/examMix";
@@ -108,6 +109,13 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     if (!learner) return;
     const { student, holder } = learner;
     // AI cost controls: over the holder's daily limit or allowance, or the monthly budget, try again later.
+    // An under-18 learner waiting too long for consent (or in "block until consent") gets no new exams (M10).
+    if (!(await learnerConsent(student)).practiseAllowed) {
+      const retryAt = new Date(Date.now() + 6 * 60 * 60_000);
+      await enqueue("write_exam", { trackId }, { runAt: retryAt });
+      console.info(`[owlrnd consent] exam for track ${trackId} postponed until consent; retry ${retryAt.toISOString()}`);
+      return;
+    }
     const blocked = await examWriteBlocked(holder);
     if (blocked) {
       await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });

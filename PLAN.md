@@ -20,6 +20,7 @@ The earlier "All-rounder" prototype (single student, θ/3PL engine, follow-up ch
 | M7 Shared core (0.2) | ✅ done 2026-11-16 |
 | M8 Sign-up and sign-in for both (0.2) | ✅ done 2026-11-16 |
 | M9 Learners set up their own tracks (0.2) | ✅ done 2026-11-16 |
+| M10 Under-18 consent (0.2) | ✅ done 2026-11-16 |
 
 Source-of-truth order: `docs/05-rules.md` → `docs/04-screens.md` / `docs/03-flows.md` → `screens/*.png` → `mockups/*.html`.
 
