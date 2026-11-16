@@ -100,3 +100,35 @@ describe("todayIn", () => {
     expect(todayIn("Asia/Kolkata", t)).toBe("2026-11-15");
   });
 });
+
+import { trackDays, trackDaysLabel } from "./tracks";
+
+describe("trackDays (days from the first exam to the goal)", () => {
+  const tz = "Asia/Kolkata";
+  it("is null before any exam has been started", () => {
+    expect(trackDays({ firstExamAt: null, goalReachedAt: null }, tz)).toBeNull();
+    expect(trackDaysLabel(null, false)).toBeNull();
+  });
+  it("counts calendar days inclusively, to today while the track is going", () => {
+    const first = new Date("2026-11-10T04:00:00Z");
+    expect(trackDays({ firstExamAt: first, goalReachedAt: null }, tz, new Date("2026-11-10T15:00:00Z"))).toBe(1);
+    expect(trackDays({ firstExamAt: first, goalReachedAt: null }, tz, new Date("2026-11-14T10:00:00Z"))).toBe(5);
+  });
+  it("stops at the day the goal was reached", () => {
+    const first = new Date("2026-11-01T04:00:00Z");
+    const reached = new Date("2026-11-12T04:00:00Z");
+    expect(trackDays({ firstExamAt: first, goalReachedAt: reached }, tz, new Date("2026-11-30T04:00:00Z"))).toBe(12);
+  });
+  it("uses the learner's time zone for the day boundary", () => {
+    // 20:00 UTC on 10 Nov is already 11 Nov in Kolkata.
+    const first = new Date("2026-11-10T17:00:00Z");
+    const now = new Date("2026-11-10T20:00:00Z");
+    expect(trackDays({ firstExamAt: first, goalReachedAt: null }, tz, now)).toBe(2);
+    expect(trackDays({ firstExamAt: first, goalReachedAt: null }, "Europe/London", now)).toBe(1);
+  });
+  it("words it as 'day N' while going and 'N days' once reached", () => {
+    expect(trackDaysLabel(5, false)).toBe("day 5");
+    expect(trackDaysLabel(1, true)).toBe("1 day");
+    expect(trackDaysLabel(12, true)).toBe("12 days");
+  });
+});

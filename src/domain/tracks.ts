@@ -121,6 +121,24 @@ export function todayIn(timeZone: string, now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
+/**
+ * Days on a track (owner, 2026-11-16): calendar days in the learner's time zone from the day the first exam was
+ * started to the day the goal was reached, or to today while the track is still going. Counted inclusively, so the
+ * first day is day 1. Null before any exam has been started.
+ */
+export function trackDays(t: { firstExamAt: Date | null; goalReachedAt: Date | null }, timeZone: string, now = new Date()): number | null {
+  if (!t.firstExamAt) return null;
+  const day = (d: Date) => Date.parse(`${todayIn(timeZone, d)}T00:00:00Z`);
+  const end = t.goalReachedAt ?? now;
+  return Math.max(1, Math.round((day(end) - day(t.firstExamAt)) / 86_400_000) + 1);
+}
+
+/** The card's words for {@link trackDays}: "day 5" while going, "12 days" once the goal is reached. */
+export function trackDaysLabel(days: number | null, reached: boolean): string | null {
+  if (days === null) return null;
+  return reached ? `${days} ${days === 1 ? "day" : "days"}` : `day ${days}`;
+}
+
 // ── Updating a live track (2j restart, Add material) ───────────────────────
 
 export type UpdateMode = "restart" | "add";

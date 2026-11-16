@@ -1,4 +1,4 @@
-import { trackStatusLine } from "@/domain/tracks";
+import { trackDays, trackDaysLabel, trackStatusLine } from "@/domain/tracks";
 import { GoalProgress, NeedsWork, ScoreBars, TopicStrength } from "./TrackBars";
 import type { TrackSummary } from "@/server/tracks";
 import Link from "next/link";
@@ -39,6 +39,9 @@ export function TrackCard({
   const practise = flashcards && deck.practise;
   // The next exam is being written in the background (owner, 2026-11-16: show it's on its way).
   const preparing = t.status === "active" && !t.readyExam && t.nextExam !== "failed";
+  const reached = t.status === "goal_reached";
+  // From the first exam to the goal (or today, while going); the clock stops when the goal is reached.
+  const days = trackDaysLabel(trackDays({ firstExamAt: t.firstExamAt, goalReachedAt: reached ? t.goalReachedAt : null }, timeZone), reached);
   const next = t.examsTaken === 0 ? "first exam" : "next exam";
   const examBox =
     t.nextExam === "failed"
@@ -59,6 +62,7 @@ export function TrackCard({
         {t.status === "goal_reached" && t.goalReachedAt
           ? `Goal reached on ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone }).format(t.goalReachedAt)} · stopped`
           : trackStatusLine({ status: t.status, examsTaken: t.examsTaken, testDate: t.testDate, testLabel: t.testLabel })}
+        {days && ` · ${days}`}
       </p>
       <h2 id={`track-${t.id}`} className="text-[22px] leading-snug">
         {t.name}

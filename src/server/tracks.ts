@@ -281,6 +281,8 @@ export type TrackSummary = Track & {
   examReady: boolean;
   /** The exam waiting to be taken (ready, or started and left), for the learner's "Start exam N" (sm-4.1a). */
   readyExam: { id: string; number: number; started: boolean } | null;
+  /** When the learner started the track's first exam, for the card's day count; null before any exam is started. */
+  firstExamAt: Date | null;
 };
 
 export async function listTracks(actor: Actor, studentId: string): Promise<TrackSummary[] | null> {
@@ -293,7 +295,7 @@ export async function listTracks(actor: Actor, studentId: string): Promise<Track
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
   const tps = await db.select().from(topics).where(inArray(topics.trackId, ids)).orderBy(asc(topics.position));
-  const ex = await db.select({ id: exams.id, number: exams.number, trackId: exams.trackId, status: exams.status }).from(exams).where(inArray(exams.trackId, ids));
+  const ex = await db.select({ id: exams.id, number: exams.number, trackId: exams.trackId, status: exams.status, startedAt: exams.startedAt }).from(exams).where(inArray(exams.trackId, ids));
   const strengths = await topicStrengths(studentId, ids);
   const scores = await recentScores(ids);
   return rows.map((t) => ({
@@ -307,6 +309,9 @@ export async function listTracks(actor: Actor, studentId: string): Promise<Track
       const open = ex.find((e) => e.trackId === t.id && (e.status === "ready" || e.status === "in_progress"));
       return open ? { id: open.id, number: open.number, started: open.status === "in_progress" } : null;
     })(),
+    firstExamAt: ex
+      .filter((e) => e.trackId === t.id && e.startedAt)
+      .reduce<Date | null>((first, e) => (!first || e.startedAt! < first ? e.startedAt! : first), null),
   }));
 }
 
