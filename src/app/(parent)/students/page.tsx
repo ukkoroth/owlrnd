@@ -11,7 +11,10 @@ import { flashcardActivity } from "@/server/flashcards";
 import { cardsLine } from "@/domain/flashcards";
 import { db } from "@/server/db";
 import { tracks } from "@/server/db/schema";
-import { and, count, inArray, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
+import { exams } from "@/server/db/schema";
+import { Preparing } from "@/components/Preparing";
+import { RefreshWhileWaiting } from "@/components/RefreshWhileWaiting";
 
 export const metadata: Metadata = { title: "Your students · owlrnd" };
 
@@ -36,10 +39,40 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const tracksOf = (id: string) => trackCounts.find((t) => t.studentId === id)?.n ?? 0;
   const lastExams = new Map(await Promise.all(kids.map(async (k) => [k.id, await lastExamSummary(k.id)] as const)));
   const times = new Map(await Promise.all(kids.map(async (k) => [k.id, await practiceTimes(k.id)] as const)));
+  // Tracks whose next exam is being written now (owner, 2026-11-16: show it on the student's card).
+  const running = kids.length
+    ? await db
+        .select({ id: tracks.id, studentId: tracks.studentId, name: tracks.name, nextExam: tracks.nextExam })
+        .from(tracks)
+        .where(and(inArray(tracks.studentId, kids.map((k) => k.id)), eq(tracks.status, "active")))
+    : [];
+  const open = running.length
+    ? await db
+        .select({ trackId: exams.trackId, n: count() })
+        .from(exams)
+        .where(and(inArray(exams.trackId, running.map((t) => t.id)), inArray(exams.status, ["ready", "in_progress"])))
+        .groupBy(exams.trackId)
+    : [];
+  const taken = running.length
+    ? await db
+        .select({ trackId: exams.trackId, n: count() })
+        .from(exams)
+        .where(and(inArray(exams.trackId, running.map((t) => t.id)), inArray(exams.status, ["submitted", "marking", "marked"])))
+        .groupBy(exams.trackId)
+    : [];
+  const preparing = new Map(
+    kids.map((k) => [
+      k.id,
+      running
+        .filter((t) => t.studentId === k.id && t.nextExam !== "failed" && !open.some((o) => o.trackId === t.id))
+        .map((t) => ({ id: t.id, name: t.name ?? "", examsTaken: taken.find((x) => x.trackId === t.id)?.n ?? 0 })),
+    ]),
+  );
   const cards = new Map(await Promise.all(kids.map(async (k) => [k.id, await flashcardActivity(k.id)] as const)));
 
   return (
     <>
+      {[...preparing.values()].some((p) => p.length > 0) && <RefreshWhileWaiting />}
       <PageHeader
         title="Your students"
         subtitle="Each student has their own username, password and tracks."
@@ -92,6 +125,14 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     : `No exams taken yet · ${tracksOf(k.id)} ${tracksOf(k.id) === 1 ? "track" : "tracks"}.`}
                 </p>
               )}
+              {preparing.get(k.id)!.map((t) => (
+                <Preparing
+                  key={t.id}
+                  className="border-b border-line py-4"
+                  label={`${t.examsTaken === 0 ? "First exam" : `Exam ${t.examsTaken + 1}`} being prepared: ${t.name}`}
+                  note={`It appears on ${k.name}'s dashboard when it's ready, usually in under a minute.`}
+                />
+              ))}
               {/* fc-7: the child's flashcard practice, without card content. */}
               {cards.get(k.id)!.times.length > 0 && (
                 <p className="border-b border-line py-3 text-[15px] text-ink-muted">

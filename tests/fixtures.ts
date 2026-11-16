@@ -145,6 +145,10 @@ export async function createTrackWithExam(
     topicNames?: string[];
     /** Extra topics with no questions in exam 1, so they stay untested (goal coverage, rules §3). */
     untestedTopics?: string[];
+    /** Flashcards already in the deck, due now (0.3), as if the starter deck had been written. */
+    flashcards?: number;
+    /** The first exam is still being written: no exam yet, next_exam "writing" (and no background job runs). */
+    writing?: boolean;
   } = {},
 ) {
   const qs =
@@ -166,6 +170,10 @@ export async function createTrackWithExam(
     const { rows } = await pool.query(`insert into topics (track_id, name, position) values ($1, $2, $3) returning id`, [trackId, name, i]);
     tp.push(rows[0]);
   }
+  if (opts.writing) {
+    await pool.query(`update tracks set next_exam = 'writing' where id = $1`, [trackId]);
+    return { trackId, examId: "" };
+  }
   const { rows: ex } = await pool.query(`insert into exams (student_id, track_id, number, status) values ($1, $2, 1, 'ready') returning id`, [studentId, trackId]);
   const examId = ex[0].id as string;
   for (const [i, name] of (opts.untestedTopics ?? []).entries()) {
@@ -178,6 +186,15 @@ export async function createTrackWithExam(
       [trackId, tp[i % tp.length]!.id, q.type, q.prompt, JSON.stringify(q.options ?? []), q.correct ?? null, q.expected ?? null, q.explanation ?? `SECRET-EXPLANATION-${i + 1}`],
     );
     await pool.query(`insert into exam_questions (exam_id, question_id, position) values ($1, $2, $3)`, [examId, rows[0].id, i + 1]);
+  }
+  for (let i = 0; i < (opts.flashcards ?? 0); i++) {
+    await pool.query(`insert into flashcards (track_id, topic_id, front, answer, explanation, source, box, due_at) values ($1, $2, $3, $4, $5, 'material', 1, now())`, [
+      trackId,
+      tp[i % tp.length]!.id,
+      `Card ${i + 1}: what is it?`,
+      `Answer ${i + 1}`,
+      `Because ${i + 1}.`,
+    ]);
   }
   return { trackId, examId };
 }

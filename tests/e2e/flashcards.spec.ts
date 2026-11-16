@@ -74,11 +74,11 @@ async function practiseTen(page: Page) {
 test("F3 done-when: Practise from the dashboard, points for the session, counts update; the deck page", async ({ page }) => {
   const { parent, student, studentId } = await createFamily();
   try {
-    await createTrackWithExam(studentId, { name: "Physics: Current electricity", questions: paper, topicNames: ["Ohm's law", "Resistors"] });
+    await createTrackWithExam(studentId, { name: "Physics: Current electricity", questions: paper, topicNames: ["Ohm's law", "Resistors"], flashcards: 10 });
     await signInFully(page, student.username, student.password, parent.email, /\/today$/);
 
-    // fc-1: no deck yet, so the button offers the top-up.
-    await page.getByRole("link", { name: "Practise 10 new flashcards: Physics: Current electricity" }).click();
+    // fc-1: the starter deck's 10 cards are due.
+    await page.getByRole("link", { name: "Practise 10 flashcards: Physics: Current electricity" }).click();
     await practiseTen(page);
     await expect(page.getByRole("definition").filter({ hasText: "+5" })).toBeVisible();
     await page.getByRole("link", { name: "Back to Exams" }).click();
@@ -104,18 +104,23 @@ test("F3 done-when: Practise from the dashboard, points for the session, counts 
 test("F3: a self-managed learner's track card has the deck line, Start, Practise and Flashcards", async ({ page }) => {
   const { studentId, learner } = await createSelfLearner({ name: "Rancho" });
   try {
-    const { trackId } = await createTrackWithExam(studentId, { name: "JEE Physics: Current electricity", questions: paper, topicNames: ["Ohm's law"] });
+    const { trackId } = await createTrackWithExam(studentId, { name: "JEE Physics: Current electricity", questions: paper, topicNames: ["Ohm's law"], flashcards: 12 });
+    await createTrackWithExam(studentId, { name: "JEE Chemistry: Equilibrium", questions: paper, topicNames: ["Le Chatelier"] });
     await signInFully(page, learner.email, learner.password, learner.email, /\/today$/);
     await page.goto("/tracks");
-    const card = page.getByRole("article");
-    await expect(card.getByText("Flashcards · being written")).toBeVisible();
+    // A deck still being written: no Practise yet; the first exam comes first.
+    const chem = page.getByRole("article").filter({ hasText: "JEE Chemistry" });
+    await expect(chem.getByText("Flashcards · being written")).toBeVisible();
+    await expect(chem.getByRole("link", { name: /^Practise/ })).toHaveCount(0);
+    const card = page.getByRole("article").filter({ hasText: "JEE Physics" });
+    await expect(card.getByText("12 cards · 12 to practise today")).toBeVisible();
     await expect(card.getByRole("link", { name: "Start exam 1 in JEE Physics: Current electricity" })).toBeVisible();
-    await card.getByRole("link", { name: "Practise 10 new flashcards: JEE Physics: Current electricity" }).click();
+    await card.getByRole("link", { name: "Practise 10 flashcards: JEE Physics: Current electricity" }).click();
     await practiseTen(page);
     await page.getByRole("link", { name: "Back to your tracks" }).click();
     await expect(page).toHaveURL(/\/tracks$/);
     await expect(card.getByRole("link", { name: "Flashcards in JEE Physics: Current electricity" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Practise \d+ (new )?flashcards/ })).toHaveAttribute("href", `/practise/${trackId}?from=tracks`);
+    await expect(card.getByRole("link", { name: /^Practise \d+ (new )?flashcards/ })).toHaveAttribute("href", `/practise/${trackId}?from=tracks`);
   } finally {
     await deleteSelfLearner(studentId);
   }
@@ -124,11 +129,11 @@ test("F3: a self-managed learner's track card has the deck line, Start, Practise
 test("F4 done-when: a parent sees a child's flashcard activity; it doesn't count as an exam", async ({ page, browser }) => {
   const { parent, student, studentId } = await createFamily();
   try {
-    await createTrackWithExam(studentId, { name: "Physics: Current electricity", questions: paper, topicNames: ["Ohm's law", "Resistors"] });
+    await createTrackWithExam(studentId, { name: "Physics: Current electricity", questions: paper, topicNames: ["Ohm's law", "Resistors"], flashcards: 10 });
     const kidCtx = await browser.newContext();
     const kid = await kidCtx.newPage();
     await signInFully(kid, student.username, student.password, parent.email, /\/today$/);
-    await kid.getByRole("link", { name: /^Practise 10 new flashcards/ }).click();
+    await kid.getByRole("link", { name: /^Practise 10 flashcards/ }).click();
     await practiseTen(kid);
     await kid.getByRole("link", { name: "Back to Exams" }).click();
     // Still the first-day dashboard: a flashcard session isn't an exam.
@@ -144,6 +149,29 @@ test("F4 done-when: a parent sees a child's flashcard activity; it doesn't count
     await expect(page.getByRole("article").getByText("1 session in the last 7 days · 0 of 10 cards known")).toBeVisible();
     // The parent doesn't practise: no Practise button, no card content.
     await expect(page.getByRole("link", { name: /^Practise/ })).toHaveCount(0);
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});
+
+test("while the first exam is being written: 'being prepared' for the learner and the parent, and no Practise yet", async ({ page, browser }) => {
+  const { parent, student, studentId } = await createFamily();
+  try {
+    await createTrackWithExam(studentId, { name: "Chemistry: Chemical reactions", topicNames: ["Balancing equations"], writing: true });
+    const kidCtx = await browser.newContext();
+    const kid = await kidCtx.newPage();
+    await signInFully(kid, student.username, student.password, parent.email, /\/today$/);
+    await expect(kid.getByRole("heading", { name: "Your first exam is being prepared" })).toBeVisible();
+    await expect(kid.getByText("You are all caught up")).toHaveCount(0);
+    await expect(kid.getByRole("link", { name: /^Practise/ })).toHaveCount(0);
+    await kid.goto("/tracks");
+    await expect(kid.getByText("Your first exam is being prepared…")).toBeVisible();
+    await kidCtx.close();
+
+    await signInFully(page, parent.email, parent.password, parent.email, /\/students$/);
+    await expect(page.getByText("First exam being prepared: Chemistry: Chemical reactions")).toBeVisible();
+    await page.goto(`/students/${studentId}/tracks`);
+    await expect(page.getByRole("article").getByText("First exam being prepared…")).toBeVisible();
   } finally {
     await deleteParentByEmail(parent.email);
   }

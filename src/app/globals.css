@@ -32,3 +32,11 @@
 @media (prefers-reduced-motion: no-preference) {
   html:has(#landing) { scroll-behavior: smooth; }
 }
+
+/* "Exam being prepared": an indeterminate bar sliding across; still (a third filled) when motion isn't welcome. */
+.preparing-bar { position: relative; overflow: hidden; }
+.preparing-bar > span { position: absolute; inset: 0 auto 0 0; width: 33%; border-radius: inherit; background: #2563EB; }
+@media (prefers-reduced-motion: no-preference) {
+  .preparing-bar > span { animation: preparing 1.4s ease-in-out infinite; }
+  @keyframes preparing { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+}

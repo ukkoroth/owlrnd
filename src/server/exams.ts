@@ -26,6 +26,8 @@ export type StudentTrack = {
   weakTopics: number;
   /** The track's colour (domain/trackColors.ts). */
   colorIndex: number;
+  /** The next exam is being written in the background (a running track with no exam waiting, not failed). */
+  preparing: boolean;
   /** The next exam to take (ready) or to continue (in progress). overallNumber is set once it has started. */
   exam: { id: string; number: number; status: "ready" | "in_progress"; questionCount: number; overallNumber: number | null } | null;
 };
@@ -77,6 +79,7 @@ export async function getStudentTracks(studentId: string): Promise<StudentTrack[
       lastPracticedAt: done.length ? done[done.length - 1]!.submittedAt : null,
       weakTopics: ts.filter((x) => x.strength === "needs_work").length,
       colorIndex: t.colorIndex,
+      preparing: t.status === "active" && !open && t.nextExam !== "failed",
       exam: open
         ? { id: open.id, number: open.number, status: open.status as "ready" | "in_progress", questionCount: open.questionCount, overallNumber: open.overallNumber }
         : null,

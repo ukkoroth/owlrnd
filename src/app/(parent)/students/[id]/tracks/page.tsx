@@ -6,6 +6,7 @@ import { requireShell } from "@/server/auth/current";
 import { getOwnStudent } from "@/server/students";
 import { getDraftChat, listTracks } from "@/server/tracks";
 import { flashcardActivity } from "@/server/flashcards";
+import { RefreshWhileWaiting } from "@/components/RefreshWhileWaiting";
 
 export const metadata: Metadata = { title: "Tracks · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default async function TracksPage({ params, searchParams }: { params: Pro
 
   return (
     <>
+      {list.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed") && <RefreshWhileWaiting />}
       <Breadcrumb items={[{ label: "Students", href: "/students" }, { label: student.name }, { label: "Tracks" }]} />
       <TracksOverview
         audience={{ kind: "parent", studentId: id, studentName: student.name }}

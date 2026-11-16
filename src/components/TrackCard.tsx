@@ -10,6 +10,7 @@ import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/
 import type { DeckCount } from "@/server/flashcards";
 import { DeckLine, PractiseButton } from "./flashcards/Practise";
 import { cardsLine } from "@/domain/flashcards";
+import { Preparing } from "./Preparing";
 
 /**
  * A track on the parent's tracks page (2g) or the learner's Your tracks (sm-4.1a). A self-managed learner also gets
@@ -36,6 +37,8 @@ export function TrackCard({
   const flashcards = audience.kind === "learner" && deck && (t.status === "active" || t.status === "goal_reached");
   const start = audience.kind === "learner" && t.readyExam && t.status === "active";
   const practise = flashcards && deck.practise;
+  // The next exam is being written in the background (owner, 2026-11-16: show it's on its way).
+  const preparing = t.status === "active" && !t.readyExam && t.nextExam !== "failed";
   const next = t.examsTaken === 0 ? "first exam" : "next exam";
   const examBox =
     t.nextExam === "failed"
@@ -65,12 +68,17 @@ export function TrackCard({
         <div className="mt-4 flex items-end justify-between gap-4">
           <ScoreBars scores={t.scores} />
           <span className="text-sm text-ink-muted">
-            {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken{examBox ? ` · ${examBox.replace(/^./, (c) => c.toLowerCase())}` : ""}
+            {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken{examBox && !preparing ? ` · ${examBox.replace(/^./, (c) => c.toLowerCase())}` : ""}
           </span>
         </div>
       )}
+      {preparing && t.scores.length > 0 && <Preparing className="mt-4" label={`Exam ${t.examsTaken + 1} being prepared…`} />}
       <div className={`mt-4 flex min-h-[66px] flex-col items-center justify-center gap-2 rounded border border-dashed border-line-input px-4 py-3 text-center text-[15px] text-ink-muted ${t.scores.length ? "hidden" : ""}`}>
-        {examBox}
+        {preparing ? (
+          <Preparing className="w-full text-left" label={`${t.examsTaken === 0 ? "First exam" : `Exam ${t.examsTaken + 1}`} being prepared…`} note="Usually under a minute." />
+        ) : (
+          examBox
+        )}
         {t.nextExam === "failed" && (
           <form action={retryExam.bind(null, t.id, t.studentId)}>
             <button className="link min-h-touch font-semibold">Try again</button>

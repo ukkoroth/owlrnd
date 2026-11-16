@@ -91,6 +91,8 @@ Not previewed yet (simple list screens, built in F3): **fc-6** a track's deck (a
 
 **F4 done (2026-11-16):** the parent's line (fc-7) on each child's 2k card ("Flashcards: 3 sessions in the last 7 days · 41 cards known") and on each track card of the child's tracks page ("· 12 of 24 cards known"), with no card content and no Practise button. The 7-day activity chart (3c and 2k) gets flashcard sessions as a second, narrower teal series with a legend and its own counts, only when there were sessions that week; the 26-week grid, "exams completed", streaks and exam numbers stay exams only. A session counts once at least one card is answered. All of 0.3 F1–F4 is built; the release tasks below remain.
 
+**After testing (owner, 2026-11-16):** a new track showed only "Practise" while its first exam was being written, which looked like flashcards came first. Now there's no Practise button until the starter deck exists, and wherever a track's next exam is being written (the dashboard, the track cards, the child's tracks page and the parent's student card) it says "being prepared" with a progress bar, and the page updates itself when the exam is ready.
+
 ## After F4: release tasks (owner, 2026-11-16)
 
 - [ ] **Website** (`src/app/(site)`, landing page): add flashcards to the features (learn between exams, spaced repetition, no marks), with an HD screenshot of a session (fc-3) and the Practise button (fc-1); check the FAQ and the For parents section mention it; privacy page already covers flashcards ("Your material").

@@ -70,12 +70,12 @@ describe("near-copies between exams and cards (rules.flashcards.repeats)", () =>
 });
 
 describe("F3: counts, card states and points", () => {
-  it("the Practise count: due cards up to a session; none due → the top-up; a full deck with none due → no button", async () => {
+  it("the Practise count: due cards up to a session; none due → the top-up; an empty or full deck with none due → no button", async () => {
     const { practiseCount } = await import("./flashcards");
     expect(practiseCount({ total: 30, due: 4 })).toBe(4);
     expect(practiseCount({ total: 30, due: 25 })).toBe(10);
     expect(practiseCount({ total: 30, due: 0 })).toBe(10);
-    expect(practiseCount({ total: 0, due: 0 })).toBe(10);
+    expect(practiseCount({ total: 0, due: 0 })).toBeNull(); // starter deck still being written
     expect(practiseCount({ total: 200, due: 0 })).toBeNull();
   });
 

@@ -160,7 +160,7 @@ Practice, not assessment: flashcards never change an exam score, topic strength,
 - **Deck:** about 6 cards per active topic when a track starts (up to 60), up to 3 cards from missed questions after each marked exam, top-ups of 10; at most 200 per track.
 - **Session:** up to 10 due cards, lower boxes and weaker topics first; with none due, a top-up is written first. Running and goal-reached tracks only (not paused or archived).
 - **Spacing (Leitner):** Got it moves a card up a box (1–5), Not yet back to box 1; due again after 1, 2, 4, 8 or 16 days. "Known" = box 4 or higher.
-- **Practise · N flashcards:** N = cards due now, up to 10; with none due, the top-up size, shown as "N new flashcards"; no button when nothing is due and the deck is full.
+- **Practise · N flashcards:** N = cards due now, up to 10; with none due, the top-up size, shown as "N new flashcards"; no button while the starter deck is still being written (the first exam comes first) or when nothing is due and the deck is full.
 - **Exams and cards rarely repeat each other's wording** (at most one near-copy per paper or batch after one rewrite; AI §7).
 - **Points:** see §8.
 - **The parent sees** a child's flashcard activity, not the cards: sessions in the last 7 days and cards known, on 2k and per track.

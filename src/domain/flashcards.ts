@@ -106,9 +106,11 @@ export const PRACTISE_STATUSES: readonly string[] = ["active", "goal_reached"];
 
 /**
  * The number on "Practise · N flashcards" (fc-1, fc-5): the cards due now, up to a session; with none due, the
- * top-up that will be written; null when there is nothing to practise and the deck is full.
+ * top-up that will be written; null when there is nothing to practise and the deck is full, or while the starter
+ * deck is still being written (owner, 2026-11-16: the first exam comes first, and a top-up then would duplicate it).
  */
 export function practiseCount(deck: { total: number; due: number }): number | null {
+  if (deck.total === 0) return null;
   if (deck.due > 0) return Math.min(deck.due, F.sessionSize);
   return deck.total < F.deckMax ? F.topUp : null;
 }

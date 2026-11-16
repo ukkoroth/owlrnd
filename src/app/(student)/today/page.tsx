@@ -12,6 +12,8 @@ import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/serve
 import { examTopicLines, practiceTimes } from "@/server/results";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
 import { PractiseButton } from "@/components/flashcards/Practise";
+import { RefreshWhileWaiting } from "@/components/RefreshWhileWaiting";
+import { Preparing } from "@/components/Preparing";
 import { PRACTISE_STATUSES } from "@/domain/flashcards";
 import { deckCounts, flashcardActivity, type DeckCount } from "@/server/flashcards";
 
@@ -40,9 +42,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // 0.3 flashcards (fc-1): the Practise button's count per track that can be practised.
   const decks = await deckCounts(dash.tracks.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
   const cardTimes = (await flashcardActivity(student.id)).times;
+  // A track's exam is being written: the page updates itself when it's ready.
+  const writing = dash.tracks.filter((t) => t.preparing);
 
   return (
     <>
+      {writing.length > 0 && <RefreshWhileWaiting />}
       <p className="text-sm text-ink-muted">{dateLine}</p>
       <h1 className="text-[32px] leading-tight">{firstDay ? `Welcome, ${student.name}` : `Hi ${student.name}`}</h1>
 
@@ -193,6 +198,19 @@ function Today({
             </div>
           </li>
         ))}
+        {tracks
+          .filter((t) => t.preparing)
+          .map((t) => (
+            <li key={t.id} className="card relative flex flex-col overflow-hidden border-dashed">
+              <TrackEdge colorIndex={t.colorIndex} completion={completionOf(t)} />
+              <div>
+                <TrackTag name={t.name} colorIndex={t.colorIndex} />
+              </div>
+              <p className="mt-4 text-sm text-ink-muted">Exam {t.examsTaken + 1} in this track</p>
+              <h3 className="text-[21px] leading-snug">{t.name}</h3>
+              <Preparing className="mt-auto pt-5" label="Exam being prepared" note="It appears here by itself when it's ready." />
+            </li>
+          ))}
       </ol>
       <p className="mt-4 text-ink-muted">
         When you finish one, a new suggestion takes its place. Do as many as you like.
@@ -206,14 +224,32 @@ const statusOf = (t: StudentTrack, w: Words) =>
   t.status === "paused" ? w.paused : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : "Your next exam is being prepared";
 
 function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words; decks: Map<string, DeckCount> }) {
+  // A new track whose first exam isn't written yet: say so, rather than "all caught up".
+  const firstWriting = tracks.find((t) => t.preparing && t.examsTaken === 0);
   return (
     <section className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <div className="card">
-        <h2 className="text-2xl">You are all caught up</h2>
-        <p className="mt-2 text-ink-muted">
-          There are no exams to suggest right now.{" "}
-          {tracks.some((t) => t.status !== "active") ? w.caughtUp : "Your next exam will appear here when it is ready."}
-        </p>
+        {firstWriting ? (
+          <>
+            <div className="mb-3">
+              <TrackTag name={firstWriting.name} colorIndex={firstWriting.colorIndex} />
+            </div>
+            <h2 className="text-2xl">Your first exam is being prepared</h2>
+            <Preparing
+              className="mt-3"
+              label={firstWriting.name}
+              note="It usually takes under a minute. This page updates by itself when it's ready."
+            />
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl">You are all caught up</h2>
+            <p className="mt-2 text-ink-muted">
+              There are no exams to suggest right now.{" "}
+              {tracks.some((t) => t.status !== "active") ? w.caughtUp : "Your next exam will appear here when it is ready."}
+            </p>
+          </>
+        )}
         {/* sm-3g: the learner can act on it straight away. */}
         {selfManaged && (
           <div className="mt-4 flex flex-wrap gap-3">
@@ -231,8 +267,14 @@ function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; s
         <ul className="divide-y divide-line">
           {tracks.map((t) => (
             <li key={t.id} className="py-2.5">
-              <p className="font-semibold">{t.name}</p>
-              <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
+              {t.preparing ? (
+                <Preparing label={t.name} note="Exam being prepared…" />
+              ) : (
+                <>
+                  <p className="font-semibold">{t.name}</p>
+                  <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
+                </>
+              )}
               {/* Nothing to take, but the deck can still be practised (fc-5: also on finished tracks). */}
               <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="mt-2 h-11 px-4 text-[15px]" />
             </li>
