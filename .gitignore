@@ -17,3 +17,5 @@ tmp/
 
 # Infrastructure notes and other owner-only files (never published)
 /private/
+
+.claude/settings.local.json
