@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   // pg, postmark and nodemailer are Node-only; keep them out of the client bundle.
   serverExternalPackages: ["pg", "postmark", "nodemailer", "sharp", "heic-decode", "libheif-js"],
   poweredByHeader: false,
+  // Dev server only: let phones and laptops on the owner's home network open it (testing 0.2 locally first).
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
   // Fixed security headers on every response (the per-request Content-Security-Policy is set in middleware.ts;
   // HSTS is set by Caddy, which terminates HTTPS).
   async headers() {

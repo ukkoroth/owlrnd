@@ -152,6 +152,12 @@ Not in 0.2: tracking subtopics inside a chapter (the AI's topics are the finest 
 - Browser (Playwright): full For me journey (sign up → build your own track → exam → result), full For my child journey (unchanged from 0.1), under-18 journey (practise while pending, parent agrees, parent declines), both consent modes.
 - Run the live migration against a snapshot of the production database first, and take a backup right before deploying.
 
+## Release status (owner, 2026-11-16)
+
+- The legal review is done; the privacy policy and terms are approved as they are.
+- 0.2 is **tested on the owner's local network first**, not released to owlrnd.com yet. The terms will be updated after the first one or two paying or active customers.
+- Email for owlrnd.com: sending through Postmark (live since 2026-11-16), receiving at hello@owlrnd.com through ImprovMX. SES production access was denied; an appeal is optional.
+
 ## Privacy policy and terms (draft, 2026-11-16)
 
 Both pages now cover learners who sign up for themselves, 13–17-year-olds with a parent's consent, the consent record, the demo AI allowance and open beta (`POLICIES_VERSION = 2026-11-16`). **Draft for the owner and for legal review** (editions §2.4) before release; in particular how long the consent record of a declined learner is kept is not stated.
