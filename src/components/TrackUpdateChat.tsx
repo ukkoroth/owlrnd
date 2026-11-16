@@ -6,7 +6,7 @@ import { applyUpdate, sendUpdate, startOverUpdate } from "@/app/_actions/tracks"
 import { canApplyUpdate, formatTestDate, goalLabel, type Goal, type StoredUpdate, type UpdateMode } from "@/domain/tracks";
 import type { ChatMessage } from "@/server/tracks";
 import { tracksHref, trackWords, type TrackAudience } from "@/domain/trackView";
-import { ChatThread, PanelRows } from "./chat/ChatThread";
+import { ChatThread, MobileActionBar, PanelRows, SIDE_CARD, SIDE_CARD_BODY, SIDE_CARD_FOOT } from "./chat/ChatThread";
 
 type Props = {
   mode: UpdateMode;
@@ -68,7 +68,7 @@ export function TrackUpdateChat(p: Props) {
     });
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+    <div className={`grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px] ${ready && !applied ? "pb-24 lg:pb-0" : ""}`}>
       <ChatThread
         greeting={
           restart ? (
@@ -95,14 +95,17 @@ export function TrackUpdateChat(p: Props) {
         }}
       />
 
-      <aside aria-label="Track update" className="card sticky top-6 p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <aside aria-label="Track update" className={SIDE_CARD}>
+        <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
           <h2 className="whitespace-nowrap text-[14px] font-bold uppercase tracking-wider">Track update</h2>
           <span className={`whitespace-nowrap rounded px-2 py-1 text-xs font-bold ${applied || ready ? "bg-brand text-white" : "bg-pale text-ink-muted"}`}>
             {applied ? (restart ? "Active again" : "Applied") : ready ? "Ready" : "Draft"}
           </span>
         </div>
-        <PanelRows rows={rows} />
+        <div className={SIDE_CARD_BODY}>
+          <PanelRows rows={rows} />
+        </div>
+        <div className={SIDE_CARD_FOOT}>
         {applied ? (
           <Link href={tracksHref(p.audience)} className="btn-primary mt-4 w-full">
             {trackWords(p.audience).backToTracks}
@@ -128,8 +131,10 @@ export function TrackUpdateChat(p: Props) {
                 Start over
               </button>
             )}
+            {ready && <MobileActionBar label={restart ? "Ready to start again" : "Changes ready"} action={applying ? "Applying…" : restart ? "Start the track again" : "Apply changes"} busy={applying} onClick={apply} />}
           </>
         )}
+        </div>
       </aside>
     </div>
   );

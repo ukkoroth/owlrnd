@@ -7,7 +7,7 @@ import { rules } from "@/config/rules";
 import { canCreateTrack, formatTestDate, goalLabel, missingForTrack, type StoredPreview } from "@/domain/tracks";
 import { tracksHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { ChatMessage } from "@/server/tracks";
-import { ChatThread, PanelRows } from "./chat/ChatThread";
+import { ChatThread, MobileActionBar, PanelRows, SIDE_CARD, SIDE_CARD_BODY, SIDE_CARD_FOOT } from "./chat/ChatThread";
 
 type Props = {
   /** The learner the track is for (the learner themselves, when self-managed). */
@@ -58,7 +58,7 @@ export function TrackChat({ studentId, audience, firstName, isFirst: isFirstProp
   const ready = canCreateTrack(preview);
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+    <div className={`grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px] ${ready && !createdTrackId ? "pb-24 lg:pb-0" : ""}`}>
       <ChatThread
         greeting={
           <>
@@ -120,21 +120,25 @@ function PreviewPanel(props: {
   const [discarding, startDiscard] = useTransition();
   const rows: [string, string | null][] = [
     ["Name", p.name],
-    ["Topics found", p.topics.length ? p.topics.map((t) => t.name).join(", ") : null],
+    // A long list would push the goal and the button out of view: the first few, and how many more (all in the chat).
+    ["Topics found", p.topics.length ? topicSummary(p.topics.map((t) => t.name)) : null],
     ["Each exam", `Up to ${rules.exam.maxQuestions} questions, multiple choice and short answers`],
     [props.audience.kind === "parent" ? "Test date" : "Exam date", p.testDate ? formatTestDate(p.testDate) : null],
     ["Goal", p.goal ? `${goalLabel(p.goal)}. The track stops when it is reached.` : null],
   ];
   return (
-    <aside aria-label="New track preview" className="card sticky top-6 p-5">
-      <div className="mb-3 flex items-center justify-between">
+    <aside aria-label="New track preview" className={SIDE_CARD}>
+      <div className="mb-3 flex shrink-0 items-center justify-between">
         <h2 className="text-[15px] font-bold uppercase tracking-wider">New track</h2>
         <span className={`rounded px-2 py-1 text-xs font-bold ${ready || created ? "bg-brand text-white" : "bg-pale text-ink-muted"}`}>
           {ready || created ? "Ready" : "Draft"}
         </span>
       </div>
-      {!props.hasDraft && <p className="mb-2 text-sm text-ink-muted">Fills in as you chat.</p>}
-      <PanelRows rows={rows} needed={props.hasDraft && !created ? missingForTrack(p) : []} />
+      {!props.hasDraft && <p className="mb-2 shrink-0 text-sm text-ink-muted">Fills in as you chat.</p>}
+      <div className={SIDE_CARD_BODY}>
+        <PanelRows rows={rows} needed={props.hasDraft && !created ? missingForTrack(p) : []} />
+      </div>
+      <div className={SIDE_CARD_FOOT}>
       {created ? (
         <Link href={`${tracksHref(props.audience)}?created=1`} className="btn-primary mt-4 w-full">
           {trackWords(props.audience).openTracks}
@@ -163,9 +167,17 @@ function PreviewPanel(props: {
               Start over
             </button>
           )}
+          {ready && <MobileActionBar label={p.name ?? "New track"} action={props.creating ? "Creating…" : "Create track"} busy={props.creating} onClick={props.onCreate} />}
         </>
       )}
+      </div>
     </aside>
   );
 }
 
+
+const SHOWN_TOPICS = 5;
+function topicSummary(names: string[]) {
+  if (names.length <= SHOWN_TOPICS + 1) return names.join(", ");
+  return `${names.slice(0, SHOWN_TOPICS).join(", ")} and ${names.length - SHOWN_TOPICS} more (${names.length} in all)`;
+}

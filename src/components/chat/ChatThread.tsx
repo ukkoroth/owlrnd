@@ -257,3 +257,27 @@ export function PanelRows({ rows, needed = [] }: { rows: [string, string | null]
     </dl>
   );
 }
+
+/**
+ * The side card's frame (2e/2f preview, track update): on wide screens it sticks beside the chat and never grows past
+ * the window; its details scroll inside it while the title and the main button stay in view.
+ */
+export const SIDE_CARD = "card flex flex-col p-5 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)]";
+export const SIDE_CARD_BODY = "min-h-0 flex-1 overflow-y-auto overscroll-contain lg:-mr-2 lg:pr-2";
+/** The card's footer (its main button): pinned to the window's bottom edge while the card runs past it. */
+export const SIDE_CARD_FOOT = "shrink-0 bg-card lg:sticky lg:bottom-0 lg:-mb-5 lg:pb-5";
+
+/**
+ * Below the wide layout the card sits under the chat, so the main action also gets a bar fixed to the bottom of the
+ * screen once it can be used (owner, 2026-11-16: the button shouldn't need scrolling to find).
+ */
+export function MobileActionBar({ label, action, busy, onClick }: { label: string; action: string; busy?: boolean; onClick: () => void }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-3 border-t border-line bg-card px-4 pt-3 shadow-[0_-6px_20px_rgba(19,44,107,0.08)] lg:hidden" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
+      <p className="min-w-0 flex-1 truncate text-sm font-semibold">{label}</p>
+      <button type="button" className="btn-primary h-12 shrink-0 px-5" disabled={busy} onClick={onClick}>
+        {action}
+      </button>
+    </div>
+  );
+}

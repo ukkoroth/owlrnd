@@ -152,3 +152,39 @@ test("iPhone HEIC photos and uploads over 10 MB reach the AI (bug of 2026-11-15)
     await deleteParentByEmail(parent.email);
   }
 });
+
+for (const v of [
+  { n: "laptop", width: 1280, height: 720 },
+  { n: "phone", width: 390, height: 844 },
+]) {
+  test(`a long preview keeps Create track in view (${v.n}, owner 2026-11-16)`, async ({ browser }) => {
+    const { parent, studentId } = await createFamily();
+    const ctx = await browser.newContext({ viewport: { width: v.width, height: v.height } });
+    const page = await ctx.newPage();
+    try {
+      await signInFully(page, parent.email, parent.password, parent.email, /\/students$/);
+      await page.goto(`/students/${studentId}/tracks/new`);
+      await chatSend(
+        page,
+        "Physics unit test on 2099-11-20. Chapter 12: Ohm's law, resistors in series, resistors in parallel, electric power, heating effect of current, electric energy, resistivity, conductors and insulators, potential difference, electric current, circuit diagrams and ammeters.",
+      );
+      await expect(preview(page)).toContainText("and 7 more (12 in all)");
+      const create = page.getByRole("button", { name: "Create track" }).locator("visible=true").first();
+      await expect(create).toBeEnabled({ timeout: 15_000 });
+      // Wherever the page is scrolled, a Create track button is on screen (the card's, or the phone's bottom bar).
+      for (const y of [0, 100_000]) {
+        await page.evaluate((top) => window.scrollTo(0, top), y);
+        const onScreen = await page.evaluate(() =>
+          [...document.querySelectorAll("button")].some((b) => {
+            const r = b.getBoundingClientRect();
+            return b.textContent?.trim() === "Create track" && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight;
+          }),
+        );
+        expect(onScreen).toBe(true);
+      }
+    } finally {
+      await deleteParentByEmail(parent.email);
+      await ctx.close();
+    }
+  });
+}
