@@ -152,6 +152,10 @@ Not in 0.2: tracking subtopics inside a chapter (the AI's topics are the finest 
 - Browser (Playwright): full For me journey (sign up → build your own track → exam → result), full For my child journey (unchanged from 0.1), under-18 journey (practise while pending, parent agrees, parent declines), both consent modes.
 - Run the live migration against a snapshot of the production database first, and take a backup right before deploying.
 
+## Privacy policy and terms (draft, 2026-11-16)
+
+Both pages now cover learners who sign up for themselves, 13–17-year-olds with a parent's consent, the consent record, the demo AI allowance and open beta (`POLICIES_VERSION = 2026-11-16`). **Draft for the owner and for legal review** (editions §2.4) before release; in particular how long the consent record of a declined learner is kept is not stated.
+
 ## Documents to update during 0.2
 
 `01-product.md` (two audiences), new `02-scope-0.2.md`, `03-flows.md` (learner journeys; screens are already in `04b-screens-self-managed.md`), `05-rules.md` (§1 codes to the account holder; sessions), `06-data.md` (brief §3), `07-ai.md` ("you" wording), `10-decisions.md` (brief §6 defaults), `CLAUDE.md` build order, `README.md`, the landing page, and the privacy policy (learners as account holders, under-18 consent).

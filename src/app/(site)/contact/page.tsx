@@ -44,9 +44,9 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
       </Section>
       <Section title="Can't sign in?">
         <P>
-          Every sign-in needs a 6-digit code sent to the parent&apos;s email. If it hasn&apos;t arrived, check the spam
-          folder, or ask for a new code on the sign-in screen. Children: ask your parent for the code. If you&apos;ve forgotten
-          a password, use{" "}
+          Every sign-in needs a 6-digit code sent to the account&apos;s email: your own if you signed up for yourself, or your
+          parent&apos;s if they set up your account. If it hasn&apos;t arrived, check the spam folder, or ask for a new code on
+          the sign-in screen. If you&apos;ve forgotten a password, use{" "}
           <Link href="/forgot-password" className="link">
             Forgot password
           </Link>
@@ -55,8 +55,8 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
       </Section>
       <Section title="Privacy and your data">
         <P>
-          To see, correct or delete your or your child&apos;s data, write to <Mail subject="Privacy request" /> from the email
-          address on the account. Our{" "}
+          To see, correct or delete your or your child&apos;s data, or to withdraw a parent&apos;s consent, write to{" "}
+          <Mail subject="Privacy request" /> from the email address on the account. Our{" "}
           <Link href="/privacy" className="link">
             privacy policy
           </Link>{" "}

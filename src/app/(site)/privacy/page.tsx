@@ -10,13 +10,14 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy policy"
-      updated="15 November 2026"
+      updated="16 November 2026"
       intro={
         <p className="m-0">
-          owlrnd helps school students practise with short exams that a parent sets up. Children use it, so we keep what we
-          collect to the minimum the service needs, we never sell it, and a parent can delete all of it at any time. This page
-          explains what we collect, why, who helps us process it, and your rights under India&apos;s Digital Personal Data
-          Protection Act, 2023.
+          owlrnd helps learners practise for their exams with short, paper-style tests. People preparing on their own set up
+          their own practice, and parents can set it up for school-age children. Teenagers and children use it, so we keep what
+          we collect to the minimum the service needs, we never sell it, and whoever holds the account can delete all of it at
+          any time. This page explains what we collect, why, who helps us process it, and your rights under India&apos;s
+          Digital Personal Data Protection Act, 2023.
         </p>
       }
     >
@@ -25,34 +26,61 @@ export default function PrivacyPage() {
           owlrnd is run by {OPERATOR}, in India, who is responsible for your personal data (the &ldquo;data fiduciary&rdquo;).
           For anything about your data, write to <Mail subject="Privacy" />.
         </P>
-        <P>owlrnd is in a closed beta. It is free during the beta, and there are no payments, ads or in-app purchases.</P>
+        <P>
+          owlrnd is in beta. It is free during the beta, up to a demo allowance of AI use per account. There are no payments,
+          ads or in-app purchases in the app; if you want more, you can contact us about a package.
+        </P>
       </Section>
 
-      <Section title="Parents set up every account">
-        <P>
-          A parent or guardian creates their own account and then adds each child. Children never give us an email address
-          or phone number. When creating their account, the parent confirms they are the parent or legal guardian of the
-          children they will add and agrees to us processing the children&apos;s data as described here. We record when this
-          consent was given and which version of this policy it covered. Every sign-in, the child&apos;s included, needs a code
-          sent to the parent&apos;s email, so the parent knows whenever the account is used.
-        </P>
+      <Section title="Who sets up an account">
+        <List>
+          <li>
+            <strong>Learners 18 or over</strong> sign up for themselves with their own email address. Their sign-in codes go
+            to that email, and they agree to this policy when they sign up.
+          </li>
+          <li>
+            <strong>Learners aged 13 to 17</strong> can also sign up for themselves, but we ask a parent or guardian to
+            agree. The learner gives us the parent&apos;s name and email; we email the parent a link, and the parent confirms
+            it is them with a code sent to that email before agreeing or declining. The learner can practise while we wait
+            for the answer. If the parent has not answered after 30 days, practice pauses until they agree. If the parent
+            declines, the learner&apos;s account is closed and its data deleted. The parent does not get control of the
+            learner&apos;s practice.
+          </li>
+          <li>
+            <strong>Children under 13</strong> are set up by a parent or guardian. The parent creates their own account
+            and adds each child. Children set up this way never give us an email address or phone number. The parent
+            confirms they are the parent or legal guardian and agrees to us processing the children&apos;s data as
+            described here. Every sign-in, the child&apos;s included, needs a code sent to the parent&apos;s email, so the
+            parent knows whenever the account is used.
+          </li>
+        </List>
+        <P>We record when each agreement was given, how the parent was checked, and which version of this policy it covered.</P>
       </Section>
 
       <Section title="What we collect">
         <List>
           <li>
-            <strong>About the parent:</strong> name, email address, password (stored only as a secure hash) and time zone.
+            <strong>About a learner who signs up for themselves:</strong> name, email address, date of birth, password
+            (stored only as a secure hash) and time zone.
           </li>
           <li>
-            <strong>About each child:</strong> name, school class, username, password (stored only as a secure hash) and
-            time zone. No email, phone number, photo, school name or address.
+            <strong>About a parent:</strong> name, email address, password (stored only as a secure hash) and time zone.
+          </li>
+          <li>
+            <strong>About each child a parent adds:</strong> name, school class, date of birth, username, password (stored
+            only as a secure hash) and time zone. No email, phone number, photo, school name or address.
+          </li>
+          <li>
+            <strong>Parent consent for a learner under 18:</strong> the parent&apos;s name and email, when we asked and
+            reminded them, the checks of the code we sent, their answer, and whether they asked to see the learner&apos;s
+            progress.
           </li>
           <li>
             <strong>Study material:</strong> photos or PDFs of textbook pages and syllabuses you upload, the text we read from
             them, and your chat with the owlrnd AI when you set up a track.
           </li>
           <li>
-            <strong>Practice records:</strong> the exams written for your child, their answers, marks and feedback, topic
+            <strong>Practice records:</strong> the exams written for you or your child, the answers, marks and feedback, topic
             strengths, goals and points.
           </li>
           <li>
@@ -61,8 +89,8 @@ export default function PrivacyPage() {
             guessing passwords.
           </li>
           <li>
-            <strong>Access requests:</strong> if you ask for access to the beta, your name, email and the optional note you
-            write.
+            <strong>Messages to us:</strong> if you ask about a package, your name, email and message, which we receive by
+            email. If you asked for access to the beta before sign-up opened, your name, email and the note you wrote.
           </li>
         </List>
       </Section>
@@ -70,7 +98,7 @@ export default function PrivacyPage() {
       <Section title="How we use it">
         <List>
           <li>To run owlrnd: create tracks, write exams, mark them, and show results and progress.</li>
-          <li>To send sign-in codes, password reset codes and beta invitations by email.</li>
+          <li>To send sign-in codes, password reset codes, consent requests to parents, and beta emails.</li>
           <li>To keep accounts secure and the service working, and to fix problems.</li>
         </List>
         <P>
@@ -83,8 +111,8 @@ export default function PrivacyPage() {
         <P>
           owlrnd uses Claude, an AI model made by Anthropic, to read your study material, agree a track with you, write
           exam questions and mark typed answers. To do this we send Anthropic the relevant material, your chat messages, the
-          questions and your child&apos;s typed answers. These requests can include the parent&apos;s first name and the
-          child&apos;s first name and class, so that replies can address you properly.
+          questions and the learner&apos;s typed answers. These requests can include the first name of whoever is setting up
+          the track and, for a child, the child&apos;s first name and class, so that replies can address you properly.
         </P>
         <P>
           Anthropic processes this data to return a result to us. It does not use data sent through its commercial API to
@@ -117,12 +145,17 @@ export default function PrivacyPage() {
         <List>
           <li>Account data, study material and practice records: for as long as the account exists.</li>
           <li>
-            <strong>Delete my account</strong> (in the parent&apos;s profile) permanently deletes the parent, every child,
-            their tracks, uploaded material, exams and points. <strong>Remove</strong> on a child deletes that child&apos;s
-            data.
+            <strong>Delete my account</strong> (in your profile) permanently deletes the account, its tracks, uploaded
+            material, exams and points; for a parent, every child&apos;s too. <strong>Remove</strong> on a child deletes
+            that child&apos;s data.
+          </li>
+          <li>
+            If a parent declines consent, the learner&apos;s account and data are deleted in the same way. We keep the consent
+            record itself (the parent&apos;s name and email, what was asked and answered, and when) to show how consent was
+            handled.
           </li>
           <li>Deleted data can remain in our encrypted database backups for up to 7 days, after which it is gone.</li>
-          <li>Access requests: until the beta ends, or sooner if you ask.</li>
+          <li>Beta access requests: until the beta ends, or sooner if you ask.</li>
         </List>
       </Section>
 
@@ -133,6 +166,10 @@ export default function PrivacyPage() {
           <li>correct or update it (most of it you can change yourself in the app);</li>
           <li>delete it;</li>
           <li>withdraw your consent, which means closing the account;</li>
+          <li>
+            if you are a parent who agreed to a learner under 18 using owlrnd: withdraw that consent at any time, which
+            closes the learner&apos;s account;
+          </li>
           <li>nominate someone to exercise these rights for you if you die or become unable to.</li>
         </List>
         <P>
@@ -152,7 +189,7 @@ export default function PrivacyPage() {
       <Section title="Changes to this policy">
         <P>
           If we change this policy, we will update this page and its date. If a change affects how we use your or your
-          child&apos;s data, we will email parents before it takes effect.
+          child&apos;s data, we will email account holders before it takes effect.
         </P>
       </Section>
 
