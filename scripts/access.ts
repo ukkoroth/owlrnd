@@ -104,6 +104,7 @@ async function allowance(args: string[]) {
     return;
   }
   console.log(`${res.holder.name} <${res.holder.email}>: ${show(res.allowance)}`);
+  if (res.resumed) console.log(`Postponed exams and flashcards started now: ${res.resumed}.`);
 }
 
 async function main() {

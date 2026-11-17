@@ -44,7 +44,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const decks = await deckCounts(dash.tracks.filter((t) => PRACTISE_STATUSES.includes(t.status)).map((t) => t.id));
   const cardTimes = (await flashcardActivity(student.id)).times;
   // A track's exam is being written: the page updates itself when it's ready.
-  const writing = dash.tracks.filter((t) => t.preparing);
+  // Not while it's on hold: that waits hours (allowance, daily limit), so polling would only add load.
+  const writing = dash.tracks.filter((t) => t.preparing && !t.hold);
 
   return (
     <>
@@ -209,7 +210,7 @@ function Today({
               </div>
               <p className="mt-4 text-sm text-ink-muted">Exam {t.examsTaken + 1} in this track</p>
               <h3 className="text-[21px] leading-snug">{t.name}</h3>
-              <Preparing className="mt-auto pt-5" label="Exam being prepared" note="It appears here by itself when it's ready." />
+              <Preparing className="mt-auto pt-5" label="Exam being prepared" note="It appears here by itself when it's ready." hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
             </li>
           ))}
       </ol>
@@ -222,7 +223,7 @@ function Today({
 }
 
 const statusOf = (t: StudentTrack, w: Words) =>
-  t.status === "paused" ? w.paused : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : "Your next exam is being prepared";
+  t.status === "paused" ? w.paused : t.status === "goal_reached" ? "Goal reached" : t.exam ? "Exam ready" : t.hold ? "Your next exam is on hold" : "Your next exam is being prepared";
 
 function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words; decks: Map<string, DeckCount> }) {
   // A new track whose first exam isn't written yet: say so, rather than "all caught up".
@@ -235,11 +236,13 @@ function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; s
             <div className="mb-3">
               <TrackTag name={firstWriting.name} colorIndex={firstWriting.colorIndex} />
             </div>
-            <h2 className="text-2xl">Your first exam is being prepared</h2>
+            <h2 className="text-2xl">Your first exam is {firstWriting.hold ? "on hold" : "being prepared"}</h2>
             <Preparing
               className="mt-3"
               label={firstWriting.name}
               note="It usually takes under a minute. This page updates by itself when it's ready."
+              hold={firstWriting.hold}
+              viewer={selfManaged ? "holder" : "child"}
             />
           </>
         ) : (
@@ -269,7 +272,7 @@ function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; s
           {tracks.map((t) => (
             <li key={t.id} className="py-2.5">
               {t.preparing ? (
-                <Preparing label={t.name} note="Exam being prepared…" />
+                <Preparing label={t.name} note="Exam being prepared…" hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
               ) : (
                 <>
                   <p className="font-semibold">{t.name}</p>

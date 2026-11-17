@@ -329,7 +329,7 @@ export async function setTrackPaused(actor: Actor, trackId: string, paused: bool
     .where(eq(tracks.id, trackId));
   if (!paused && t.nextExam === "none") {
     // Paused before its next exam was written: write it now (write_exam skips if one is already open).
-    await db.update(tracks).set({ nextExam: "writing" }).where(eq(tracks.id, trackId));
+    await db.update(tracks).set({ nextExam: "writing", nextExamHold: null }).where(eq(tracks.id, trackId));
     await enqueue("write_exam", { trackId });
   }
   return t;
@@ -339,7 +339,7 @@ export async function setTrackPaused(actor: Actor, trackId: string, paused: bool
 export async function retryExamWriting(actor: Actor, trackId: string) {
   const t = await ownTrack(actor, trackId);
   if (!t || t.nextExam !== "failed") return null;
-  await db.update(tracks).set({ nextExam: "writing" }).where(eq(tracks.id, trackId));
+  await db.update(tracks).set({ nextExam: "writing", nextExamHold: null }).where(eq(tracks.id, trackId));
   await enqueue("write_exam", { trackId });
   return t;
 }

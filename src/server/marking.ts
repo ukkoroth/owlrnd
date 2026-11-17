@@ -135,6 +135,7 @@ export async function markExamJob(payload: unknown) {
         goalProgress: progress,
         ...(reached && track!.status === "active" ? { status: "goal_reached" as const, goalReachedAt: new Date() } : {}),
         nextExam: writeNext ? "writing" : "none",
+        nextExamHold: null,
       })
       .where(eq(tracks.id, exam.trackId));
   });

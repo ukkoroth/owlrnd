@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { suggestExams } from "@/domain/suggestions";
+import type { ExamHold } from "@/domain/examHold";
 import { todayIn } from "@/domain/tracks";
 import { db } from "./db";
 import { enqueue } from "./jobs/queue";
@@ -28,6 +29,8 @@ export type StudentTrack = {
   colorIndex: number;
   /** The next exam is being written in the background (a running track with no exam waiting, not failed). */
   preparing: boolean;
+  /** While preparing: why the writing is postponed (e.g. the AI allowance is used up), or null. */
+  hold: ExamHold | null;
   /** The next exam to take (ready) or to continue (in progress). overallNumber is set once it has started. */
   exam: { id: string; number: number; status: "ready" | "in_progress"; questionCount: number; overallNumber: number | null } | null;
 };
@@ -80,6 +83,7 @@ export async function getStudentTracks(studentId: string): Promise<StudentTrack[
       weakTopics: ts.filter((x) => x.strength === "needs_work").length,
       colorIndex: t.colorIndex,
       preparing: t.status === "active" && !open && t.nextExam !== "failed",
+      hold: t.nextExamHold,
       exam: open
         ? { id: open.id, number: open.number, status: open.status as "ready" | "in_progress", questionCount: open.questionCount, overallNumber: open.overallNumber }
         : null,

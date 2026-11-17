@@ -102,7 +102,7 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       .from(exams)
       .where(and(eq(exams.trackId, trackId), inArray(exams.status, ["ready", "in_progress"])));
     if (open) {
-      await db.update(tracks).set({ nextExam: "ready" }).where(eq(tracks.id, trackId));
+      await db.update(tracks).set({ nextExam: "ready", nextExamHold: null }).where(eq(tracks.id, trackId));
       return;
     }
     const learner = await loadLearner(track.studentId);
@@ -112,12 +112,15 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     // An under-18 learner waiting too long for consent (or in "block until consent") gets no new exams (M10).
     if (!(await learnerConsent(student)).practiseAllowed) {
       const retryAt = new Date(Date.now() + 6 * 60 * 60_000);
+      await db.update(tracks).set({ nextExamHold: "consent" }).where(eq(tracks.id, trackId));
       await enqueue("write_exam", { trackId }, { runAt: retryAt });
       console.info(`[owlrnd consent] exam for track ${trackId} postponed until consent; retry ${retryAt.toISOString()}`);
       return;
     }
     const blocked = await examWriteBlocked(holder);
     if (blocked) {
+      // Cards say why the exam isn't coming, instead of "being prepared" for hours.
+      await db.update(tracks).set({ nextExamHold: blocked.reason }).where(eq(tracks.id, trackId));
       await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });
       console.info(`[owlrnd ai] exam for track ${trackId} postponed (${blocked.reason}) until ${blocked.retryAt.toISOString()}`);
       return;
@@ -165,10 +168,10 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
         .returning({ id: questions.id });
       const [exam] = await tx.insert(exams).values({ studentId: track.studentId, trackId, number: n + 1, status: "ready" }).returning();
       await tx.insert(examQuestions).values(inserted.map((q, i) => ({ examId: exam!.id, questionId: q.id, position: i + 1 })));
-      await tx.update(tracks).set({ nextExam: "ready" }).where(eq(tracks.id, trackId));
+      await tx.update(tracks).set({ nextExam: "ready", nextExamHold: null }).where(eq(tracks.id, trackId));
     });
   } catch (err) {
-    if (ctx.isLastAttempt) await db.update(tracks).set({ nextExam: "failed" }).where(eq(tracks.id, trackId));
+    if (ctx.isLastAttempt) await db.update(tracks).set({ nextExam: "failed", nextExamHold: null }).where(eq(tracks.id, trackId));
     throw err;
   }
 }

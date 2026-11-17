@@ -42,7 +42,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   // Tracks whose next exam is being written now (owner, 2026-11-16: show it on the student's card).
   const running = kids.length
     ? await db
-        .select({ id: tracks.id, studentId: tracks.studentId, name: tracks.name, nextExam: tracks.nextExam })
+        .select({ id: tracks.id, studentId: tracks.studentId, name: tracks.name, nextExam: tracks.nextExam, hold: tracks.nextExamHold })
         .from(tracks)
         .where(and(inArray(tracks.studentId, kids.map((k) => k.id)), eq(tracks.status, "active")))
     : [];
@@ -65,14 +65,14 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       k.id,
       running
         .filter((t) => t.studentId === k.id && t.nextExam !== "failed" && !open.some((o) => o.trackId === t.id))
-        .map((t) => ({ id: t.id, name: t.name ?? "", examsTaken: taken.find((x) => x.trackId === t.id)?.n ?? 0 })),
+        .map((t) => ({ id: t.id, name: t.name ?? "", hold: t.hold, examsTaken: taken.find((x) => x.trackId === t.id)?.n ?? 0 })),
     ]),
   );
   const cards = new Map(await Promise.all(kids.map(async (k) => [k.id, await flashcardActivity(k.id)] as const)));
 
   return (
     <>
-      {[...preparing.values()].some((p) => p.length > 0) && <RefreshWhileWaiting />}
+      {[...preparing.values()].some((p) => p.some((t) => !t.hold)) && <RefreshWhileWaiting />}
       <PageHeader
         title="Your students"
         subtitle="Each student has their own username, password and tracks."
@@ -129,8 +129,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <Preparing
                   key={t.id}
                   className="border-b border-line py-4"
-                  label={`${t.examsTaken === 0 ? "First exam" : `Exam ${t.examsTaken + 1}`} being prepared: ${t.name}`}
+                  label={`${t.examsTaken === 0 ? "First exam" : `Exam ${t.examsTaken + 1}`} ${t.hold ? "on hold" : "being prepared"}: ${t.name}`}
                   note={`It appears on ${k.name}'s dashboard when it's ready, usually in under a minute.`}
+                  hold={t.hold}
+                  viewer="holder"
                 />
               ))}
               {/* fc-7: the child's flashcard practice, without card content. */}

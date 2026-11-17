@@ -4,7 +4,8 @@ import { rules } from "@/config/rules";
 import { holderForParent } from "@/domain/accounts";
 import { cleanup, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../../tests/db-helpers";
 import { db } from "../db";
-import { aiBudgetAlerts, aiUsage, exams, jobs, trackMessages, tracks } from "../db/schema";
+import { aiBudgetAlerts, aiUsage, exams, jobs, parents, trackMessages, tracks } from "../db/schema";
+import { setAllowanceLimit } from "../allowances";
 import { env } from "../env";
 import { writeExamJob } from "../examWriter";
 import { sendChatTurn } from "../tracks";
@@ -120,5 +121,31 @@ describe("daily limits per family", () => {
     const retry = queued.find((j) => (j.payload as { trackId: string }).trackId === trackId && j.runAt.getTime() > Date.now() + 60_000);
     expect(retry?.runAt.toISOString()).toBe(blocked!.retryAt.toISOString());
     await db.delete(jobs).where(inArray(jobs.id, queued.map((j) => j.id)));
+  });
+
+  it("marks the track on hold while the allowance is used up, and writes the exam as soon as it's raised", async () => {
+    const parent = await makeParent();
+    const student = await makeStudent(parent.id);
+    const { trackId } = await makeTrackWithExam(parent.id, student.id);
+    await db.update(exams).set({ status: "marked" }).where(eq(exams.trackId, trackId));
+    await db.delete(jobs).where(eq(jobs.type, "write_exam"));
+    await db.update(parents).set({ aiLimitUsd: 0 }).where(eq(parents.id, parent.id));
+
+    await writeExamJob({ trackId }, { attempt: 1, isLastAttempt: false });
+    const [held] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(held!.nextExamHold).toBe("allowance");
+    const [retry] = await db.select().from(jobs).where(and(eq(jobs.type, "write_exam"), eq(jobs.status, "queued")));
+    expect(retry!.runAt.getTime()).toBeGreaterThan(Date.now() + 60_000);
+
+    // The owner raises the allowance: the postponed job is due now, not in an hour.
+    const res = await setAllowanceLimit(parent.email, 50);
+    expect(res?.resumed).toBe(1);
+    const [due] = await db.select().from(jobs).where(eq(jobs.id, retry!.id));
+    expect(due!.runAt.getTime()).toBeLessThanOrEqual(Date.now());
+
+    await writeExamJob({ trackId }, { attempt: 1, isLastAttempt: false });
+    const [written] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(written).toMatchObject({ nextExam: "ready", nextExamHold: null });
+    await db.delete(jobs).where(eq(jobs.type, "write_exam"));
   });
 });

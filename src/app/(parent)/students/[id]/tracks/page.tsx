@@ -24,7 +24,7 @@ export default async function TracksPage({ params, searchParams }: { params: Pro
 
   return (
     <>
-      {list.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed") && <RefreshWhileWaiting />}
+      {list.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed" && !t.nextExamHold) && <RefreshWhileWaiting />}
       <Breadcrumb items={[{ label: "Students", href: "/students" }, { label: student.name }, { label: "Tracks" }]} />
       <TracksOverview
         audience={{ kind: "parent", studentId: id, studentName: student.name }}

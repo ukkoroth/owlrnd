@@ -196,7 +196,7 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
 
     const [open] = await tx.select({ id: exams.id }).from(exams).where(and(eq(exams.trackId, trackId), inArray(exams.status, ["ready", "in_progress"])));
     writeNext = status === "active" && !open;
-    if (writeNext) await tx.update(tracks).set({ nextExam: "writing" }).where(eq(tracks.id, trackId));
+    if (writeNext) await tx.update(tracks).set({ nextExam: "writing", nextExamHold: null }).where(eq(tracks.id, trackId));
   });
   if (writeNext) await enqueue("write_exam", { trackId });
   // 0.3: cards for new topics (and the few revision cards after a restart); topics with cards are left as they are.

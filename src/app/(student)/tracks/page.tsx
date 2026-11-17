@@ -35,7 +35,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
     const { created } = await searchParams;
     return (
       <>
-        {tracks.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed") && <RefreshWhileWaiting />}
+        {tracks.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed" && !t.nextExamHold) && <RefreshWhileWaiting />}
         <TracksOverview audience={{ kind: "learner" }} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} decks={decks} />
         {tracks.length > 0 && (
           <div className="mt-3">
@@ -50,7 +50,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      {list.some((t) => t.preparing) && <RefreshWhileWaiting />}
+      {list.some((t) => t.preparing && !t.hold) && <RefreshWhileWaiting />}
       <PageHeader title="Your tracks" subtitle="Each new exam is built from your last result in that track." />
       {list.length === 0 ? (
         <p className="text-ink-muted">Your parent hasn&apos;t set up a track yet.</p>
@@ -84,7 +84,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
                     {t.exam.status === "in_progress" ? "Continue" : "Start"} exam {t.exam.number}
                   </ExamLink>
                 ) : (
-                  <Preparing label={`${t.examsTaken === 0 ? "Your first exam" : `Exam ${t.examsTaken + 1}`} is being prepared…`} note="This page updates by itself when it's ready." />
+                  <Preparing label={`${t.examsTaken === 0 ? "Your first exam" : `Exam ${t.examsTaken + 1}`} is being prepared…`} note="This page updates by itself when it's ready." hold={t.hold} viewer="child" />
                 )}
                 <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} from="tracks" className="h-12 px-5" />
                 {(decks.get(t.id)?.total ?? 0) > 0 && (

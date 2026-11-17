@@ -262,6 +262,8 @@ export const invitations = pgTable(
 
 export const trackStatus = pgEnum("track_status", ["draft", "active", "paused", "goal_reached", "archived"]);
 export const nextExamState = pgEnum("next_exam_state", ["none", "writing", "ready", "failed"]);
+/** Why the next exam's writing is postponed (the job waits and retries; it hasn't failed). */
+export const examHold = pgEnum("exam_hold", ["allowance", "daily_limit", "budget", "consent"]);
 
 export const tracks = pgTable(
   "tracks",
@@ -284,6 +286,8 @@ export const tracks = pgTable(
     /** Parent preferences agreed in the chat, e.g. "more calculations on parallel circuits". */
     focusNotes: text("focus_notes"),
     nextExam: nextExamState("next_exam").notNull().default("none"),
+    /** Set while nextExam is "writing" but postponed, so cards say why instead of "being prepared" forever. */
+    nextExamHold: examHold("next_exam_hold"),
     /** Index into the track colour palette (domain/trackColors.ts), picked when the track is created (owner, 2026-11-16). */
     colorIndex: integer("color_index").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
