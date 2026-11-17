@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addAiSpend, closeDb, createFamily, createSelfLearner, deleteParentByEmail, deleteSelfLearner } from "../fixtures";
+import { addAiSpend, closeDb, createFamily, createSelfLearner, createTrackWithExam, deleteParentByEmail, deleteSelfLearner } from "../fixtures";
 import { signInFully } from "./helpers";
 
 // M7 (0.2 plan): the AI allowance tracker in the sidebar, and codes to the account holder.
@@ -34,7 +34,8 @@ test("a parent sees their family's AI allowance; at 100% it links to Contact us 
     await page.reload();
     await expect(bar(page)).toHaveAttribute("aria-valuenow", "100");
     await snap(page, "allowance-100");
-    await page.getByRole("link", { name: "Contact us to buy a package" }).click();
+    // The banner links there too (see the used-up test below); this checks the sidebar's link.
+    await page.getByRole("complementary").getByRole("link", { name: "Contact us to buy a package" }).click();
     await expect(page).toHaveURL(/\/contact\?topic=package$/);
     await expect(page.getByRole("heading", { name: "Buy a package" })).toBeVisible();
     await expect(page.getByLabel("Your name")).toHaveValue(fam.parent.name);
@@ -62,5 +63,40 @@ test("a self-managed learner signs in with a code sent to their own email and se
     await expect(bar(page)).toHaveAttribute("aria-valuenow", "0");
   } finally {
     await deleteSelfLearner(studentId);
+  }
+});
+
+const holdShots = process.env.HOLD_SHOTS ? "tmp/screenshots/allowance-hold" : null;
+
+test("when the allowance is used up, the parent and the child are told, and the next exam shows as on hold", async ({ page }) => {
+  const fam = await createFamily();
+  try {
+    await createTrackWithExam(fam.studentId, { name: "Maths: Factorisation", writing: true, hold: "allowance" });
+    await addAiSpend({ parentId: fam.parentId }, 5.32);
+
+    await signInFully(page, fam.parent.email, fam.parent.password, fam.parent.email, /\/students$/);
+    await expect(page.getByText("Your AI allowance is used up.", { exact: true })).toBeVisible();
+    await expect(page.getByText("First exam on hold: Maths: Factorisation")).toBeVisible();
+    await expect(page.getByText(/On hold: your AI allowance is used up/)).toBeVisible();
+    if (holdShots) await page.screenshot({ path: `${holdShots}/parent-students.png`, fullPage: true });
+    await page.context().clearCookies();
+
+    await signInFully(page, fam.student.username, fam.student.password, fam.parent.email, /\/today$/);
+    await expect(page.getByText("New exams are on hold.", { exact: true })).toBeVisible();
+    await expect(page.getByText(/your parent's AI allowance is used up/i).first()).toBeVisible();
+    await expect(page.getByText("Exam being prepared")).toHaveCount(0);
+    if (holdShots) await page.screenshot({ path: `${holdShots}/child-today.png`, fullPage: true });
+  } finally {
+    await deleteParentByEmail(fam.parent.email);
+  }
+});
+
+test("no banner while there is allowance left", async ({ page }) => {
+  const fam = await createFamily();
+  try {
+    await signInFully(page, fam.parent.email, fam.parent.password, fam.parent.email, /\/students$/);
+    await expect(page.getByText("Your AI allowance is used up.", { exact: true })).toHaveCount(0);
+  } finally {
+    await deleteParentByEmail(fam.parent.email);
   }
 });

@@ -161,6 +161,8 @@ export async function createTrackWithExam(
     flashcards?: number;
     /** The first exam is still being written: no exam yet, next_exam "writing" (and no background job runs). */
     writing?: boolean;
+    /** With `writing`: the writing is postponed for this reason (tracks.next_exam_hold). */
+    hold?: "allowance" | "daily_limit" | "budget" | "consent";
   } = {},
 ) {
   const qs =
@@ -183,7 +185,7 @@ export async function createTrackWithExam(
     tp.push(rows[0]);
   }
   if (opts.writing) {
-    await pool.query(`update tracks set next_exam = 'writing' where id = $1`, [trackId]);
+    await pool.query(`update tracks set next_exam = 'writing', next_exam_hold = $2 where id = $1`, [trackId, opts.hold ?? null]);
     return { trackId, examId: "" };
   }
   const { rows: ex } = await pool.query(`insert into exams (student_id, track_id, number, status) values ($1, $2, 1, 'ready') returning id`, [studentId, trackId]);
