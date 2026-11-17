@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ExamLink } from "@/components/exam/ExamLink";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress, NeedsWork, ScoreBars, StrengthLegend, TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
@@ -79,9 +80,9 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
                 ) : t.status === "goal_reached" ? (
                   <p className="text-ink-muted">Waiting for new topics from your parent</p>
                 ) : t.exam ? (
-                  <Link href={`/exam/${t.exam.id}`} className="btn-primary">
+                  <ExamLink href={`/exam/${t.exam.id}`} className="btn-primary">
                     {t.exam.status === "in_progress" ? "Continue" : "Start"} exam {t.exam.number}
-                  </Link>
+                  </ExamLink>
                 ) : (
                   <Preparing label={`${t.examsTaken === 0 ? "Your first exam" : `Exam ${t.examsTaken + 1}`} is being prepared…`} note="This page updates by itself when it's ready." />
                 )}

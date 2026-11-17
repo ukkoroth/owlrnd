@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ExamLink } from "@/components/exam/ExamLink";
 import { TopicStrength } from "@/components/TrackBars";
 import { formatTestDate } from "@/domain/tracks";
 import { completedToday } from "@/domain/suggestions";
@@ -96,9 +97,9 @@ const examLine = (t: StudentTrack) =>
 function StartLink({ t, primary }: { t: StudentTrack; primary: boolean }) {
   const label = t.exam?.status === "in_progress" ? "Continue" : "Start";
   return (
-    <Link href={`/exam/${t.exam!.id}`} className={`${primary ? "btn-primary" : "btn-outline border-brand text-brand"} h-[52px] w-full text-base`} aria-label={`${label} exam ${t.exam!.number}: ${t.name}`}>
+    <ExamLink href={`/exam/${t.exam!.id}`} className={`${primary ? "btn-primary" : "btn-outline border-brand text-brand"} h-[52px] w-full text-base`} aria-label={`${label} exam ${t.exam!.number}: ${t.name}`}>
       {label}
-    </Link>
+    </ExamLink>
   );
 }
 
@@ -367,9 +368,9 @@ function AllTracks({ tracks, w, decks }: { tracks: StudentTrack[]; w: Words; dec
                     {t.testDate ? ` · ${t.testLabel ?? "test"} on ${formatTestDate(t.testDate)}` : ""}
                   </span>
                 </span>
-                <Link href={`/exam/${t.exam!.id}`} className="btn-outline border-brand px-6 text-brand" aria-label={`${t.exam!.status === "in_progress" ? "Continue" : "Start"} ${t.name}`}>
+                <ExamLink href={`/exam/${t.exam!.id}`} className="btn-outline border-brand px-6 text-brand" aria-label={`${t.exam!.status === "in_progress" ? "Continue" : "Start"} ${t.name}`}>
                   {t.exam!.status === "in_progress" ? "Continue" : "Start"}
-                </Link>
+                </ExamLink>
               </li>
             ))}
           </ul>

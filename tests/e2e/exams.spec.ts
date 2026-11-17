@@ -145,6 +145,9 @@ test("resizing pages again but keeps answers and the question the student was on
     const q10 = page.locator('[data-question="9"]').getByRole("textbox");
     await q10.fill("because the paths add up");
 
+    // Start opened the paper in full screen; the browser can only resize a normal window.
+    await page.getByRole("button", { name: "Exit full screen" }).click();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('[data-question="9"]')).toBeVisible(); // still on the page holding question 10
     await expect(page.locator('[data-question="9"]').getByRole("textbox")).toHaveValue("because the paths add up");
@@ -175,6 +178,37 @@ test("leaving keeps the answers; the dashboard offers Continue", async ({ page }
     await expect(page.getByText("Page 1 of 1")).toBeVisible(); // 10 short questions fit one page at 1280×800, as in 4.1b
     await expect(page.locator('[data-question="1"]').getByRole("radio").nth(3)).toBeChecked();
     await expect(page.locator('[data-question="7"]').getByRole("textbox")).toHaveValue("Ohm's law");
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});
+
+test("Start opens the paper in full screen; the top bar leaves and re-enters it; Leave exam exits it", async ({ page }) => {
+  const { parent, student, studentId } = await createFamily();
+  const inFullscreen = () => page.evaluate(() => document.fullscreenElement !== null);
+  try {
+    await createTrackWithExam(studentId);
+    await signInFully(page, student.username, student.password, parent.email, /\/today$/);
+    await page.getByRole("link", { name: /Start exam 1/ }).click();
+    await expect(page.getByText("Page 1 of 1")).toBeVisible();
+    await expect.poll(inFullscreen).toBe(true);
+    await pick(page, 2, "B");
+    await expect(page.getByText("Saved")).toBeVisible();
+
+    // Leaving full screen doesn't leave the exam, and keeps the answer.
+    await page.getByRole("button", { name: "Exit full screen" }).click();
+    await expect.poll(inFullscreen).toBe(false);
+    await expect(page).toHaveURL(/\/exam\//);
+    await expect(page.locator('[data-question="2"]').getByRole("radio").nth(1)).toBeChecked();
+    expect(await noScroll(page)).toBe(true);
+
+    await page.getByRole("button", { name: "Full screen", exact: true }).click();
+    await expect.poll(inFullscreen).toBe(true);
+    expect(await noScroll(page)).toBe(true);
+
+    await page.getByRole("button", { name: "Leave exam" }).click();
+    await expect(page).toHaveURL(/\/today$/);
+    await expect.poll(inFullscreen).toBe(false);
   } finally {
     await deleteParentByEmail(parent.email);
   }

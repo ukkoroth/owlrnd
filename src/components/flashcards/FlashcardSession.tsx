@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExamLink } from "@/components/exam/ExamLink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { answerCard, finishPractice } from "@/app/_actions/flashcards";
 import { TrackTag } from "@/components/TrackTag";
@@ -205,9 +206,9 @@ function Summary({ summary: s, session, back }: { summary: SessionSummary; sessi
           </Link>
         )}
         {s.readyExam && (
-          <Link href={`/exam/${s.readyExam.id}`} className="btn-primary h-12">
+          <ExamLink href={`/exam/${s.readyExam.id}`} className="btn-primary h-12">
             Start exam {s.readyExam.number}
-          </Link>
+          </ExamLink>
         )}
         <Link href={back} className="btn-outline h-12">
           {back === "/tracks" ? "Back to your tracks" : "Back to Exams"}

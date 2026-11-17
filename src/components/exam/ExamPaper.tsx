@@ -5,6 +5,7 @@ import { saveAnswer, submitExam } from "@/app/(paper)/exam/[id]/actions";
 import { blankQuestions, blankSentence, type AnswerValue } from "@/domain/exam";
 import type { Paper, PaperQuestion } from "@/server/exams";
 import { COLUMN_GAP, QUESTION_GAP, sectionHeadings, usePaging } from "./usePaging";
+import { enterFullscreen, exitFullscreen, FULLSCREEN_EVENTS, fullscreenSupported, isFullscreen } from "./fullscreen";
 
 const TEXT_SAVE_DELAY = 600;
 
@@ -58,6 +59,20 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const inflight = useRef(new Set<Promise<unknown>>());
+
+  // Full screen: the Start link asks for it; the top bar lets the learner leave it (or Esc) and go back in. Entering
+  // or leaving resizes the window, so the questions are paged again, keeping answers and the current question.
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    setCanFullscreen(fullscreenSupported());
+    const onChange = () => setFullscreen(isFullscreen());
+    onChange();
+    for (const ev of FULLSCREEN_EVENTS) document.addEventListener(ev, onChange);
+    return () => {
+      for (const ev of FULLSCREEN_EVENTS) document.removeEventListener(ev, onChange);
+    };
+  }, []);
 
   const headings = useMemo(() => sectionHeadings(qs.map((q) => q.type)), [qs]);
 
@@ -191,6 +206,7 @@ export function ExamPaper({ paper }: { paper: Paper }) {
     startSubmit(async () => {
       await flush();
       clearLocal(paper.id);
+      exitFullscreen();
       await submitExam(paper.id);
     });
 
@@ -210,6 +226,7 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   };
 
   const leave = async () => {
+    exitFullscreen(); // straight away, while this still counts as part of the click
     await flush();
     // A full load, not router.push: the client router cache would otherwise show a stale dashboard ("Start"
     // instead of "Continue").
@@ -244,6 +261,19 @@ export function ExamPaper({ paper }: { paper: Paper }) {
           <span className="hidden text-sm text-paper-muted sm:block" role="status" aria-live="polite">
             {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Couldn't save. Check your connection." : ""}
           </span>
+          {canFullscreen && (
+            <button
+              type="button"
+              onClick={fullscreen ? exitFullscreen : enterFullscreen}
+              className="flex min-h-touch min-w-touch shrink-0 items-center justify-center gap-2 whitespace-nowrap text-[15px] hover:underline"
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                {fullscreen ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+              </svg>
+              <span className="hidden sm:inline">{fullscreen ? "Exit full screen" : "Full screen"}</span>
+              <span className="sr-only sm:hidden">{fullscreen ? "Exit full screen" : "Full screen"}</span>
+            </button>
+          )}
           <button type="button" onClick={leave} className="flex min-h-touch shrink-0 items-center gap-2 whitespace-nowrap text-[15px] hover:underline">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
               <path d="M5 5l14 14M19 5L5 19" />

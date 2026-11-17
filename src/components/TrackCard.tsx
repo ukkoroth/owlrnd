@@ -2,6 +2,7 @@ import { trackDays, trackDaysLabel, trackStatusLine } from "@/domain/tracks";
 import { GoalProgress, NeedsWork, ScoreBars, TopicStrength } from "./TrackBars";
 import type { TrackSummary } from "@/server/tracks";
 import Link from "next/link";
+import { ExamLink } from "@/components/exam/ExamLink";
 import { pauseTrack, resumeTrack, retryExam } from "@/app/_actions/tracks";
 import { ArchiveButton } from "./ArchiveButton";
 import { TrackEdge, TrackTag } from "./TrackTag";
@@ -113,9 +114,9 @@ export function TrackCard({
       {(start || practise) && (
         <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-4">
           {start && t.readyExam && (
-            <Link href={`/exam/${t.readyExam.id}`} className="btn-primary h-12 px-5" aria-label={`${t.readyExam.started ? "Continue" : "Start"} exam ${t.readyExam.number} in ${t.name}`}>
+            <ExamLink href={`/exam/${t.readyExam.id}`} className="btn-primary h-12 px-5" aria-label={`${t.readyExam.started ? "Continue" : "Start"} exam ${t.readyExam.number} in ${t.name}`}>
               {t.readyExam.started ? "Continue" : "Start"} exam {t.readyExam.number}
-            </Link>
+            </ExamLink>
           )}
           <PractiseButton trackId={t.id} trackName={t.name ?? ""} deck={deck} from="tracks" className="h-12 px-5" />
         </div>
