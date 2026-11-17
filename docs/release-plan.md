@@ -62,9 +62,9 @@ Claude is the main cost. Phase 1 measures the real cost per exam and adds a hard
    - **Deploy:** GitHub Actions runs the tests, builds the image, pushes it to Amazon ECR, then over SSH runs the database migrations and restarts the app.
    - **One-command deploy and rollback:** `npm run deploy` and `npm run rollback`, which goes back to the previous image.
 10. **Backups.**
-    - **Daily:** Lightsail daily database backups (kept 7 days).
-    - **Weekly:** a `pg_dump` to S3, kept 8 weeks.
-    - **Restore drill:** restore a backup into a scratch database and check that it opens.
+    - **Daily:** Lightsail daily database backups (kept 7 days). *On; point-in-time restore works.*
+    - **Weekly:** a `pg_dump` to S3, kept 8 weeks. *Not set up yet.*
+    - **Restore drill:** restore a backup into a scratch database and check that it opens. *Done 2026-11-17: the latest restorable time went into a scratch database; every table's row count matched production (except two background jobs created after the restore point) and all migrations were there; the scratch database was then deleted. Note: a restored database gets a new master password, so after a real restore the server's `DATABASE_URL` needs the new host **and** password. Script and steps: `deploy/server/restore-drill.sh`.*
 
 **Done when:** all tests pass, including the new ones for invitations, S3, limits and file clean-up; the security review shows no high issues; the app runs from the Docker image locally.
 
