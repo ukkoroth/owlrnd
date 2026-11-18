@@ -76,7 +76,7 @@ export function TrackHistory({ audience, studentId, track, exams, strengths, tim
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-5">
-        {track.status !== "archived" && (
+        {track.status !== "archived" && !track.sampleKey && (
           <Link href={updateHref(audience, track.id)} className="btn-outline">
             {track.status === "goal_reached" ? "Add topics to continue" : "Add material"}
           </Link>

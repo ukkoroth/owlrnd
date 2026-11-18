@@ -53,6 +53,19 @@ export async function createTrack(studentId: string): Promise<CreateResult> {
   return { ok: true, trackId: res.trackId, messages: chat!.messages, preview: chat!.preview };
 }
 
+/**
+ * "Try a sample track" (owner, 2026-11-18). A learner goes to their dashboard, where the first exam is waiting;
+ * a parent goes back to the child's tracks.
+ */
+export async function trySample(studentId: string): Promise<void> {
+  const { actor } = await requireActor();
+  const res = await tracks.createSampleTrack(actor, studentId);
+  // Refused (not theirs to manage, or no such sample): nothing to show. Already added: go to it as usual.
+  if (!res.ok && !("trackId" in res)) return;
+  refreshTracks(studentId);
+  redirect(actor.kind === "parent" ? `/students/${studentId}/tracks?created=1` : "/today");
+}
+
 export async function startOver(studentId: string): Promise<void> {
   const { actor } = await requireActor();
   await tracks.discardDraft(actor, studentId);

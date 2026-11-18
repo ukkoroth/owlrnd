@@ -29,6 +29,8 @@ const F = rules.flashcards;
 export async function writeDeck(trackId: string, reason: DeckReason, examId?: string): Promise<WriteDeckResult> {
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
   if (!track || track.status === "draft" || track.status === "archived") return { skipped: "no live track" };
+  // A sample track's deck is written in advance and never grows: no AI (owner, 2026-11-18).
+  if (track.sampleKey) return { written: 0 };
   const learner = await loadLearner(track.studentId);
   if (!learner) return { skipped: "no learner" };
   const { student, holder } = learner;
@@ -255,11 +257,14 @@ export async function startSession(actor: Actor, trackId: string, opts: { again?
     picked = rows.map((r) => r.card);
   } else {
     let due = await dueCards(trackId, now);
-    if (!due.length) {
+    if (!due.length && track.sampleKey) {
+      // A sample deck doesn't grow, so with nothing due the session takes the cards due soonest.
+      due = (await db.select().from(flashcards).where(eq(flashcards.trackId, trackId)).orderBy(asc(flashcards.dueAt)).limit(F.sessionSize));
+    } else if (!due.length) {
       await writeDeck(trackId, "top_up");
       // New cards are due from the moment they're written, which is after `now`.
       due = await dueCards(trackId, new Date(Math.max(now.getTime(), Date.now())));
-    } else if (due.length < F.sessionSize) {
+    } else if (due.length < F.sessionSize && !track.sampleKey) {
       await enqueue("write_flashcards", { trackId, reason: "top_up" });
     }
     const strengths = (await topicStrengths(student.id, [trackId])).get(trackId) ?? [];

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
+import { TrySample } from "@/components/tracks/TrySample";
 import { can } from "@/domain/permissions";
 import { requireShell } from "@/server/auth/current";
 
@@ -39,6 +40,16 @@ export default async function ChooseExamPage() {
         <Link href="/tracks/new" className="btn-primary h-[52px] px-6">
           Build your own track
         </Link>
+      </section>
+
+      <section aria-labelledby="sample" className="card mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 flex-[1_1_380px]">
+          <h2 id="sample" className="text-xl">
+            Or try a sample track first
+          </h2>
+          <p className="mt-1 text-ink-muted">The Solar System: see how owlrnd works with an exam that&apos;s ready straight away. No setup; delete it whenever you like.</p>
+        </div>
+        <TrySample studentId={student.id} />
       </section>
 
       <section aria-labelledby="packages" className="mt-10">

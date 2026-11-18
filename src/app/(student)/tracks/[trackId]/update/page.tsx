@@ -14,7 +14,8 @@ export default async function LearnerUpdateTrackPage({ params }: { params: Promi
   const { user: { student }, actor } = await requireShell("learner");
   const { trackId } = await params;
   const chat = await getUpdateChat(actor, trackId);
-  if (!chat || chat.track.status === "archived") notFound();
+  // A sample track takes no topics or material: its questions are written in advance.
+  if (!chat || chat.track.status === "archived" || chat.track.sampleKey) notFound();
   const { track, mode } = chat;
   const restart = mode === "restart";
   const reachedOn = track.goalReachedAt

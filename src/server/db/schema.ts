@@ -295,6 +295,8 @@ export const tracks = pgTable(
     /** While archived (roadmap 22): the status it had, so Restore puts it back. */
     archivedFrom: trackStatus("archived_from"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** A sample track (owner, 2026-11-18), e.g. "solar_system": exams come from its stored bank, never the AI. */
+    sampleKey: text("sample_key"),
   },
   (t) => [index("tracks_student_idx").on(t.studentId, t.status)],
 );

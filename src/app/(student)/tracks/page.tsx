@@ -36,7 +36,7 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
     return (
       <>
         {tracks.some((t) => t.status === "active" && !t.readyExam && t.nextExam !== "failed" && !t.nextExamHold) && <RefreshWhileWaiting />}
-        <TracksOverview audience={{ kind: "learner" }} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} decks={decks} />
+        <TracksOverview audience={{ kind: "learner" }} studentId={student.id} list={tracks} hasDraft={!!draft} created={!!created} timeZone={student.timeZone} decks={decks} />
         {tracks.length > 0 && (
           <div className="mt-3">
             <StrengthLegend />

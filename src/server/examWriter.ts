@@ -14,6 +14,8 @@ import { db } from "./db";
 import { attachments, examQuestions, exams, flashcards, marks, questions, topics, trackMessages, tracks } from "./db/schema";
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
+import { pickFromBank } from "@/domain/sampleBank";
+import { sampleTrack } from "@/content/samples";
 
 const RETRIES_PER_EXAM = 2;
 const AVOID_LAST_EXAMS = 3; // rules §4: no identical question within 3 exams
@@ -48,18 +50,19 @@ export async function planNextExam(trackId: string, studentId: string, keyed: { 
     .where(eq(exams.trackId, trackId))
     .orderBy(desc(exams.number))
     .limit(AVOID_LAST_EXAMS);
-  const avoid = recentExams.length
-    ? (
-        await db
-          .select({ prompt: questions.prompt })
-          .from(examQuestions)
-          .innerJoin(questions, eq(questions.id, examQuestions.questionId))
-          .where(inArray(examQuestions.examId, recentExams.map((e) => e.id)))
-      ).map((r) => r.prompt)
+  const recentRows = recentExams.length
+    ? await db
+        .select({ examId: examQuestions.examId, prompt: questions.prompt })
+        .from(examQuestions)
+        .innerJoin(questions, eq(questions.id, examQuestions.questionId))
+        .where(inArray(examQuestions.examId, recentExams.map((e) => e.id)))
     : [];
+  const avoid = recentRows.map((r) => r.prompt);
+  /** The same prompts per exam, newest exam first: a sample track picks the least recently used (domain/sampleBank). */
+  const avoidByExam = recentExams.map((e) => recentRows.filter((r) => r.examId === e.id).map((r) => r.prompt));
 
   const marked = recentExams.filter((e) => e.status === "marked");
-  if (!marked.length) return { plan: firstExamPlan(keyed.map((t) => t.key)) as PlanSlot[], avoid };
+  if (!marked.length) return { plan: firstExamPlan(keyed.map((t) => t.key)) as PlanSlot[], avoid, avoidByExam };
 
   const strengths = (await topicStrengths(studentId, [trackId])).get(trackId) ?? [];
   const mixTopics = keyed.map((t) => ({ key: t.key, name: t.name, strength: strengths.find((s) => s.id === t.id)?.strength ?? "not_tested", revision: !!t.revisionOnly }));
@@ -87,7 +90,7 @@ export async function planNextExam(trackId: string, studentId: string, keyed: { 
       retries++;
     }
   }
-  return { plan, avoid };
+  return { plan, avoid, avoidByExam };
 }
 
 /** Job "write_exam": writes the track's next exam and stores it as a fixed paper (status "ready"). */
@@ -117,7 +120,9 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       console.info(`[owlrnd consent] exam for track ${trackId} postponed until consent; retry ${retryAt.toISOString()}`);
       return;
     }
-    const blocked = await examWriteBlocked(holder);
+    // A sample track's exams come from its stored bank: no AI, so no allowance, budget or daily limit applies.
+    const sample = sampleTrack(track.sampleKey);
+    const blocked = sample ? null : await examWriteBlocked(holder);
     if (blocked) {
       // Cards say why the exam isn't coming, instead of "being prepared" for hours.
       await db.update(tracks).set({ nextExamHold: blocked.reason }).where(eq(tracks.id, trackId));
@@ -129,23 +134,30 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     // No topics (the track was deleted meanwhile, or never got any): nothing to write.
     if (!tps.length) return;
     const keyed = tps.map((t, i) => ({ key: `T${i + 1}`, id: t.id, name: t.name, description: t.description, revisionOnly: t.revisionOnly }));
-    const { plan, avoid } = await planNextExam(trackId, track.studentId, keyed);
+    const { plan, avoid, avoidByExam } = await planNextExam(trackId, track.studentId, keyed);
 
-    const material = await trackMaterial(trackId);
-    // Exams rarely repeat the wording of the track's flashcards (rules.flashcards.repeats).
-    const deckFronts = (await db.select({ front: flashcards.front }).from(flashcards).where(eq(flashcards.trackId, trackId))).map((c) => c.front);
-    const written = await withAiContext({ purpose: "write_exam", holder: holderRef(holder), studentId: student.id }, () => ai().writeQuestions({
-      trackName: track.name ?? "",
-      // A child's class, or (self-managed) the exam they are preparing for, which the track's name and material give.
-      audience: student.type === "self_managed" ? "learner" : "parent",
-      level: student.type === "self_managed" ? `a learner preparing on their own for the exam in "${track.name ?? ""}"` : formatClass(student.className),
-      topics: keyed,
-      focusNotes: track.focusNotes,
-      material,
-      plan,
-      avoid,
-      deckFronts,
-    }));
+    const written = sample
+      ? pickFromBank(plan, sample.questions, keyed.map((t) => t.key), avoidByExam)
+      : await (async () => {
+          const material = await trackMaterial(trackId);
+          // Exams rarely repeat the wording of the track's flashcards (rules.flashcards.repeats).
+          const deckFronts = (await db.select({ front: flashcards.front }).from(flashcards).where(eq(flashcards.trackId, trackId))).map((c) => c.front);
+          return withAiContext({ purpose: "write_exam", holder: holderRef(holder), studentId: student.id }, () =>
+            ai().writeQuestions({
+              trackName: track.name ?? "",
+              // A child's class, or (self-managed) the exam they are preparing for, which the track's name and material give.
+              audience: student.type === "self_managed" ? "learner" : "parent",
+              level: student.type === "self_managed" ? `a learner preparing on their own for the exam in "${track.name ?? ""}"` : formatClass(student.className),
+              topics: keyed,
+              focusNotes: track.focusNotes,
+              material,
+              plan,
+              avoid,
+              deckFronts,
+            }),
+          );
+        })();
+    if (!written.length) throw new Error(`write_exam: nothing written for track ${trackId}`);
 
     await db.transaction(async (tx) => {
       const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(exams).where(eq(exams.trackId, trackId));

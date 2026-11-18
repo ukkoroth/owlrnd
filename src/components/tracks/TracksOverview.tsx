@@ -3,6 +3,7 @@ import { Notice } from "@/components/forms";
 import { PageHeader } from "@/components/PageHeader";
 import { TrackCard } from "@/components/TrackCard";
 import { DeleteTrackButton, RestoreButton } from "@/components/ArchiveButton";
+import { TrySample } from "@/components/tracks/TrySample";
 import { newTrackHref, trackHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { TrackSummary } from "@/server/tracks";
 import type { DeckCount } from "@/server/flashcards";
@@ -15,6 +16,8 @@ const Plus = () => (
 
 type Props = {
   audience: TrackAudience;
+  /** The learner whose tracks these are (for a learner's own page; a parent's audience carries it). */
+  studentId?: string;
   list: TrackSummary[];
   /** A track chat is in progress (a draft). */
   hasDraft: boolean;
@@ -31,7 +34,7 @@ type Props = {
  * The tracks page: the parent's 2d (none yet) / 2g, and the learner's sm-2c / sm-4.1a "Your tracks: practise and
  * manage". The same cards and actions; links and words follow the audience.
  */
-export function TracksOverview({ audience, list, hasDraft, created, timeZone, decks, cardsActivity }: Props) {
+export function TracksOverview({ audience, studentId: ownId, list, hasDraft, created, timeZone, decks, cardsActivity }: Props) {
   const words = trackWords(audience);
   const learner = audience.kind === "learner";
   const newHref = newTrackHref(audience);
@@ -39,7 +42,7 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
   // Archived tracks (roadmap 22) are listed apart; with only archived tracks the page shows the empty state too.
   const live = list.filter((t) => t.status !== "archived");
   const archived = list.filter((t) => t.status === "archived");
-  const studentId = audience.kind === "parent" ? audience.studentId : list[0]?.studentId;
+  const studentId = audience.kind === "parent" ? audience.studentId : (ownId ?? list[0]?.studentId);
 
   return (
     <>
@@ -101,6 +104,17 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
               <Plus />
               Create the first track
             </Link>
+            {studentId && !archived.some((t) => t.sampleKey) && (
+              <div className="mt-6 border-t border-line pt-5">
+                <p className="font-semibold">Or try a sample track: The Solar System</p>
+                <p className="mt-1 text-[15px] text-ink-muted">
+                  Ready in a second, with {learner ? "your" : `${subject}'s`} first exam waiting. No setup; delete it whenever you like.
+                </p>
+                <div className="mt-3">
+                  <TrySample studentId={studentId} />
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <h3 className="mb-4 text-[15px] font-semibold uppercase tracking-wider text-ink-muted">How it works</h3>

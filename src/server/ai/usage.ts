@@ -155,7 +155,9 @@ export async function examsWrittenToday(h: Holder) {
     .select({ n: count() })
     .from(exams)
     .innerJoin(students, eq(students.id, exams.studentId))
-    .where(and(learnersOf(h), holderToday(h, exams.createdAt)));
+    // Sample tracks' exams come from a stored bank, not the AI, so they don't count (owner, 2026-11-18).
+    .innerJoin(tracks, eq(tracks.id, exams.trackId))
+    .where(and(learnersOf(h), holderToday(h, exams.createdAt), isNull(tracks.sampleKey)));
   return row?.n ?? 0;
 }
 

@@ -3,12 +3,14 @@ import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { formatClass } from "@/domain/identity";
 import { pickTrackColor } from "@/domain/trackColors";
-import { canCreateTrack, emptyPreview, goalLabel, sanitizePreview, todayIn, type StoredPreview } from "@/domain/tracks";
+import { canCreateTrack, defaultGoal, emptyPreview, goalLabel, sanitizePreview, todayIn, type StoredPreview } from "@/domain/tracks";
 import { ai, type ChatAttachmentInput } from "./ai";
 import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { discardFiles } from "./jobs/files";
-import { attachments, exams, topics, trackMessages, tracks } from "./db/schema";
+import { attachments, exams, flashcards, topics, trackMessages, tracks } from "./db/schema";
+import { DEFAULT_SAMPLE, sampleTrack } from "@/content/samples";
+import { writeExamJob } from "./examWriter";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
 import { topicStrengths, type TopicWithStrength } from "./progress";
@@ -241,6 +243,53 @@ export async function createTrack(input: { trackId: string; studentName: string 
   await enqueue("write_exam", { trackId: input.trackId });
   // 0.3: the starter flashcard deck, written in the background too.
   await enqueue("write_flashcards", { trackId: input.trackId, reason: "starter" });
+}
+
+/**
+ * "Try a sample track" (owner, 2026-11-18): a ready-made track ("The Solar System") with its questions and
+ * flashcards written in advance, so the first exam is ready at once and no AI is used (domain/sampleBank). For
+ * whoever controls the learner's tracks; one sample track per learner (delete it to add it again).
+ */
+export async function createSampleTrack(actor: Actor, studentId: string, key: string = DEFAULT_SAMPLE) {
+  const own = await authorizeLearner(actor, "manageTracks", studentId);
+  if (!own) return { ok: false as const, error: "Student not found." };
+  const sample = sampleTrack(key);
+  if (!sample) return { ok: false as const, error: "There is no such sample track." };
+  const [already] = await db.select({ id: tracks.id }).from(tracks).where(and(eq(tracks.studentId, studentId), eq(tracks.sampleKey, sample.key)));
+  if (already) return { ok: false as const, error: "The sample track is already in your tracks.", trackId: already.id };
+
+  const goal = defaultGoal();
+  const trackId = await db.transaction(async (tx) => {
+    const used = await tx.select({ c: tracks.colorIndex }).from(tracks).where(and(eq(tracks.studentId, studentId), ne(tracks.status, "archived")));
+    const [t] = await tx
+      .insert(tracks)
+      .values({
+        studentId,
+        sampleKey: sample.key,
+        name: sample.name,
+        status: "active",
+        goalThreshold: goal.threshold,
+        goalRunLength: goal.runLength,
+        nextExam: "writing",
+        colorIndex: pickTrackColor(used.map((u) => u.c)),
+        activatedAt: new Date(),
+      })
+      .returning({ id: tracks.id });
+    const tps = await tx
+      .insert(topics)
+      .values(sample.topics.map((tp, i) => ({ trackId: t!.id, name: tp.name, description: tp.description, position: i })))
+      .returning({ id: topics.id });
+    await tx.insert(flashcards).values(sample.flashcards.map((c) => ({ trackId: t!.id, topicId: tps[c.topic]!.id, front: c.front, answer: c.answer, explanation: c.explanation })));
+    return t!.id;
+  });
+  // The first exam straight away, from the bank (the same job a normal track queues).
+  try {
+    await writeExamJob({ trackId }, { attempt: 1, isLastAttempt: false });
+  } catch (err) {
+    console.error("[owlrnd sample] first exam failed; retrying in the background", err);
+    await enqueue("write_exam", { trackId });
+  }
+  return { ok: true as const, trackId };
 }
 
 /** "Create track" (2f). Any complete preview can go live: a name, topics and a goal (rules §2, owner 2026-11-16). */

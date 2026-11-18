@@ -63,7 +63,8 @@ const fmtDay = (d: Date, tz: string) => new Intl.DateTimeFormat("en-GB", { day: 
 /** One turn by the account holder in an update chat. Like the create chat: nothing is saved if the AI fails. */
 export async function sendUpdateTurn(actor: Actor, trackId: string, text: string, files: UploadedFile[]): Promise<UpdateTurnResult> {
   const own = await ownLiveTrack(actor, trackId);
-  if (!own) return { ok: false, error: "Track not found." };
+  // A sample track takes no topics or material (its questions are written in advance).
+  if (!own || own.track.sampleKey) return { ok: false, error: "Track not found." };
   const { track, student, holder } = own;
   // Restarting a goal-reached track is "add topics" (§2.3); both are allowed to the same accounts today.
   const message = text.trim().slice(0, 4000);
@@ -206,7 +207,7 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
 /** "Start the track again" (2j) / "Apply changes" (Add material). Only an agreed, complete update is applied. */
 export async function applyTrackUpdate(actor: Actor, trackId: string) {
   const own = await ownLiveTrack(actor, trackId);
-  if (!own) return { ok: false as const, error: "Track not found." };
+  if (!own || own.track.sampleKey) return { ok: false as const, error: "Track not found." };
   const mode = modeOf(own.track.status);
   if (mode === "restart" && !(await ownLiveTrack(actor, trackId, "addTopics"))) return { ok: false as const, error: "Track not found." };
   const { update } = await loadUpdateChat(trackId);

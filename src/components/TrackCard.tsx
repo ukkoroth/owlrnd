@@ -7,7 +7,7 @@ import { pauseTrack, resumeTrack, retryExam } from "@/app/_actions/tracks";
 import { ArchiveButton } from "./ArchiveButton";
 import { TrackEdge, TrackTag } from "./TrackTag";
 import { trackCompletion } from "@/domain/goals";
-import { trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
+import { newTrackHref, trackHref, trackWords, updateHref, type TrackAudience } from "@/domain/trackView";
 import type { DeckCount } from "@/server/flashcards";
 import { DeckLine, PractiseButton } from "./flashcards/Practise";
 import { cardsLine } from "@/domain/flashcards";
@@ -56,8 +56,9 @@ export function TrackCard({
   return (
     <article className={`card relative flex flex-col overflow-hidden ${highlight || t.status === "goal_reached" ? "border-2 border-brand" : ""}`} aria-labelledby={`track-${t.id}`}>
       <TrackEdge colorIndex={t.colorIndex} completion={trackCompletion({ progress: t.goalProgress, runLength, topics: t.topics, reached: t.status === "goal_reached" })} />
-      <div className="mb-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <TrackTag name={t.name ?? ""} colorIndex={t.colorIndex} />
+        {t.sampleKey && <span className="rounded border border-line-input px-2 py-0.5 text-[13px] font-semibold leading-5 text-ink-muted">Sample</span>}
       </div>
       <p className={`text-sm ${t.status === "goal_reached" ? "font-semibold text-brand" : "text-ink-muted"}`}>
         {t.status === "goal_reached" && t.goalReachedAt
@@ -131,9 +132,16 @@ export function TrackCard({
       <div className={`flex flex-wrap items-center gap-x-4 gap-y-0 ${start || practise ? "mt-3" : "mt-5 border-t border-line pt-4"}`}>
         {t.status === "goal_reached" ? (
           <>
-            <Link href={updateHref(audience, t.id)} className="btn-primary">
-              Add topics to continue
-            </Link>
+            {t.sampleKey ? (
+              // A sample track can't take topics or material (its questions are written in advance).
+              <Link href={newTrackHref(audience)} className="btn-primary">
+                Create your own track
+              </Link>
+            ) : (
+              <Link href={updateHref(audience, t.id)} className="btn-primary">
+                Add topics to continue
+              </Link>
+            )}
             {flashcards && deck.total > 0 && <FlashcardsLink id={t.id} name={t.name} />}
             <ArchiveButton trackId={t.id} studentId={t.studentId} trackName={t.name ?? ""} question={trackWords(audience).archiveQuestion} />
           </>
@@ -145,7 +153,7 @@ export function TrackCard({
               </Link>
             )}
             {flashcards && deck.total > 0 && <FlashcardsLink id={t.id} name={t.name} />}
-            {t.status !== "archived" && (
+            {t.status !== "archived" && !t.sampleKey && (
               <Link href={updateHref(audience, t.id)} className="link flex min-h-touch items-center font-semibold" aria-label={`Add material to ${t.name}`}>
                 Add material
               </Link>
