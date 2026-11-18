@@ -87,6 +87,19 @@ test("M4 done-when: a student starts a suggested exam, answers, gets the blank w
   }
 });
 
+/** Waits until the paper has been paged for the size it now has (a resize re-pages after a short pause). */
+async function settled(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const a = document.querySelector<HTMLElement>("[data-paged-for]");
+        return !!a && a.dataset.pagedFor === `${a.clientWidth}x${a.clientHeight}`;
+      }),
+    )
+    .toBe(true);
+  await page.waitForTimeout(50); // let React show the new pages
+}
+
 const longPaper: FixtureQuestion[] = Array.from({ length: 10 }, (_, i) =>
   i < 6
     ? {
@@ -111,6 +124,7 @@ for (const size of [
       await signInFully(page, student.username, student.password, parent.email, /\/today$/);
       await page.getByRole("link", { name: /Start exam 1/ }).click();
       await expect(page.locator("[data-question]").first()).toBeVisible();
+      await settled(page);
 
       const seen: number[] = [];
       let pages = 0;
@@ -173,6 +187,7 @@ test("resizing pages again but keeps answers and the question the student was on
     await page.setViewportSize({ width: 1280, height: 800 });
     await signInFully(page, student.username, student.password, parent.email, /\/today$/);
     await page.getByRole("link", { name: /Start exam 1/ }).click();
+    await settled(page);
     await pick(page, 0, "C");
     // Go to the last page and type into question 10.
     while (await page.getByRole("button", { name: "Next page" }).isVisible()) await page.getByRole("button", { name: "Next page" }).click();
@@ -183,11 +198,13 @@ test("resizing pages again but keeps answers and the question the student was on
     await page.getByRole("button", { name: "Exit full screen" }).click();
     await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
     await page.setViewportSize({ width: 390, height: 844 });
+    await settled(page);
     await expect(page.locator('[data-question="9"]')).toBeVisible(); // still on the page holding question 10
     await expect(page.locator('[data-question="9"]').getByRole("textbox")).toHaveValue("because the paths add up");
     expect(await noScroll(page)).toBe(true);
 
     await page.setViewportSize({ width: 1280, height: 800 });
+    await settled(page);
     await expect(page.locator('[data-question="9"]').getByRole("textbox")).toHaveValue("because the paths add up");
     while (await page.getByRole("button", { name: "Previous page" }).isVisible()) await page.getByRole("button", { name: "Previous page" }).click();
     await expect(page.locator('[data-question="0"]').getByRole("radio").nth(2)).toBeChecked();
