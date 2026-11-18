@@ -131,7 +131,7 @@ test("For my child: the parent sign-up, with consent checked on the server and r
   }
 });
 
-test("one email, one account: For me refuses a parent's email", async ({ page }) => {
+test("one email, one account: For me refuses a parent's email", async ({ page, browser }) => {
   const email = `taken-${uid()}@test.owlrnd`;
   try {
     await page.goto("/sign-up?for=child");
@@ -144,14 +144,17 @@ test("one email, one account: For me refuses a parent's email", async ({ page })
     await enterCode(page, await nextCode(email, before));
     await page.getByRole("button", { name: "Verify email" }).click();
     await expect(page).toHaveURL(/\/students\/new$/);
-    // Let the sign-up's own navigation finish before leaving, or it can land on top of the next page (flaky in CI).
     await expect(page.getByRole("heading", { name: "Set up the student account" })).toBeVisible();
-    await page.context().clearCookies();
 
-    await page.goto("/sign-up?for=me");
-    await expect(page.getByLabel("Your name")).toBeVisible();
-    await fillForMe(page, { name: "Atticus", email, password: "learnerpass1", dob: ["1", "January", "1980"] });
-    await expect(page.locator("#f-email-err")).toHaveText("An account with this email already exists. Sign in instead.");
+    // A fresh, signed-out browser. Clearing cookies wasn't enough: a request still in flight from the parent's page
+    // could set the session cookie again, and sign-up then sent the "new" visitor to /students (flaky in CI).
+    const fresh = await browser.newContext();
+    const visitor = await fresh.newPage();
+    await visitor.goto("/sign-up?for=me");
+    await expect(visitor.getByLabel("Your name")).toBeVisible();
+    await fillForMe(visitor, { name: "Atticus", email, password: "learnerpass1", dob: ["1", "January", "1980"] });
+    await expect(visitor.locator("#f-email-err")).toHaveText("An account with this email already exists. Sign in instead.");
+    await fresh.close();
   } finally {
     await deleteParentByEmail(email);
   }
