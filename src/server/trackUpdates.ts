@@ -5,7 +5,7 @@ import { canApplyUpdate, emptyUpdate, goalLabel, sanitizeUpdate, todayIn, type S
 import { ai, type ChatAttachmentInput } from "./ai";
 import { chatBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
-import { discardFiles } from "./jobs/files";
+import { discardFiles, fileKeysForTrack } from "./jobs/files";
 import { attachments, exams, topics, trackMessages, tracks } from "./db/schema";
 import { fileStore } from "./files";
 import { enqueue } from "./jobs/queue";
@@ -257,11 +257,52 @@ export async function discardUpdateChat(actor: Actor, trackId: string) {
   });
 }
 
-/** Rules §2: Archive is for goal-reached tracks; it hides the track from the student and keeps its history. */
+/**
+ * Roadmap 22 (owner, 2026-11-16; built 2026-11-18): any live track can be archived, whatever its status. It leaves
+ * the learner's dashboard, suggestions and track lists and keeps its history; an exam that is ready or in progress
+ * is discarded (the confirmation warns about it). The status it had is kept so Restore can put it back.
+ */
 export async function archiveTrack(actor: Actor, trackId: string) {
   const own = await ownLiveTrack(actor, trackId);
-  if (!own || own.track.status !== "goal_reached") return false;
-  await db.update(tracks).set({ status: "archived" }).where(eq(tracks.id, trackId));
+  if (!own || own.track.status === "archived") return false;
+  await db.transaction(async (tx) => {
+    await tx.delete(exams).where(and(eq(exams.trackId, trackId), inArray(exams.status, ["ready", "in_progress"])));
+    await tx
+      .update(tracks)
+      .set({ status: "archived", archivedFrom: own.track.status, archivedAt: new Date(), nextExam: "none", nextExamHold: null })
+      .where(eq(tracks.id, trackId));
+  });
+  return true;
+}
+
+/** Restore an archived track to the status it had. An active track gets its next exam written again. */
+export async function restoreTrack(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId);
+  if (!own || own.track.status !== "archived") return false;
+  const status = own.track.archivedFrom && own.track.archivedFrom !== "draft" && own.track.archivedFrom !== "archived" ? own.track.archivedFrom : "goal_reached";
+  await db.transaction(async (tx) => {
+    await tx
+      .update(tracks)
+      .set({ status, archivedFrom: null, archivedAt: null, ...(status === "active" ? { nextExam: "writing" as const, nextExamHold: null } : {}) })
+      .where(eq(tracks.id, trackId));
+    if (status === "active") await enqueue("write_exam", { trackId }, { tx });
+  });
+  return true;
+}
+
+/**
+ * Delete a track for good (roadmap 22): its topics, chat and material, exams, answers and flashcards go with it
+ * (database cascades) and its uploaded files are removed in the background. Points already earned stay: their rows
+ * lose the link to the exam or session but keep counting (rules §8, points never decrease).
+ */
+export async function deleteTrack(actor: Actor, trackId: string) {
+  const own = await ownLiveTrack(actor, trackId);
+  if (!own) return false;
+  await db.transaction(async (tx) => {
+    const keys = await fileKeysForTrack(tx, trackId);
+    await tx.delete(tracks).where(eq(tracks.id, trackId));
+    await discardFiles(keys, tx);
+  });
   return true;
 }
 

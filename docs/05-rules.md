@@ -60,7 +60,7 @@ From 0.2 (editions §2.3) a student (learner) is either **parent-managed** (as b
 - Only active tracks produce new exams. Paused and goal-reached tracks keep their history.
 - The parent creates tracks in the AI chat (2e, 2f). Nothing goes live until the parent confirms.
 - **Create track** works as soon as the preview has a name, at least one topic and a goal (the test date is optional), whether or not the chat has finished agreeing it; the parent can create it then or keep refining. Until then the preview card marks what's still needed in red (owner, 2026-11-16).
-- Pause and resume are parent actions. Archive (on goal-reached tracks) hides the track from the student's lists but keeps its history.
+- Pause and resume are parent actions. *(2026-11-18, roadmap 22)* **Archive** works on any track (active, paused or goal reached): it leaves the learner's dashboard, suggestions and lists, keeps its history, and discards an exam that is ready or in progress (the confirmation says so). **Restore** puts an archived track back to the status it had; an active one gets its next exam written. **Delete** removes a track for good (topics, chat and material with their files, exams, answers, flashcards) after a confirmation that names it; points already earned stay. Only the controlling account can do these.
 - "Select from packages" is not available in 0.1; show it as Coming soon (2c).
 
 ## §3 Goals
@@ -174,7 +174,7 @@ From 0.2 the full table, with self-managed learners, is editions §2.3, enforced
 | Action | Parent | Student |
 | --- | --- | --- |
 | Add, edit or remove students | Yes | No |
-| Create, pause, resume, archive tracks; add topics; set goals | Yes | No |
+| Create, pause, resume, archive, restore, delete tracks; add topics; set goals | Yes | No |
 | Take exams | No | Yes |
 | See results, marked papers, points, activity | Yes, for their own students | Yes, their own |
 | Change password | Own; sets students' passwords | Through "Forgot password" only |

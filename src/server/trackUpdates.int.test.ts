@@ -2,11 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
 import { db } from "./db";
-import { examQuestions, exams, jobs, questions, topics, tracks } from "./db/schema";
+import { attachments, examQuestions, exams, jobs, questions, topics, trackMessages, tracks } from "./db/schema";
 import { writeExamJob } from "./examWriter";
 import { getPaper, getStudentTracks, saveAnswer, startExam, submitExam } from "./exams";
 import { markExamJob } from "./marking";
-import { applyTrackUpdate, archiveTrack, examHistory, getUpdateChat, sendUpdateTurn } from "./trackUpdates";
+import { applyTrackUpdate, archiveTrack, deleteTrack, examHistory, getUpdateChat, restoreTrack, sendUpdateTurn } from "./trackUpdates";
+import { pointsTotal } from "./results";
 
 beforeAll(() => {
   process.env.OWLRND_FAKE_AI = "1";
@@ -109,23 +110,72 @@ describe("adding material to an active track (owner decision, M6)", () => {
   });
 });
 
-describe("archive and history", () => {
-  it("archives only goal-reached tracks, hiding them from the student but keeping history", async () => {
+describe("archive, restore, delete and history (roadmap 22)", () => {
+  it("archives a goal-reached track, hiding it from the student but keeping history; restore brings it back", async () => {
     const { parent, student, trackId } = await reachedTrack();
     const other = await makeParent();
     expect(await archiveTrack(parentActor(other.id), trackId)).toBe(false);
     expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(true);
+    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(false); // already archived
     expect(await getStudentTracks(student.id)).toHaveLength(0);
     const hist = await examHistory(parentActor(parent.id), trackId);
     expect(hist!.exams).toHaveLength(1);
     expect(hist!.exams[0]).toMatchObject({ number: 1, score: 10 });
     expect(await examHistory(parentActor(other.id), trackId)).toBeNull();
+
+    expect(await restoreTrack(parentActor(other.id), trackId)).toBe(false);
+    expect(await restoreTrack(parentActor(parent.id), trackId)).toBe(true);
+    const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(t).toMatchObject({ status: "goal_reached", archivedFrom: null, archivedAt: null });
+    expect(await restoreTrack(parentActor(parent.id), trackId)).toBe(false); // not archived
   });
 
-  it("won't archive an active track", async () => {
+  it("archives an active track, discarding its open exam; restoring writes a new one", async () => {
+    const parent = await makeParent();
+    const student = await makeStudent(parent.id);
+    const { trackId, examId } = await makeTrackWithExam(parent.id, student.id);
+    await startExam(student.id, examId);
+    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(true);
+    expect(await db.select().from(exams).where(eq(exams.id, examId))).toHaveLength(0);
+    const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(t).toMatchObject({ status: "archived", archivedFrom: "active", nextExam: "none" });
+    await writeExamJob({ trackId }, ctx); // a queued write does nothing while archived
+    expect(await db.select().from(exams).where(eq(exams.trackId, trackId))).toHaveLength(0);
+
+    expect(await restoreTrack(parentActor(parent.id), trackId)).toBe(true);
+    const [back] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(back).toMatchObject({ status: "active", nextExam: "writing" });
+    await writeExamJob({ trackId }, ctx);
+    const [next] = await db.select().from(exams).where(eq(exams.trackId, trackId));
+    expect(next).toMatchObject({ status: "ready", number: 1 });
+  });
+
+  it("restores a paused track as paused", async () => {
     const parent = await makeParent();
     const student = await makeStudent(parent.id);
     const { trackId } = await makeTrackWithExam(parent.id, student.id);
-    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(false);
+    await db.update(tracks).set({ status: "paused" }).where(eq(tracks.id, trackId));
+    expect(await archiveTrack(parentActor(parent.id), trackId)).toBe(true);
+    expect(await restoreTrack(parentActor(parent.id), trackId)).toBe(true);
+    const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(t!.status).toBe("paused");
+  });
+
+  it("deletes a track for good, with its exams and files, but the learner keeps their points", async () => {
+    const { parent, student, trackId, examId } = await reachedTrack();
+    const before = await pointsTotal(student.id);
+    expect(before).toBeGreaterThan(0);
+    const [msg] = await db.select().from(trackMessages).where(eq(trackMessages.trackId, trackId)).limit(1);
+    await db.insert(attachments).values({ ownerType: "track_message", trackMessageId: msg!.id, fileKey: `test/${trackId}.jpg`, mediaType: "image/jpeg", originalName: "page.jpg" });
+
+    expect(await deleteTrack(parentActor((await makeParent()).id), trackId)).toBe(false);
+    expect(await deleteTrack(parentActor(parent.id), trackId)).toBe(true);
+    expect(await db.select().from(tracks).where(eq(tracks.id, trackId))).toHaveLength(0);
+    expect(await db.select().from(exams).where(eq(exams.id, examId))).toHaveLength(0);
+    expect(await db.select().from(topics).where(eq(topics.trackId, trackId))).toHaveLength(0);
+    expect(await pointsTotal(student.id)).toBe(before);
+    const queued = await db.select().from(jobs).where(eq(jobs.type, "delete_files"));
+    expect(queued.some((j) => (j.payload as { keys: string[] }).keys.includes(`test/${trackId}.jpg`))).toBe(true);
+    await db.delete(jobs).where(eq(jobs.type, "delete_files"));
   });
 });

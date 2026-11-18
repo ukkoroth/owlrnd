@@ -54,5 +54,5 @@ Use the default until the owner decides. Keep each one configurable.
 | Next exam | Written in the background right after marking, unless the track is paused or has reached its goal; resuming a paused track writes it then | §2, §3, §4 |
 | Add material on an active track *(owner, M6)* | Through the chat: the AI explains how the plan changes (new topics from the next exam on, goal kept or changed) and nothing changes until the parent presses Apply changes. The goal and its progress stay unless the parent changes the goal, which restarts progress at 0 | §2, §3 |
 | Goal progress after a restart | Counts only exams after the restart (`goal_since_exam`), so earlier qualifying exams don't count towards the new goal | §3 |
-| Archive | Only goal-reached tracks; hidden from the student, history kept and shown to the parent under "Archived tracks"; no un-archive in 0.1 | §2 |
+| Archive | *(Changed 2026-11-18, roadmap 22)* Any track; hidden from the learner, history kept and listed under "Archived tracks" with Restore (back to the status it had) and Delete (for good; points stay). An open exam is discarded on archive | §2 |
 | Activity grid weeks | Sunday at the top of each column (Mon / Wed / Fri labelled); on narrow screens it scrolls and opens on the latest weeks | §9 |

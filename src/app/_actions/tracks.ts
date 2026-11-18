@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { StoredPreview, StoredUpdate } from "@/domain/tracks";
 import { requireActor } from "@/server/auth/current";
 import { normalizeUpload, type Upload } from "@/server/files/normalize";
@@ -81,6 +82,20 @@ export async function archive(trackId: string, studentId: string): Promise<void>
   const { actor } = await requireActor();
   await updates.archiveTrack(actor, trackId);
   refreshTracks(studentId);
+}
+
+export async function restore(trackId: string, studentId: string): Promise<void> {
+  const { actor } = await requireActor();
+  await updates.restoreTrack(actor, trackId);
+  refreshTracks(studentId);
+}
+
+/** Delete for good (roadmap 22). From the track's own page, `then` is the tracks list to go back to. */
+export async function remove(trackId: string, studentId: string, then: string | null): Promise<void> {
+  const { actor } = await requireActor();
+  const done = await updates.deleteTrack(actor, trackId);
+  refreshTracks(studentId);
+  if (done && then) redirect(then);
 }
 
 // ── Adding material or topics (2j, sm-2i) ──────────────────────────────────

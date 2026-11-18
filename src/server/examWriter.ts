@@ -95,7 +95,7 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
   const { trackId } = payload as { trackId: string };
   try {
     const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
-    if (!track || track.status === "draft") return; // deleted or never created: nothing to do
+    if (!track || track.status === "draft" || track.status === "archived") return; // deleted, never created or archived: nothing to do
     // Never two open exams in a track (a resume and a marking can both ask for the next exam).
     const [open] = await db
       .select({ id: exams.id })

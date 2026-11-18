@@ -172,6 +172,22 @@ test("exam history, marked papers for parents, archive, points page and activity
     await expect(page.getByText("Archived tracks (1)")).toBeVisible();
     await kid.goto("/tracks");
     await expect(kid.getByRole("main")).not.toContainText("Linear equations");
+
+    // Roadmap 22: restore puts it back as it was; delete removes it for good, and the points stay.
+    await page.getByText("Archived tracks (1)").click();
+    await page.getByRole("button", { name: "Restore Maths: Linear equations" }).click();
+    await expect(page.getByRole("link", { name: "Add topics to continue" })).toBeVisible();
+    await expect(page.getByText("Archived tracks (1)")).toHaveCount(0);
+    await page.getByRole("button", { name: "Archive Maths: Linear equations" }).click();
+    await page.getByRole("group", { name: /Archive/ }).getByRole("button", { name: "Archive" }).click();
+    await page.getByText("Archived tracks (1)").click();
+    await page.getByRole("button", { name: "Delete Maths: Linear equations" }).click();
+    await expect(page.getByRole("group", { name: /Delete/ })).toContainText("for good");
+    await page.getByRole("button", { name: "Delete for good" }).click();
+    await expect(page.getByRole("heading", { name: "No tracks yet" })).toBeVisible();
+    await expect(page.getByText(/Archived tracks/)).toHaveCount(0);
+    await kid.goto("/points");
+    await expect(kid.getByRole("region", { name: "Your points" })).toContainText(earned.replace("+", ""));
     await kidCtx.close();
   } finally {
     await deleteParentByEmail(parent.email);

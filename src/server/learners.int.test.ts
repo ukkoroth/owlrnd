@@ -11,7 +11,7 @@ import { aiUsage, exams, parents, students, trackMessages, tracks } from "./db/s
 import { loadLearner } from "./learners";
 import { listStudents, removeStudent, setStudentPassword, updateStudentDetails } from "./students";
 import { createTrackFromDraft, discardDraft, getDraftChat, listTracks, retryExamWriting, sendChatTurn, setTrackPaused } from "./tracks";
-import { applyTrackUpdate, archiveTrack, discardUpdateChat, examHistory, getUpdateChat, sendUpdateTurn } from "./trackUpdates";
+import { applyTrackUpdate, archiveTrack, deleteTrack, discardUpdateChat, examHistory, getUpdateChat, restoreTrack, sendUpdateTurn } from "./trackUpdates";
 
 // M7 (0.2 plan): one permission policy, codes to the account holder, the AI allowance per holder.
 beforeAll(() => {
@@ -70,6 +70,8 @@ describe("the server refuses what the policy refuses", () => {
     expect(await sendUpdateTurn(me, trackId, "More topics.", [])).toEqual({ ok: false, error: "Track not found." });
     expect(await applyTrackUpdate(me, trackId)).toMatchObject({ ok: false });
     expect(await archiveTrack(me, trackId)).toBe(false);
+    expect(await restoreTrack(me, trackId)).toBe(false);
+    expect(await deleteTrack(me, trackId)).toBe(false);
     await discardDraft(me, child.id);
     await discardUpdateChat(me, trackId);
     const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));

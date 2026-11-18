@@ -3,7 +3,8 @@ import { pauseTrack, resumeTrack } from "@/app/_actions/tracks";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress } from "@/components/TrackBars";
 import { inSentence } from "@/domain/examMix";
-import { markedPaperHref, updateHref, type TrackAudience } from "@/domain/trackView";
+import { markedPaperHref, trackWords, tracksHref, updateHref, type TrackAudience } from "@/domain/trackView";
+import { ArchiveButton, DeleteTrackButton, RestoreButton } from "@/components/ArchiveButton";
 import type { TopicWithStrength } from "@/server/progress";
 import type { Track } from "@/server/tracks";
 
@@ -90,6 +91,12 @@ export function TrackHistory({ audience, studentId, track, exams, strengths, tim
             <button className="link min-h-touch font-semibold">Resume track</button>
           </form>
         )}
+        {track.status === "archived" ? (
+          <RestoreButton trackId={track.id} studentId={studentId} trackName={track.name ?? ""} />
+        ) : (
+          <ArchiveButton trackId={track.id} studentId={studentId} trackName={track.name ?? ""} question={trackWords(audience).archiveQuestion} examOpen={track.nextExam === "ready"} />
+        )}
+        <DeleteTrackButton trackId={track.id} studentId={studentId} trackName={track.name ?? ""} then={tracksHref(audience)} />
       </div>
     </>
   );

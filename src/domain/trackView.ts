@@ -28,7 +28,7 @@ export function trackWords(a: TrackAudience) {
       openTracks: `Open ${n}'s tracks`,
       /** Subject of "… reached the goal". */
       who: n,
-      archiveQuestion: `Hide it from ${n}? Its history stays here.`,
+      archiveQuestion: `Hide it from ${n}? Its history stays here, and you can restore it.`,
       firstExamWhere: `${n} will see its first exam on their dashboard the next time they sign in.`,
     };
   }
@@ -40,7 +40,7 @@ export function trackWords(a: TrackAudience) {
     backToTracks: "Back to your tracks",
     openTracks: "Open your tracks",
     who: "You",
-    archiveQuestion: "Archive it? It moves out of your tracks and its history stays.",
+    archiveQuestion: "Archive it? It moves out of your tracks; its history stays and you can restore it.",
     firstExamWhere: "Its first exam is being written and will be on your dashboard in a minute or two.",
   };
 }

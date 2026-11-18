@@ -38,3 +38,5 @@ function keysWhere(tx: Tx, where: ReturnType<typeof eq>) {
 export const fileKeysForParent = (tx: Tx, parentId: string) => keysWhere(tx, eq(students.parentId, parentId));
 /** Every uploaded file belonging to one child. */
 export const fileKeysForStudent = (tx: Tx, studentId: string) => keysWhere(tx, eq(students.id, studentId));
+/** Every uploaded file belonging to one track (deleting the track, roadmap 22). */
+export const fileKeysForTrack = (tx: Tx, trackId: string) => keysWhere(tx, eq(tracks.id, trackId));

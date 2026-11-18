@@ -292,6 +292,9 @@ export const tracks = pgTable(
     colorIndex: integer("color_index").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
+    /** While archived (roadmap 22): the status it had, so Restore puts it back. */
+    archivedFrom: trackStatus("archived_from"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("tracks_student_idx").on(t.studentId, t.status)],
 );
@@ -499,9 +502,12 @@ export const pointsEvents = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    /** The exam that earned it; null for a flashcard session (0.3), which sets `flashcardSessionId` instead. */
-    examId: uuid("exam_id").references(() => exams.id, { onDelete: "cascade" }),
-    flashcardSessionId: uuid("flashcard_session_id").references((): AnyPgColumn => flashcardSessions.id, { onDelete: "cascade" }),
+    /**
+     * The exam that earned it; null for a flashcard session (0.3), which sets `flashcardSessionId` instead. Both
+     * become null when the track is deleted (roadmap 22): points already earned stay with the learner.
+     */
+    examId: uuid("exam_id").references(() => exams.id, { onDelete: "set null" }),
+    flashcardSessionId: uuid("flashcard_session_id").references((): AnyPgColumn => flashcardSessions.id, { onDelete: "set null" }),
     kind: pointsKind("kind").notNull(),
     points: integer("points").notNull(),
     label: text("label").notNull(),
@@ -511,7 +517,8 @@ export const pointsEvents = pgTable(
     index("points_events_student_idx").on(t.studentId, t.createdAt),
     // One award per flashcard session.
     uniqueIndex("points_events_flashcard_session_idx").on(t.flashcardSessionId),
-    check("points_events_source", sql`(${t.examId} is null) <> (${t.flashcardSessionId} is null)`),
+    // At most one source; none once its track has been deleted.
+    check("points_events_source", sql`${t.examId} is null or ${t.flashcardSessionId} is null`),
   ],
 );
 

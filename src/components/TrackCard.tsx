@@ -164,6 +164,9 @@ export function TrackCard({
                 </button>
               </form>
             )}
+            {(t.status === "active" || t.status === "paused") && (
+              <ArchiveButton trackId={t.id} studentId={t.studentId} trackName={t.name ?? ""} question={trackWords(audience).archiveQuestion} examOpen={!!t.readyExam} />
+            )}
           </>
         )}
       </div>

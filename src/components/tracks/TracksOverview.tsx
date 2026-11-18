@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Notice } from "@/components/forms";
 import { PageHeader } from "@/components/PageHeader";
 import { TrackCard } from "@/components/TrackCard";
+import { DeleteTrackButton, RestoreButton } from "@/components/ArchiveButton";
 import { newTrackHref, trackHref, trackWords, type TrackAudience } from "@/domain/trackView";
 import type { TrackSummary } from "@/server/tracks";
 import type { DeckCount } from "@/server/flashcards";
@@ -35,6 +36,10 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
   const learner = audience.kind === "learner";
   const newHref = newTrackHref(audience);
   const subject = audience.kind === "parent" ? audience.studentName : "you";
+  // Archived tracks (roadmap 22) are listed apart; with only archived tracks the page shows the empty state too.
+  const live = list.filter((t) => t.status !== "archived");
+  const archived = list.filter((t) => t.status === "archived");
+  const studentId = audience.kind === "parent" ? audience.studentId : list[0]?.studentId;
 
   return (
     <>
@@ -48,7 +53,7 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
           </span>
         }
         action={
-          list.length > 0 && (
+          live.length > 0 && (
             <Link href={newHref} className="btn-primary h-12 px-6 text-base">
               <Plus />
               New track
@@ -68,7 +73,7 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
         </div>
       )}
 
-      {list.length === 0 ? (
+      {live.length === 0 ? (
         <section className="grid gap-8 rounded border border-dashed border-line-input bg-card p-9 md:grid-cols-2">
           <div>
             <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-full bg-pale text-sidebar">
@@ -131,11 +136,11 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
                 </svg>
               </span>
               <p>
-                <strong>{list.length === 1 ? "First track created." : "Track created."}</strong> {words.firstExamWhere}
+                <strong>{live.length === 1 ? "First track created." : "Track created."}</strong> {words.firstExamWhere}
               </p>
             </div>
           )}
-          {list
+          {live
             .filter((t) => t.status === "goal_reached")
             .map((t) => (
               <div key={t.id} className="mb-5 rounded border border-line bg-card px-5 py-4" role="status">
@@ -143,39 +148,42 @@ export function TracksOverview({ audience, list, hasDraft, created, timeZone, de
               </div>
             ))}
           <div className={`grid gap-4 ${learner ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2"}`}>
-            {list
-              .filter((t) => t.status !== "archived")
+            {live
               // A track that just reached its goal comes first (2i).
               .sort((a, b) => Number(b.status === "goal_reached") - Number(a.status === "goal_reached"))
               .map((t, i) => (
                 <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} cardsActivity={cardsActivity?.get(t.id)} />
               ))}
           </div>
-          {list.some((t) => t.status === "archived") && (
-            <details className="mt-8">
-              <summary className="min-h-touch cursor-pointer content-center font-semibold">Archived tracks ({list.filter((t) => t.status === "archived").length})</summary>
-              <ul className="mt-3 divide-y divide-line rounded border border-line bg-card">
-                {list
-                  .filter((t) => t.status === "archived")
-                  .map((t) => (
-                    <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-                      <span>
-                        <span className="font-semibold">{t.name}</span>
-                        <span className="block text-sm text-ink-muted">
-                          {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"}
-                          {audience.kind === "parent" ? ` · hidden from ${audience.studentName}` : ""}
-                        </span>
-                      </span>
-                      <Link href={trackHref(audience, t.id)} className="link font-semibold">
-                        Exam history
-                      </Link>
-                    </li>
-                  ))}
-              </ul>
-            </details>
-          )}
           {learner && <p className="mt-6 text-sm text-ink-muted">A track stops when its goal is reached, until you add topics.</p>}
         </>
+      )}
+      {archived.length > 0 && studentId && (
+        <details className="mt-8">
+          <summary className="min-h-touch cursor-pointer content-center font-semibold">Archived tracks ({archived.length})</summary>
+          <ul className="mt-3 divide-y divide-line rounded border border-line bg-card">
+            {archived.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1 px-5 py-3">
+                <span>
+                  <span className="font-semibold">{t.name}</span>
+                  <span className="block text-sm text-ink-muted">
+                    {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"}
+                    {audience.kind === "parent" ? ` · hidden from ${audience.studentName}` : ""}
+                  </span>
+                </span>
+                <span className="flex flex-wrap items-center gap-x-5">
+                  {t.examsTaken > 0 && (
+                    <Link href={trackHref(audience, t.id)} className="link flex min-h-touch items-center text-sm font-semibold" aria-label={`Exam history of ${t.name}`}>
+                      Exam history
+                    </Link>
+                  )}
+                  <RestoreButton trackId={t.id} studentId={studentId} trackName={t.name ?? ""} />
+                  <DeleteTrackButton trackId={t.id} studentId={studentId} trackName={t.name ?? ""} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </>
   );
