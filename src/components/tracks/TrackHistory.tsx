@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { pauseTrack, resumeTrack } from "@/app/_actions/tracks";
+import { QuestionModeForm } from "@/components/tracks/QuestionModeForm";
 import { PageHeader } from "@/components/PageHeader";
 import { GoalProgress } from "@/components/TrackBars";
 import { inSentence } from "@/domain/examMix";
@@ -98,6 +99,8 @@ export function TrackHistory({ audience, studentId, track, exams, strengths, tim
         )}
         <DeleteTrackButton trackId={track.id} studentId={studentId} trackName={track.name ?? ""} then={tracksHref(audience)} />
       </div>
+
+      {!track.sampleKey && track.status !== "archived" && <QuestionModeForm trackId={track.id} studentId={studentId} mode={track.questionMode} />}
     </>
   );
 }

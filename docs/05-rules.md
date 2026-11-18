@@ -84,6 +84,7 @@ Adaptivity happens **between** exams. The whole paper is shown at once and does 
 - *(2026-11-18, owner; roadmap 23)* **Question pool.** Exam 1 of a track is written on its own. After it is marked, questions are written in batches (about 2 exams' worth, at most 20 per call, **defaults** in `rules.pool`) and each later exam is **picked** from the track's unused questions with the mix above, so it is ready at once. The pool is topped up in the background when fewer than 10 unused questions remain or 5 misses are waiting for new words.
   - A question the student got right never comes back. A missed one comes back only in **new words** (written in the next top-up), and not within 3 exams of the original. Its exact wording is never asked again.
   - Picking from questions already written uses no AI, so exams carry on while the AI allowance or monthly budget is used up, until the pool runs out; then the next exam is on hold as before.
+  - *(2026-11-18, owner)* **Per track, whoever controls it chooses "How new exams are made"** on the track's page: **Ready at once** (the pool, the default) or **Freshly written after each exam** (each exam written by the AI after the last is marked, with up to 2 misses reworded in the very next exam). A change applies from the next exam; unused pool questions are kept. Not offered for sample tracks.
 - Questions stay within the track's topics and material and at the student's class level (see AI §6).
 - The result screen states what the next exam will focus on, using these rules.
 

@@ -309,6 +309,19 @@ export async function deleteTrack(actor: Actor, trackId: string) {
   return true;
 }
 
+/**
+ * "How new exams are made" (owner, 2026-11-18), for whoever controls the track: "pool" (picked from batches of
+ * questions, ready at once) or "fresh" (each exam written after the last is marked). Applies from the next exam;
+ * questions already in the pool are kept for if it's switched back. Not for sample tracks or archived ones.
+ */
+export async function setQuestionMode(actor: Actor, trackId: string, mode: "pool" | "fresh") {
+  if (mode !== "pool" && mode !== "fresh") return false;
+  const own = await ownLiveTrack(actor, trackId);
+  if (!own || own.track.sampleKey || own.track.status === "archived") return false;
+  await db.update(tracks).set({ questionMode: mode }).where(eq(tracks.id, trackId));
+  return true;
+}
+
 /** 2h: every marked exam of a track, newest first, with strong and needs-work topics. */
 export async function examHistory(actor: Actor, trackId: string) {
   const own = await ownLiveTrack(actor, trackId, "viewProgress");

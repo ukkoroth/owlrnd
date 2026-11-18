@@ -75,7 +75,7 @@ export type PoolWriteResult = { written: number } | { skipped: string } | { post
  */
 export async function writePool(trackId: string, size: number = rules.pool.examsAhead * rules.exam.maxQuestions): Promise<PoolWriteResult> {
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
-  if (!track || track.status === "draft" || track.status === "archived" || track.sampleKey) return { skipped: "no pool for this track" };
+  if (!track || track.status === "draft" || track.status === "archived" || track.sampleKey || track.questionMode === "fresh") return { skipped: "no pool for this track" };
   const learner = await loadLearner(track.studentId);
   if (!learner) return { skipped: "no learner" };
   const { student, holder } = learner;
@@ -136,7 +136,7 @@ export async function writePool(trackId: string, size: number = rules.pool.exams
 export async function writePoolJob(payload: unknown) {
   const { trackId } = payload as { trackId: string };
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
-  if (!track || track.status === "draft" || track.status === "archived" || track.sampleKey) return;
+  if (!track || track.status === "draft" || track.status === "archived" || track.sampleKey || track.questionMode === "fresh") return;
   const learner = await loadLearner(track.studentId);
   if (!learner) return;
   let postponed: "budget" | "allowance" | "consent" | null = null;

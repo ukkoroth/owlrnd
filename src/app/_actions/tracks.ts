@@ -97,6 +97,16 @@ export async function archive(trackId: string, studentId: string): Promise<void>
   refreshTracks(studentId);
 }
 
+/** The track page's "How new exams are made" form. */
+export async function setQuestionMode(trackId: string, studentId: string, form: FormData): Promise<void> {
+  const { actor } = await requireActor();
+  const mode = form.get("mode");
+  if (mode === "pool" || mode === "fresh") await updates.setQuestionMode(actor, trackId, mode);
+  refreshTracks(studentId);
+  revalidatePath(`/students/${studentId}/tracks/${trackId}`);
+  revalidatePath(`/tracks/${trackId}`);
+}
+
 export async function restore(trackId: string, studentId: string): Promise<void> {
   const { actor } = await requireActor();
   await updates.restoreTrack(actor, trackId);

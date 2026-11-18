@@ -51,6 +51,7 @@ Use the default until the owner decides. Keep each one configurable.
 | This exam's strengths (4.1e) | A topic counts as a strength in an exam at ≥ 80% of its questions in that exam | §6 |
 | Short-answer marking | Blank → wrong; same as the expected answer (ignoring case, spaces, punctuation) → right without the AI; anything else → the AI, one call per exam, with a one-line reason for each miss | §6, AI §4 |
 | Retries | *(Changed 2026-11-18, question pool)* Every missed question gets a new wording in the next pool top-up and can come back after 3 exams; right answers never come back; no question is repeated word for word | §4 |
+| How new exams are made | Per track; default "Ready at once" (pool); "Freshly written after each exam" on request (owner, 2026-11-18) | §4 |
 | Question pool | Batches of about 2 exams (20 questions at most); top up below 10 unused or at 5 misses waiting for new words; first batch only after exam 1 is marked (`rules.pool`) | §4 |
 | Next exam | Written in the background right after marking, unless the track is paused or has reached its goal; resuming a paused track writes it then | §2, §3, §4 |
 | Add material on an active track *(owner, M6)* | Through the chat: the AI explains how the plan changes (new topics from the next exam on, goal kept or changed) and nothing changes until the parent presses Apply changes. The goal and its progress stay unless the parent changes the goal, which restarts progress at 0 | §2, §3 |

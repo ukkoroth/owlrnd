@@ -146,9 +146,12 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
     // pool. Picking needs no AI, so it goes ahead even with the allowance used up; only writing more waits. The first
     // pool write waits until exam 1 has been taken and marked (here, when exam 2 is asked for), so a learner who never
     // comes back costs no more than before (measured 2026-11-18: a pool costs the same per question as a paper).
+    // A track set to "fresh" (owner, 2026-11-18) skips the pool: each exam is written by the AI as before.
     let fromPool: WrittenQuestion[] | null = null;
     let topUp = false;
-    if (!sample) {
+    if (!sample && track.questionMode === "fresh") {
+      if (await holdIfBlocked()) return;
+    } else if (!sample) {
       let { pool, recentGroups } = await loadPool(trackId);
       if (pool.length) {
         let candidates = poolCandidates(pool, recentGroups, topicKeys);

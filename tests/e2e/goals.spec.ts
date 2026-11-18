@@ -161,6 +161,13 @@ test("exam history, marked papers for parents, archive, points page and activity
     await page.goto(updateHref!.replace(/\/update$/, ""));
     await expect(page.getByRole("table")).toContainText("Exam 1");
     await expect(page.getByRole("table")).toContainText("10 / 10");
+    // "How new exams are made" (owner, 2026-11-18): the bank by default; the parent can switch, and it sticks.
+    await expect(page.getByRole("radio", { name: /Ready at once/ })).toBeChecked();
+    await page.getByRole("radio", { name: /Freshly written after each exam/ }).check();
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("radio", { name: /Freshly written after each exam/ })).toBeChecked();
     await page.getByRole("link", { name: "Marked paper for exam 1" }).click();
     await expect(page.locator('[data-question="0"]')).toContainText("Correct.");
     await page.getByRole("link", { name: "Back to exam history" }).first().click();

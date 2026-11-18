@@ -141,6 +141,13 @@
       "when": 1794971831195,
       "tag": "0019_question_pool",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794973373590,
+      "tag": "0020_question_mode",
+      "breakpoints": true
     }
   ]
 }

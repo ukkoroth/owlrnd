@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { cleanup, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
+import { cleanup, learnerActor, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
 import { rules } from "@/config/rules";
 import { db } from "./db";
 import { examQuestions, exams, jobs, marks, parents, questions, tracks } from "./db/schema";
@@ -8,7 +8,8 @@ import { writeExamJob } from "./examWriter";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
 import { markExamJob } from "./marking";
 import { loadPool, unusedCount, writePoolJob } from "./questionPool";
-import { archiveTrack } from "./trackUpdates";
+import { archiveTrack, setQuestionMode } from "./trackUpdates";
+import { createSampleTrack } from "./tracks";
 import { poolCandidates } from "@/domain/questionPool";
 
 // Question pool (roadmap 23, owner 2026-11-18). Fake AI.
@@ -134,5 +135,35 @@ describe("question pool (roadmap 23)", () => {
     await writePoolJob({ trackId });
     expect(await questionRows(trackId)).toBe(10);
     expect(await unusedCount(trackId)).toBe(10);
+  });
+
+  it("a track set to fresh writes every exam with the AI and never touches the pool; switching back uses the pool again", async () => {
+    const { parent, student, trackId, examId } = await freshTrack();
+    expect(await setQuestionMode(parentActor(parent.id), trackId, "fresh")).toBe(true);
+
+    await takeAndMark(student.id, examId, 7);
+    await writeExamJob({ trackId }, ctx);
+    expect(await questionRows(trackId)).toBe(20); // exam 2 written on its own, no batch
+    expect(await poolJobsFor(trackId)).toHaveLength(0);
+    await writePoolJob({ trackId }); // a stray job does nothing
+    expect(await questionRows(trackId)).toBe(20);
+
+    expect(await setQuestionMode(parentActor(parent.id), trackId, "pool")).toBe(true);
+    await takeAndMark(student.id, (await latestExam(trackId)).id);
+    await writeExamJob({ trackId }, ctx);
+    expect(await questionRows(trackId)).toBeGreaterThan(20 + 10); // a batch was written, exam 3 picked from it
+    expect((await latestExam(trackId)).number).toBe(3);
+  });
+
+  it("only whoever controls the track can change it, and never on a sample track", async () => {
+    const { parent, student, trackId } = await freshTrack();
+    expect(await setQuestionMode(parentActor((await makeParent()).id), trackId, "fresh")).toBe(false);
+    expect(await setQuestionMode(learnerActor(student), trackId, "fresh")).toBe(false);
+    const [t] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+    expect(t!.questionMode).toBe("pool");
+
+    const sample = await createSampleTrack(parentActor(parent.id), student.id);
+    if (!sample.ok) throw new Error(sample.error);
+    expect(await setQuestionMode(parentActor(parent.id), sample.trackId, "fresh")).toBe(false);
   });
 });

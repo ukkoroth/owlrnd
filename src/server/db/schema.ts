@@ -265,6 +265,9 @@ export const nextExamState = pgEnum("next_exam_state", ["none", "writing", "read
 /** Why the next exam's writing is postponed (the job waits and retries; it hasn't failed). */
 export const examHold = pgEnum("exam_hold", ["allowance", "daily_limit", "budget", "consent"]);
 
+/** How a track's exams are made (owner, 2026-11-18): picked from a question pool, or freshly written after each exam. */
+export const questionMode = pgEnum("question_mode", ["pool", "fresh"]);
+
 export const tracks = pgTable(
   "tracks",
   {
@@ -297,6 +300,8 @@ export const tracks = pgTable(
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     /** A sample track (owner, 2026-11-18), e.g. "solar_system": exams come from its stored bank, never the AI. */
     sampleKey: text("sample_key"),
+    /** "pool": exams picked from batches of questions (roadmap 23); "fresh": each exam written after the last is marked. */
+    questionMode: questionMode("question_mode").notNull().default("pool"),
   },
   (t) => [index("tracks_student_idx").on(t.studentId, t.status)],
 );
