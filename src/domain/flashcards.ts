@@ -49,7 +49,17 @@ export function planTopUp(topics: DeckTopic[], deckSize: number, total = F.topUp
 
 export type WrittenCard = { topicKey: string; front: string; answer: string; explanation: string; missedKey: string | null };
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/**
+ * Lower case, punctuation to spaces, in any script. Letters, digits and combining marks (Devanagari vowel signs)
+ * are kept: an a–z-only version turned every Hindi card into "", so each looked like a repeat of the first and
+ * whole decks were rejected and paid for again (bug of 2026-11-16, found 2026-11-18).
+ */
+const norm = (s: string) =>
+  s
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
+    .trim();
 
 /** Problems with the AI's cards; empty when they can be saved. Known fronts must not be repeated. */
 export function validateCards(cards: WrittenCard[], topicKeys: string[], knownFronts: string[], missedKeys: string[] = []): string[] {
@@ -63,7 +73,7 @@ export function validateCards(cards: WrittenCard[], topicKeys: string[], knownFr
     if (!c.answer.trim() || c.answer.length > F.maxAnswer) errors.push(`${at}: the answer must be 1–${F.maxAnswer} characters.`);
     if (!c.explanation.trim() || c.explanation.length > F.maxExplanation) errors.push(`${at}: the explanation must be 1–${F.maxExplanation} characters.`);
     const key = norm(c.front);
-    if (seen.has(key)) errors.push(`${at}: repeats an existing card ("${c.front.slice(0, 60)}").`);
+    if (key && seen.has(key)) errors.push(`${at}: repeats an existing card ("${c.front.slice(0, 60)}").`);
     seen.add(key);
   });
   return errors;

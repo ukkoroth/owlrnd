@@ -42,6 +42,16 @@ describe("validateCards", () => {
     expect(validateCards([ok, ok], ["T1"], [])).toHaveLength(1);
     expect(validateCards([{ ...ok, missedKey: "M1" }], ["T1"], [], ["M1"])).toEqual([]);
   });
+
+  it("tells cards apart in Hindi and other scripts, and still catches real repeats (bug of 2026-11-16)", () => {
+    const hi = (front: string) => ({ ...ok, front });
+    const deck = [hi("मैम के पूछने पर आदिल ने कक्षा में क्या उत्तर दिया?"), hi("सुशांत ने हाथ उठाकर डॉ॰ अय्यर से कौन-सी बात जाननी चाही?"), hi("कहानी का मुख्य पात्र कौन है?")];
+    expect(validateCards(deck, ["T1"], [])).toEqual([]);
+    expect(validateCards([...deck, hi("कहानी का मुख्य पात्र कौन है")], ["T1"], [])).toHaveLength(1);
+    expect(validateCards([hi("कहानी का मुख्य पात्र कौन है?")], ["T1"], ["कहानी का मुख्य पात्र कौन है ?"])).toHaveLength(1);
+    // Vowel signs matter: these differ only in a matra.
+    expect(validateCards([hi("कल"), hi("काल")], ["T1"], [])).toEqual([]);
+  });
 });
 
 describe("spaced repetition", () => {
