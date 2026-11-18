@@ -1,14 +1,16 @@
 import { scoreSummary, type ScoredExam } from "@/domain/activity";
 import { TrackTag } from "@/components/TrackTag";
+import { trackColor } from "@/domain/trackColors";
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 const examWord = (n: number) => `${n} ${n === 1 ? "exam" : "exams"}`;
 
 /**
  * The overall analysis on Recent exams (3d, owner 2026-11-18): every marked exam across all tracks as one series of
- * bars, score out of 10, oldest on the left. One colour (the exam blue): the track colours aren't safe to tell apart
- * as chart fills for colour-blind readers, so the track is named in each bar's tooltip and in the per-track list
- * below, which carries the track's labelled tag. The latest score is labelled; a table repeats it all for screen readers.
+ * bars, score out of 10, oldest on the left. Each bar is in its track's strong colour (owner, 2026-11-18), and the
+ * per-track list below is the legend: its tag and average bar use the same colour. Colour is never the only cue: the
+ * track is named in each bar's tooltip and in the list. The latest score is labelled; a table repeats it all for
+ * screen readers.
  */
 export function ExamScoresChart({ exams, timeZone }: { exams: ScoredExam[]; timeZone: string }) {
   if (!exams.length) return null;
@@ -50,7 +52,10 @@ export function ExamScoresChart({ exams, timeZone }: { exams: ScoredExam[]; time
               {exams.map((e) => (
                 <li key={e.id} className="group relative flex h-full flex-1 items-end justify-center" style={{ maxWidth: 40 }}>
                   {e === last && <span className="absolute text-[13px] font-semibold text-ink" style={{ bottom: Math.max(4, (e.score / 10) * h) + 2 }}>{e.score}</span>}
-                  <span className="w-full rounded-t-[4px] bg-brand group-hover:opacity-80" style={{ height: e.score ? Math.max(4, (e.score / 10) * h) : 2 }} />
+                  <span
+                    className="w-full rounded-t-[4px] group-hover:opacity-80"
+                    style={{ height: e.score ? Math.max(4, (e.score / 10) * h) : 2, background: trackColor(e.colorIndex).border }}
+                  />
                   <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-ink px-2 py-1 text-[12px] text-white group-hover:block">
                     {label(e)} · {e.trackName} · {e.score} / 10 · {date(e.submittedAt)}
                   </span>
@@ -74,7 +79,7 @@ export function ExamScoresChart({ exams, timeZone }: { exams: ScoredExam[]; time
             </span>
             <span className="flex items-center gap-3 text-sm">
               <span className="hidden h-2 w-24 overflow-hidden rounded-full bg-line sm:block" aria-hidden="true">
-                <span className="block h-full rounded-full bg-brand" style={{ width: `${t.average * 10}%` }} />
+                <span className="block h-full rounded-full" style={{ width: `${t.average * 10}%`, background: trackColor(t.colorIndex).border }} />
               </span>
               <span>
                 average <span className="font-semibold">{fmt(t.average)}</span> · latest <span className="font-semibold">{t.latest} / 10</span>
