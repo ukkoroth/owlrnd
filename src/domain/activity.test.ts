@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityGrid, dailyCounts, last7Days } from "./activity";
+import { activityGrid, dailyCounts, last7Days, scoreSummary, type ScoredExam } from "./activity";
 
 describe("activity (rules §9)", () => {
   it("counts exams per day in the student's time zone", () => {
@@ -43,5 +43,32 @@ describe("flashcard sessions on the 7-day bars (0.3, F4)", () => {
     expect(bars.at(-1)).toMatchObject({ count: 2, flashcards: 1, isToday: true });
     expect(bars.at(-3)).toMatchObject({ count: 0, flashcards: 3 });
     expect(last7Days(new Map(), "2026-11-16").every((b) => b.flashcards === 0)).toBe(true);
+  });
+});
+
+describe("scoreSummary (3d overall chart)", () => {
+  const exam = (n: number, trackId: string, score: number): ScoredExam => ({
+    id: `e${n}`, trackId, trackName: trackId === "a" ? "Physics" : "Algebra", colorIndex: trackId === "a" ? 0 : 1,
+    overallNumber: n, score, submittedAt: new Date(Date.UTC(2026, 10, n)),
+  });
+
+  it("is empty without marked exams", () => {
+    expect(scoreSummary([])).toEqual({ count: 0, average: 0, recentAverage: null, tracks: [] });
+  });
+
+  it("averages to one decimal and gives the latest score per track, most practised first", () => {
+    const s = scoreSummary([exam(1, "b", 5), exam(2, "a", 6), exam(3, "a", 7), exam(4, "a", 9)]);
+    expect(s.count).toBe(4);
+    expect(s.average).toBe(6.8);
+    expect(s.tracks).toEqual([
+      { trackId: "a", trackName: "Physics", colorIndex: 0, count: 3, average: 7.3, latest: 9 },
+      { trackId: "b", trackName: "Algebra", colorIndex: 1, count: 1, average: 5, latest: 5 },
+    ]);
+  });
+
+  it("gives the last-5 average only once there are more than 5 exams", () => {
+    const five = [1, 2, 3, 4, 5].map((n) => exam(n, "a", 4));
+    expect(scoreSummary(five).recentAverage).toBeNull();
+    expect(scoreSummary([...five, exam(6, "a", 9)]).recentAverage).toBe(5);
   });
 });

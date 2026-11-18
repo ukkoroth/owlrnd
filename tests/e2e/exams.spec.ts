@@ -38,6 +38,8 @@ test("M4 done-when: a student starts a suggested exam, answers, gets the blank w
     await signInFully(page, student.username, student.password, parent.email, /\/today$/);
     await expect(page.getByRole("heading", { name: `Welcome, ${student.name}` })).toBeVisible();
     await expect(page.getByText("Exam 1")).toBeVisible();
+    // The activity charts show from the first day (owner, 2026-11-18), empty until the first exam.
+    await expect(page.getByText("0 exams in the last 26 weeks")).toBeVisible();
     await page.getByRole("link", { name: /Start exam 1/ }).click();
     await expect(page).toHaveURL(/\/exam\//);
     await expect(page.getByRole("heading", { name: /Physics: Ohm's law/ })).toBeVisible();
@@ -72,6 +74,8 @@ test("M4 done-when: a student starts a suggested exam, answers, gets the blank w
     // Marking runs in the background; the result opens by itself (M5).
     await expect(page).toHaveURL(/\/result$/, { timeout: 20_000 });
     await page.goto("/today?tab=recent");
+    // The overall scores chart opens Recent exams.
+    await expect(page.getByRole("region", { name: "All your exams" })).toContainText("1 exam marked");
     await expect(page.getByRole("main")).toContainText("Physics: Ohm's law · Exam 1");
     await expect(page.getByRole("link", { name: /Result of Physics: Ohm's law, exam 1/ })).toBeVisible();
   } finally {

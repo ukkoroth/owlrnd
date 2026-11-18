@@ -151,7 +151,8 @@ The sidebar shows the total and current level on every student screen. The paren
 - Count **completed exams per day** in the student's time zone.
 - **7-day bar chart:** the last 7 days ending today; the count above each bar; today highlighted.
 - **26-week activity grid:** one square per day for the last 26 weeks, weeks as columns, days as rows, today outlined. Five shades for 0, 1, 2, 3 and 4 or more exams.
-- Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data.
+- Shown on the student's Today tab (3c) and on each student card on the parent's students page (2k). Both show the same data. *(2026-11-18, owner)* On the Today tab they show from the student's first day (3f), empty until the first exam, once the student has a track.
+- *(2026-11-18, owner)* **Overall scores chart** at the top of Recent exams (3d), once an exam is marked: one bar per marked exam across all tracks (the latest 50, oldest first), score out of 10, all in one colour, the track named in each bar's tooltip; above it the number of marked exams, the average score and, after more than 5 exams, the average of the last 5 (one decimal); below it each track's labelled tag with its exam count, average and latest score, the most practised first.
 - *(0.3)* Flashcard sessions (with at least one card answered) show on the 7-day chart as a separate, narrower teal series with a legend, only when there were any that week. They are never counted as exams: not in the 26-week grid, "exams completed", streaks or exam numbers.
 
 ## §9a Flashcards *(0.3)*

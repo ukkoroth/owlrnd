@@ -3,6 +3,7 @@ import { coverageMet } from "@/domain/goals";
 import { and, asc, count, desc, eq, inArray, isNotNull, sum } from "drizzle-orm";
 import { nextExamFocus, nextExamPlan } from "@/domain/examMix";
 import { examTopicSummary } from "@/domain/topicStrength";
+import type { ScoredExam } from "@/domain/activity";
 import { db } from "./db";
 import { answers, examQuestions, exams, marks, pointsEvents, questions, students, topics, tracks } from "./db/schema";
 import { topicStrengths } from "./progress";
@@ -176,6 +177,18 @@ export async function lastExamSummary(studentId: string) {
 export async function practiceTimes(studentId: string): Promise<Date[]> {
   const rows = await db.select({ at: exams.submittedAt }).from(exams).where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)));
   return rows.map((r) => r.at!);
+}
+
+/** 3d overall chart: the learner's latest marked exams across all tracks, oldest first. */
+export async function examScores(studentId: string, limit = 50): Promise<ScoredExam[]> {
+  const rows = await db
+    .select({ id: exams.id, trackId: tracks.id, trackName: tracks.name, colorIndex: tracks.colorIndex, overallNumber: exams.overallNumber, score: exams.score, submittedAt: exams.submittedAt })
+    .from(exams)
+    .innerJoin(tracks, eq(tracks.id, exams.trackId))
+    .where(and(eq(exams.studentId, studentId), eq(exams.status, "marked"), isNotNull(exams.score), isNotNull(exams.submittedAt)))
+    .orderBy(desc(exams.submittedAt))
+    .limit(limit);
+  return rows.reverse().map((r) => ({ ...r, trackName: r.trackName ?? "Track", score: r.score!, submittedAt: r.submittedAt! }));
 }
 
 /** 4.3a: the student's points events. */

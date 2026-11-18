@@ -10,7 +10,8 @@ import { TrackEdge, TrackTag } from "@/components/TrackTag";
 import { trackCompletion } from "@/domain/goals";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
-import { examTopicLines, practiceTimes } from "@/server/results";
+import { examScores, examTopicLines, practiceTimes } from "@/server/results";
+import { ExamScoresChart } from "@/components/charts/ExamScoresChart";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
 import { PractiseButton } from "@/components/flashcards/Practise";
 import { RefreshWhileWaiting } from "@/components/RefreshWhileWaiting";
@@ -28,7 +29,8 @@ const TABS: [Tab, string][] = [
   ["tracks", "All tracks"],
 ];
 
-// 3c Today, 3d Recent exams, 3e All tracks; 3f first day and 3g nothing to practise. Charts come in M6.
+// 3c Today, 3d Recent exams, 3e All tracks; 3f first day and 3g nothing to practise. The activity charts show from
+// the first day (owner, 2026-11-18), once the learner has a track; Recent exams opens with the overall scores chart.
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { user: { student } } = await requireShell("learner");
   const { tab: raw } = await searchParams;
@@ -72,18 +74,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-8">
         {firstDay ? (
-          <FirstDay suggestion={dash.suggestions[0]!} w={w} deck={decks.get(dash.suggestions[0]!.id)} />
+          <>
+            <FirstDay suggestion={dash.suggestions[0]!} w={w} deck={decks.get(dash.suggestions[0]!.id)} />
+            <div className="mt-6 max-w-[900px]">
+              <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" flashcards={cardTimes} />
+            </div>
+          </>
         ) : tab === "today" ? (
           <>
             <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} decks={decks} />
-            {(dash.recent.length > 0 || cardTimes.length > 0) && (
+            {dash.tracks.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" flashcards={cardTimes} />
               </div>
             )}
           </>
         ) : tab === "recent" ? (
-          <Recent recent={dash.recent} tz={tz} lines={await examTopicLines(dash.recent.filter((r) => r.status === "marked").map((r) => r.id))} />
+          <>
+            <ExamScoresChart exams={await examScores(student.id)} timeZone={tz} />
+            <Recent recent={dash.recent} tz={tz} lines={await examTopicLines(dash.recent.filter((r) => r.status === "marked").map((r) => r.id))} />
+          </>
         ) : (
           <AllTracks tracks={dash.tracks} w={w} decks={decks} />
         )}
@@ -129,7 +139,7 @@ function FirstDay({ suggestion: t, w, deck }: { suggestion: StudentTrack; w: Wor
         <h2 className="text-lg">How it works</h2>
         <p className="mt-2 text-ink-muted">
           Each exam is built from your last result, with more questions on what you find hard. You earn points for every exam, and your practice activity
-          shows here after your first one.
+          builds up below as you go.
         </p>
       </section>
     </div>
