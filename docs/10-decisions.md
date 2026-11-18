@@ -50,7 +50,8 @@ Use the default until the owner decides. Keep each one configurable.
 | Topic strength with few answers *(owner, M5)* | Strong: ≥ 80% of the last 5 with ≥ 3 answered. Needs work: any miss and not strong. Not tested: nothing answered, or only 1–2 answered and all right | §4 |
 | This exam's strengths (4.1e) | A topic counts as a strength in an exam at ≥ 80% of its questions in that exam | §6 |
 | Short-answer marking | Blank → wrong; same as the expected answer (ignoring case, spaces, punctuation) → right without the AI; anything else → the AI, one call per exam, with a one-line reason for each miss | §6, AI §4 |
-| Retries | Up to 2 questions missed in the last exam (on topics that still need work) come back reworded; no question is repeated word for word within 3 exams | §4 |
+| Retries | *(Changed 2026-11-18, question pool)* Every missed question gets a new wording in the next pool top-up and can come back after 3 exams; right answers never come back; no question is repeated word for word | §4 |
+| Question pool | Batches of about 2 exams (20 questions at most); top up below 10 unused or at 5 misses waiting for new words; first batch only after exam 1 is marked (`rules.pool`) | §4 |
 | Next exam | Written in the background right after marking, unless the track is paused or has reached its goal; resuming a paused track writes it then | §2, §3, §4 |
 | Add material on an active track *(owner, M6)* | Through the chat: the AI explains how the plan changes (new topics from the next exam on, goal kept or changed) and nothing changes until the parent presses Apply changes. The goal and its progress stay unless the parent changes the goal, which restarts progress at 0 | §2, §3 |
 | Goal progress after a restart | Counts only exams after the restart (`goal_since_exam`), so earlier qualifying exams don't count towards the new goal | §3 |

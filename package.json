@@ -25,6 +25,7 @@
     "live:invite": "bash scripts/live.sh invite",
     "server:env": "bash scripts/edit-server-env.sh",
     "ai:usage": "tsx --conditions=react-server scripts/ai-usage.ts",
+    "ai:measure-pool": "tsx --conditions=react-server scripts/measure-pool.ts",
     "s3:check": "tsx --conditions=react-server scripts/s3-check.ts",
     "access": "tsx --conditions=react-server scripts/access.ts",
     "invite": "tsx --conditions=react-server scripts/access.ts invite",

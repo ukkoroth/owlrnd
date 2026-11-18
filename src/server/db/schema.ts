@@ -168,7 +168,7 @@ export const signInFailures = pgTable(
 
 // ── AI cost controls ────────────────────────────────────────────────────────
 
-export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers", "write_flashcards"]);
+export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers", "write_flashcards", "write_pool"]);
 
 /**
  * One row per Claude call, with its estimated cost. The family link is cleared if the account is deleted, so the
@@ -380,6 +380,8 @@ export const questions = pgTable(
     marks: integer("marks").notNull().default(1),
     difficulty: integer("difficulty").notNull(),
     explanation: text("explanation").notNull(),
+    /** A new wording of a missed question (question pool, roadmap 23): the two count as one idea for repeats. */
+    variantOf: uuid("variant_of").references((): AnyPgColumn => questions.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("questions_track_idx").on(t.trackId, t.topicId)],

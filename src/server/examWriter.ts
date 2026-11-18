@@ -3,7 +3,7 @@ import { holderRef } from "@/domain/accounts";
 import { loadLearner } from "./learners";
 import { learnerConsent } from "./consent";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
-import { firstExamPlan, type PlanSlot } from "@/domain/examPlan";
+import { firstExamPlan, type PlanSlot, type WrittenQuestion } from "@/domain/examPlan";
 import { planWithRevision } from "@/domain/examMix";
 import { formatClass } from "@/domain/identity";
 import { rules } from "@/config/rules";
@@ -15,6 +15,8 @@ import { attachments, examQuestions, exams, flashcards, marks, questions, topics
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
 import { pickFromBank } from "@/domain/sampleBank";
+import { awaitingRewording, canFill, needsTopUp, poolCandidates } from "@/domain/questionPool";
+import { loadPool, writePool } from "./questionPool";
 import { sampleTrack } from "@/content/samples";
 
 const RETRIES_PER_EXAM = 2;
@@ -120,25 +122,57 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       console.info(`[owlrnd consent] exam for track ${trackId} postponed until consent; retry ${retryAt.toISOString()}`);
       return;
     }
-    // A sample track's exams come from its stored bank: no AI, so no allowance, budget or daily limit applies.
-    const sample = sampleTrack(track.sampleKey);
-    const blocked = sample ? null : await examWriteBlocked(holder);
-    if (blocked) {
-      // Cards say why the exam isn't coming, instead of "being prepared" for hours.
-      await db.update(tracks).set({ nextExamHold: blocked.reason }).where(eq(tracks.id, trackId));
-      await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });
-      console.info(`[owlrnd ai] exam for track ${trackId} postponed (${blocked.reason}) until ${blocked.retryAt.toISOString()}`);
-      return;
-    }
     const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(asc(topics.position));
     // No topics (the track was deleted meanwhile, or never got any): nothing to write.
     if (!tps.length) return;
     const keyed = tps.map((t, i) => ({ key: `T${i + 1}`, id: t.id, name: t.name, description: t.description, revisionOnly: t.revisionOnly }));
+    const topicKeys = keyed.map((t) => t.key);
     const { plan, avoid, avoidByExam } = await planNextExam(trackId, track.studentId, keyed);
 
+    /** AI cost controls before any AI call: over the holder's daily limit or allowance, or the monthly budget, try again later. */
+    const holdIfBlocked = async () => {
+      const blocked = await examWriteBlocked(holder);
+      if (!blocked) return false;
+      // Cards say why the exam isn't coming, instead of "being prepared" for hours.
+      await db.update(tracks).set({ nextExamHold: blocked.reason }).where(eq(tracks.id, trackId));
+      await enqueue("write_exam", { trackId }, { runAt: blocked.retryAt });
+      console.info(`[owlrnd ai] exam for track ${trackId} postponed (${blocked.reason}) until ${blocked.retryAt.toISOString()}`);
+      return true;
+    };
+
+    // A sample track's exams come from its stored bank: no AI, so no allowance, budget or daily limit applies.
+    const sample = sampleTrack(track.sampleKey);
+    // Every other track (roadmap 23): exam 1 is written on its own, then exams are picked from the track's question
+    // pool. Picking needs no AI, so it goes ahead even with the allowance used up; only writing more waits. The first
+    // pool write waits until exam 1 has been taken and marked (here, when exam 2 is asked for), so a learner who never
+    // comes back costs no more than before (measured 2026-11-18: a pool costs the same per question as a paper).
+    let fromPool: WrittenQuestion[] | null = null;
+    let topUp = false;
+    if (!sample) {
+      let { pool, recentGroups } = await loadPool(trackId);
+      if (pool.length) {
+        let candidates = poolCandidates(pool, recentGroups, topicKeys);
+        if (!canFill(plan, candidates, topicKeys)) {
+          if (await holdIfBlocked()) return;
+          await writePool(trackId, Math.max(plan.length, rules.pool.examsAhead * rules.exam.maxQuestions));
+          ({ pool, recentGroups } = await loadPool(trackId));
+          candidates = poolCandidates(pool, recentGroups, topicKeys);
+        }
+        if (candidates.length < plan.length) throw new Error(`write_exam: the pool can't fill the exam for track ${trackId}`);
+        fromPool = pickFromBank(plan, candidates, topicKeys, []);
+        const picked = new Set(fromPool.map((q) => q.sourceId));
+        topUp = needsTopUp(candidates.filter((c) => !picked.has(c.id)).length, awaitingRewording(pool).length);
+      } else {
+        // The track's first exam: written on its own, as before.
+        if (await holdIfBlocked()) return;
+      }
+    }
+
     const written = sample
-      ? pickFromBank(plan, sample.questions, keyed.map((t) => t.key), avoidByExam)
-      : await (async () => {
+      ? pickFromBank(plan, sample.questions, topicKeys, avoidByExam)
+      : fromPool
+        ? fromPool
+        : await (async () => {
           const material = await trackMaterial(trackId);
           // Exams rarely repeat the wording of the track's flashcards (rules.flashcards.repeats).
           const deckFronts = (await db.select({ front: flashcards.front }).from(flashcards).where(eq(flashcards.trackId, trackId))).map((c) => c.front);
@@ -161,7 +195,10 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
 
     await db.transaction(async (tx) => {
       const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(exams).where(eq(exams.trackId, trackId));
-      const inserted = await tx
+      // Pool questions already have rows; the sample bank's and the AI's papers are saved now.
+      const inserted = fromPool
+        ? fromPool.map((q) => ({ id: q.sourceId! }))
+        : await tx
         .insert(questions)
         .values(
           written.map((q) => ({
@@ -181,6 +218,7 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       const [exam] = await tx.insert(exams).values({ studentId: track.studentId, trackId, number: n + 1, status: "ready" }).returning();
       await tx.insert(examQuestions).values(inserted.map((q, i) => ({ examId: exam!.id, questionId: q.id, position: i + 1 })));
       await tx.update(tracks).set({ nextExam: "ready", nextExamHold: null }).where(eq(tracks.id, trackId));
+      if (topUp) await enqueue("write_pool", { trackId }, { tx });
     });
   } catch (err) {
     if (ctx.isLastAttempt) await db.update(tracks).set({ nextExam: "failed", nextExamHold: null }).where(eq(tracks.id, trackId));

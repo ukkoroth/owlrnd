@@ -199,6 +199,8 @@ export async function updateTrack(input: { trackId: string; mode: UpdateMode; up
     writeNext = status === "active" && !open;
     if (writeNext) await tx.update(tracks).set({ nextExam: "writing", nextExamHold: null }).where(eq(tracks.id, trackId));
   });
+  // Question pool (roadmap 23): new topics or material get fresh questions before the next exam, then the exam.
+  await enqueue("write_pool", { trackId });
   if (writeNext) await enqueue("write_exam", { trackId });
   // 0.3: cards for new topics (and the few revision cards after a restart); topics with cards are left as they are.
   if (u.newTopics.length || mode === "restart") await enqueue("write_flashcards", { trackId, reason: "starter" });

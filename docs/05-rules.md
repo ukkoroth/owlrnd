@@ -81,6 +81,9 @@ Adaptivity happens **between** exams. The whole paper is shown at once and does 
 - **First exam in a track:** covers every topic about evenly.
 - **Later exams:** about 50% weak topics, 30% not-tested topics and 20% strong topics as repeats **(default)**. When there are no weak or untested topics, fill with strong topics at a slightly harder level.
 - A question the student missed may come back, reworded, in a later exam. Do not repeat an identical question within 3 exams **(default)** unless it is a deliberate retry of a miss.
+- *(2026-11-18, owner; roadmap 23)* **Question pool.** Exam 1 of a track is written on its own. After it is marked, questions are written in batches (about 2 exams' worth, at most 20 per call, **defaults** in `rules.pool`) and each later exam is **picked** from the track's unused questions with the mix above, so it is ready at once. The pool is topped up in the background when fewer than 10 unused questions remain or 5 misses are waiting for new words.
+  - A question the student got right never comes back. A missed one comes back only in **new words** (written in the next top-up), and not within 3 exams of the original. Its exact wording is never asked again.
+  - Picking from questions already written uses no AI, so exams carry on while the AI allowance or monthly budget is used up, until the pool runs out; then the next exam is on hold as before.
 - Questions stay within the track's topics and material and at the student's class level (see AI §6).
 - The result screen states what the next exam will focus on, using these rules.
 

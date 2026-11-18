@@ -68,7 +68,7 @@ test("a self-managed learner signs in with a code sent to their own email and se
 
 const holdShots = process.env.HOLD_SHOTS ? "tmp/screenshots/allowance-hold" : null;
 
-test("when the allowance is used up, the parent and the child are told, and the next exam shows as on hold", async ({ page }) => {
+test("when the allowance is used up, the parent and the child are told, and the next exam shows as on hold", async ({ page, browser }) => {
   const fam = await createFamily();
   try {
     await createTrackWithExam(fam.studentId, { name: "Maths: Factorisation", writing: true, hold: "allowance" });
@@ -79,13 +79,16 @@ test("when the allowance is used up, the parent and the child are told, and the 
     await expect(page.getByText("First exam on hold: Maths: Factorisation")).toBeVisible();
     await expect(page.getByText(/On hold: your AI allowance is used up/)).toBeVisible();
     if (holdShots) await page.screenshot({ path: `${holdShots}/parent-students.png`, fullPage: true });
-    await page.context().clearCookies();
 
-    await signInFully(page, fam.student.username, fam.student.password, fam.parent.email, /\/today$/);
-    await expect(page.getByText("New exams are on hold.", { exact: true })).toBeVisible();
-    await expect(page.getByText(/your parent's AI allowance is used up/i).first()).toBeVisible();
-    await expect(page.getByText("Exam being prepared")).toHaveCount(0);
-    if (holdShots) await page.screenshot({ path: `${holdShots}/child-today.png`, fullPage: true });
+    // The child in a fresh browser: clearing cookies could race a request still in flight from the parent's page.
+    const kidCtx = await browser.newContext();
+    const kid = await kidCtx.newPage();
+    await signInFully(kid, fam.student.username, fam.student.password, fam.parent.email, /\/today$/);
+    await expect(kid.getByText("New exams are on hold.", { exact: true })).toBeVisible();
+    await expect(kid.getByText(/your parent's AI allowance is used up/i).first()).toBeVisible();
+    await expect(kid.getByText("Exam being prepared")).toHaveCount(0);
+    if (holdShots) await kid.screenshot({ path: `${holdShots}/child-today.png`, fullPage: true });
+    await kidCtx.close();
   } finally {
     await deleteParentByEmail(fam.parent.email);
   }

@@ -52,16 +52,19 @@ export async function fakeTrackChat(input: TrackChatInput): Promise<TrackChatOut
   return { reply, extracted, preview: p, ready };
 }
 
+let bankWrites = 0;
+
 export async function fakeWriteQuestions(input: WriteQuestionsInput): Promise<WrittenQuestion[]> {
-  // A different "edition" per exam so prompts never repeat the recent ones (rules §4).
-  const edition = input.avoid.length ? ` [${input.avoid.length / input.plan.length + 1}]` : "";
+  // A different "edition" per exam so prompts never repeat the recent ones (rules §4). Pool writes (roadmap 23) get
+  // their own numbered edition, and a retry slot is a visibly new wording of the missed question.
+  const edition = input.bank ? ` [pool ${++bankWrites}]` : input.avoid.length ? ` [${input.avoid.length / input.plan.length + 1}]` : "";
   return input.plan.map((slot, i) => {
     const topic = input.topics.find((t) => t.key === slot.topicKey)!;
     return slot.type === "multiple_choice"
       ? {
           topicKey: slot.topicKey,
           type: "multiple_choice",
-          prompt: `Question ${i + 1} about ${topic.name}: which statement is correct?${edition}`,
+          prompt: slot.retryOf ? `In other words: ${slot.retryOf}${edition}` : `Question ${i + 1} about ${topic.name}: which statement is correct?${edition}`,
           options: [`Correct fact about ${topic.name}`, "A common mistake", "Another mistake", "An unrelated statement"],
           correctIndex: 0,
           expectedAnswer: null,
@@ -71,7 +74,7 @@ export async function fakeWriteQuestions(input: WriteQuestionsInput): Promise<Wr
       : {
           topicKey: slot.topicKey,
           type: "short",
-          prompt: `Question ${i + 1}: name one idea from ${topic.name}.${edition}`,
+          prompt: slot.retryOf ? `In other words: ${slot.retryOf}${edition}` : `Question ${i + 1}: name one idea from ${topic.name}.${edition}`,
           options: [],
           correctIndex: null,
           expectedAnswer: `An idea from ${topic.name}`,

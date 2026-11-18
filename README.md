@@ -177,6 +177,23 @@ Scale this by the number of active children and how often they practise. A child
 
 **The $5 demo allowance per account** (`rules.aiLimits.perAccountUsd`) covers setting up a track or two and roughly **15–35 exams**, with all the flashcard practice the learner wants on top.
 
+### Measured on the live site (18 November 2026)
+
+From 40 Claude calls on owlrnd.com (3 tracks, 12 marked exams, Claude Opus 5.5), leaving out one Hindi track whose flashcards failed and were retried because of a bug fixed in 0.3.4:
+
+| Per month, one active learner (90 exams, 4 tracks) | Estimate above | Measured |
+|---|---|---|
+| Writing exam papers | $14.50 | $11.40 |
+| Marking typed answers | $1.35 | $0.90 |
+| Flashcards from missed questions, plus top-ups | $3.95 | $7.00 |
+| Starter flashcard decks | $0.80 | $0.84 |
+| Set-up chat | $1.25 | $1.12 |
+| **Total** | **$21.85** | **$21.26** |
+
+That is about **$0.22 per exam** all in, so the $5 demo allowance covers about **20 exams**. The **Solar System sample track** uses no AI to write its exams or cards (only the rare typed answer that isn't an exact match is marked by the AI).
+
+**Question pool (0.3.5).** Writing questions in batches costs about the same per question as writing one paper at a time (measured: $0.120 for 20 questions against $0.063 for 10), so it doesn't change these totals; it makes exams ready at once and lets them carry on while the allowance is used up. Check it on your own key with `npm run ai:measure-pool` (a few tens of cents).
+
 ### Bringing the cost down
 
 The largest share is the model's reasoning while writing each paper, because output tokens cost five times as much as input.

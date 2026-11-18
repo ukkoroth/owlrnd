@@ -98,6 +98,26 @@ export const rules = {
   },
 
   /**
+   * Question pool (roadmap 23, owner 2026-11-18): questions are written in batches and each exam is picked from the
+   * track's unused ones with the usual adaptive plan, so exams are ready at once and cost less. Missed questions come
+   * back after `rules.exam.repeatWindowExams` exams in new words (written in the next top-up), never word for word.
+   */
+  pool: {
+    /** Each pool write covers about this many exams. */
+    examsAhead: 2,
+    /** At most this many questions in one AI call. */
+    batchMax: 20,
+    /** Top up in the background when fewer unused questions than this remain. */
+    lowWater: 10,
+    /** Every active topic gets at least this many in a write. */
+    minPerTopic: 2,
+    /** Also top up when this many missed questions are waiting for a new wording. */
+    rewordAfterMisses: 5,
+    /** The track's latest prompts the writer is told not to repeat. */
+    avoidRecent: 80,
+  },
+
+  /**
    * 0.3 Flashcards (docs/plan-0.3-flashcards.md; owner approved the defaults, 2026-11-16). Practice only: cards
    * never change scores, topic strength or goals.
    */

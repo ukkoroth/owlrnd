@@ -2,6 +2,8 @@ import type { PlanSlot, QuestionType, WrittenQuestion } from "./examPlan";
 
 /** A question written in advance for a sample track (owner, 2026-11-18). `topic` indexes the track's topics. */
 export type BankQuestion = {
+  /** A pooled question's database id (question pool), carried through to the picked question. */
+  id?: string;
   topic: number;
   type: QuestionType;
   prompt: string;
@@ -71,6 +73,7 @@ export function pickFromBank(plan: PlanSlot[], bank: BankQuestion[], topicKeys: 
       expectedAnswer: best.type === "short" ? best.expectedAnswer! : null,
       explanation: best.explanation,
       difficulty: best.difficulty,
+      ...(best.id ? { sourceId: best.id } : {}),
     });
   }
   const rank = (t: QuestionType) => (t === "multiple_choice" ? 0 : 1);

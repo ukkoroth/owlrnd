@@ -46,6 +46,8 @@ export type WrittenQuestion = {
   expectedAnswer: string | null;
   explanation: string;
   difficulty: number;
+  /** Picked from the track's question pool: the existing question's id (no new row is written). */
+  sourceId?: string;
 };
 
 const samePrompt = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();

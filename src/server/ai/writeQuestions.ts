@@ -21,6 +21,11 @@ export type WriteQuestionsInput = {
   avoid: string[];
   /** Fronts of the track's flashcards (0.3): exams rarely repeat their wording (rules.flashcards.repeats). */
   deckFronts: string[];
+  /**
+   * A batch for the track's question pool (roadmap 23), not one paper: exams are picked from it later. "retry" lines
+   * are new wordings of questions the learner missed.
+   */
+  bank?: boolean;
 };
 
 const PARENT_SYSTEM = `You write short practice exams for school students, like a printed exam paper. Each exam follows a plan that says, for every question in order, which topic it covers and whether it is multiple choice or a short answer.
@@ -63,7 +68,9 @@ function prompt(input: WriteQuestionsInput, previousErrors: string[] = []) {
     `<plan>`,
     ...input.plan.map((s, i) => `${i + 1}. ${s.topicKey} ${s.type}${s.harder ? " harder" : ""}${s.retryOf ? ` retry of: "${s.retryOf}"` : ""}`),
     `</plan>`,
-    `Write exactly ${input.plan.length} questions, in plan order, using the topic keys above.`,
+    input.bank
+      ? `These questions go into a bank that several exams will be picked from, not one paper. Spread the difficulty across 1–5 (mostly 2–3 on topics not tested yet). Write exactly ${input.plan.length} questions, in plan order, using the topic keys above.`
+      : `Write exactly ${input.plan.length} questions, in plan order, using the topic keys above.`,
     previousErrors.length ? `Your previous attempt had these problems; fix them:\n- ${previousErrors.join("\n- ")}` : "",
   ]
     .filter(Boolean)
@@ -82,6 +89,9 @@ export async function writeQuestions(input: WriteQuestionsInput): Promise<Writte
       messages: [{ role: "user", content: prompt(input, errors) }],
       schema: writtenExamSchema,
       effort: "high",
+      // A pool batch is about twice a paper; leave room for the reasoning too. Above ~21k the SDK insists on
+      // streaming (it refuses requests that might run past 10 minutes), so stay under that.
+      ...(input.bank ? { maxTokens: 20_000 } : {}),
     });
     errors = validateWrittenExam(input.plan, out.questions, input.avoid);
     const repeats = tooManyRepeats(out.questions.map((q) => q.prompt), input.deckFronts, "Question");
