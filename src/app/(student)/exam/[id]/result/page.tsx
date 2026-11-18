@@ -7,27 +7,32 @@ import { getPaper } from "@/server/exams";
 import { getResult } from "@/server/results";
 import type { TopicTally } from "@/domain/topicStrength";
 import { inSentence } from "@/domain/examMix";
+import { strongRuleWords } from "@/domain/topicStrength";
 
 export const metadata: Metadata = { title: "Exam result · owlrnd" };
 export const dynamic = "force-dynamic";
 
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
-/** "Strong on A and B. C needs more work." (templated, not AI). */
+/** "You got A and B right. C needs more work." (templated, not AI). About this exam only: whether a topic is strong
+ * for the track goes by its last 5 answers (rules §4), so this sentence never calls a topic strong. */
 function summary(strengths: TopicTally[], needsWork: TopicTally[]) {
   const s = strengths.map((t) => inSentence(t.name));
   const n = needsWork.map((t) => inSentence(t.name));
   const parts: string[] = [];
-  if (s.length) parts.push(`Strong on ${list(s)}.`);
+  if (s.length) parts.push(`You got ${list(s)} right.`);
   if (n.length) parts.push(`${list(n)} ${n.length === 1 ? "needs" : "need"} more work.`);
-  return parts.join(" ").replace(/^./, (c) => c.toUpperCase());
+  return parts.map((p) => p.replace(/^./, (c) => c.toUpperCase())).join(" ");
 }
 
-function TopicBar({ t, weak }: { t: TopicTally; weak: boolean }) {
+function TopicBar({ t, weak, strong }: { t: TopicTally; weak: boolean; strong: boolean }) {
   return (
     <li>
-      <div className="flex justify-between text-[16px]">
-        <span>{t.name}</span>
+      <div className="flex justify-between gap-3 text-[16px]">
+        <span>
+          {t.name}
+          {strong && <span className="ml-2 whitespace-nowrap rounded bg-pale-2 px-1.5 py-0.5 text-[13px] font-semibold text-brand">Strong</span>}
+        </span>
         <span className="font-semibold">
           {t.right} of {t.total}
         </span>
@@ -94,12 +99,12 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
       <div className="mt-7 grid gap-8 md:grid-cols-2">
         <section aria-labelledby="strengths-h" role="region">
           <h2 id="strengths-h" className="mb-3 text-[15px] font-bold uppercase tracking-wider">
-            Strengths
+            Right in this exam
           </h2>
           {r.strengths.length ? (
             <ul className="flex flex-col gap-4">
               {r.strengths.map((t) => (
-                <TopicBar key={t.topicId} t={t} weak={false} />
+                <TopicBar key={t.topicId} t={t} weak={false} strong={r.strongIds.includes(t.topicId)} />
               ))}
             </ul>
           ) : (
@@ -108,12 +113,12 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
         </section>
         <section aria-labelledby="needs-h" role="region">
           <h2 id="needs-h" className="mb-3 text-[15px] font-bold uppercase tracking-wider">
-            Needs work
+            Missed in this exam
           </h2>
           {r.needsWork.length ? (
             <ul className="flex flex-col gap-4">
               {r.needsWork.map((t) => (
-                <TopicBar key={t.topicId} t={t} weak />
+                <TopicBar key={t.topicId} t={t} weak strong={r.strongIds.includes(t.topicId)} />
               ))}
             </ul>
           ) : (
@@ -121,6 +126,12 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           )}
         </section>
       </div>
+      {/* The bars are this exam only; "strong" is the track's measure (rules §4), shown here so the two never look
+          like they disagree (owner, 2026-11-18). */}
+      <p className="mt-5 max-w-[760px] text-[15px] text-ink-muted">
+        A topic becomes strong once you get {strongRuleWords()} {r.strongCount} of the {r.topicCount} topics in this track{" "}
+        {r.strongCount === 1 ? "is" : "are"} strong so far.
+      </p>
 
       <section className="mt-8 border-t border-line pt-6" aria-labelledby="next-h">
         {r.goalReached ? (
@@ -139,7 +150,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
               Your next exam in this track
             </h2>
             <p className="mt-2 max-w-[760px] text-[16px] leading-relaxed">
-              {r.nextFocus} {r.strongCount} of the {r.topicCount} topics {r.strongCount === 1 ? "is" : "are"} strong so far.
+              {r.nextFocus}
             </p>
           </>
         )}

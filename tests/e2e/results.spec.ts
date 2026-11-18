@@ -45,8 +45,8 @@ test("M5 done-when: marking, result with points and needs work, marked paper, an
     await expect(pts).toContainText("Finished the exam");
     await expect(pts).toContainText(`${10 - wrong} correct answers, 2 points each`);
     await expect(pts).toContainText(`+${10 + 2 * (10 - wrong)}`);
-    await expect(page.getByRole("region", { name: "Needs work" })).toContainText("Resistors in parallel");
-    await expect(page.getByRole("region", { name: "Needs work" })).toContainText(`0 of ${wrong}`);
+    await expect(page.getByRole("region", { name: "Missed in this exam" })).toContainText("Resistors in parallel");
+    await expect(page.getByRole("region", { name: "Missed in this exam" })).toContainText(`0 of ${wrong}`);
     await expect(page.getByText(/Exam 2 will have more questions on resistors in parallel/)).toBeVisible();
     // Sidebar total matches the points earned.
     await expect(page.getByRole("complementary")).toContainText(`${10 + 2 * (10 - wrong)}`);

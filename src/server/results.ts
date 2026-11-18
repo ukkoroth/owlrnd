@@ -14,16 +14,25 @@ export async function pointsTotal(studentId: string): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
-/** Per-topic right/total for one marked exam, in track order. */
-async function examTallies(examId: string) {
+/** Per-topic right/total for marked exams, in track order, keyed by exam id (one query for any number of exams). */
+async function examTalliesOf(examIds: string[]) {
+  const out = new Map<string, ReturnType<typeof examTopicSummary>>();
+  if (!examIds.length) return out;
   const rows = await db
-    .select({ topicId: topics.id, name: topics.name, position: topics.position, verdict: marks.verdict })
+    .select({ examId: marks.examId, topicId: topics.id, name: topics.name, position: topics.position, verdict: marks.verdict })
     .from(marks)
     .innerJoin(questions, eq(questions.id, marks.questionId))
     .innerJoin(topics, eq(topics.id, questions.topicId))
-    .where(eq(marks.examId, examId))
+    .where(inArray(marks.examId, examIds))
     .orderBy(asc(topics.position));
-  return examTopicSummary(rows.map((r) => ({ topicId: r.topicId, name: r.name, correct: r.verdict === "correct" })));
+  const byExam = new Map<string, typeof rows>();
+  for (const r of rows) byExam.set(r.examId, [...(byExam.get(r.examId) ?? []), r]);
+  for (const id of examIds) out.set(id, examTopicSummary((byExam.get(id) ?? []).map((r) => ({ topicId: r.topicId, name: r.name, correct: r.verdict === "correct" }))));
+  return out;
+}
+
+async function examTallies(examId: string) {
+  return (await examTalliesOf([examId])).get(examId)!;
 }
 
 /** Everything 4.1e shows. Null unless the exam is the student's own and marked. */
@@ -71,6 +80,8 @@ export async function getResult(studentId: string, examId: string) {
     goalReached: goalReachedNow,
     strongCount,
     topicCount: strengths.length,
+    /** Topics strong for the track (rules §4), to mark them among this exam's bars. */
+    strongIds: strengths.filter((t) => t.strength === "strong").map((t) => t.id),
   };
 }
 
@@ -128,13 +139,10 @@ export async function getMarkedPaper(studentId: string, examId: string) {
   };
 }
 
-/** Strong and needs-work topic names per marked exam (3d), keyed by exam id. */
+/** Per marked exam (3d), keyed by exam id: topics right in that exam (≥ 80%) and topics missed. Not track strength. */
 export async function examTopicLines(examIds: string[]) {
   const out = new Map<string, { strong: string[]; needsWork: string[] }>();
-  for (const id of examIds) {
-    const s = await examTallies(id);
-    out.set(id, { strong: s.strengths.map((t) => t.name), needsWork: s.needsWork.map((t) => t.name) });
-  }
+  for (const [id, s] of await examTalliesOf(examIds)) out.set(id, { strong: s.strengths.map((t) => t.name), needsWork: s.needsWork.map((t) => t.name) });
   return out;
 }
 

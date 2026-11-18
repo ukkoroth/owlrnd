@@ -18,6 +18,12 @@ export function strengthOf(resultsOldestFirst: boolean[]): Strength {
   return "not_tested";
 }
 
+/** "4 of its last 5 questions right." in words, from the rule's settings (for learners). */
+export function strongRuleWords(): string {
+  const { window, strongShare } = rules.topicStrength;
+  return `at least ${Math.ceil(window * strongShare - 1e-9)} of its last ${window} questions right.`;
+}
+
 export type TopicTally = { topicId: string; name: string; right: number; total: number };
 
 /** 4.1e: this exam's Strengths and Needs work, per topic ("3 of 3", "1 of 2"). A strength is ≥ 80% in this exam. */

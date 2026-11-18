@@ -251,7 +251,12 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   );
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    // In full screen the paper runs to the very edge of the screen, so it gets room above and below (owner,
+    // 2026-11-18); the safe-area insets keep it clear of rounded corners and the home bar.
+    <div
+      className="flex h-dvh flex-col overflow-hidden"
+      style={fullscreen ? { paddingTop: "max(28px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" } : undefined}
+    >
       <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-paper-rule px-4 font-sans md:px-10">
         <h1 className="truncate text-[17px] font-semibold">
           {paper.trackName}
@@ -293,7 +298,7 @@ export function ExamPaper({ paper }: { paper: Paper }) {
               role="group"
             >
               {(pages[page] ?? []).map((col, c) => (
-                <div key={c} className="flex flex-col" style={{ gap: QUESTION_GAP }}>
+                <div key={c} data-paper-column className="flex min-h-0 flex-col" style={{ gap: QUESTION_GAP }}>
                   {col.map((i) => renderQuestion(i, false))}
                 </div>
               ))}

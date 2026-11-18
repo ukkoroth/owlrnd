@@ -9,7 +9,7 @@ import { learnerWords } from "@/domain/trackView";
 import { TrackEdge, TrackTag } from "@/components/TrackTag";
 import { trackCompletion } from "@/domain/goals";
 import { requireShell } from "@/server/auth/current";
-import { getStudentDashboard, type RecentExam, type StudentTrack } from "@/server/exams";
+import { getStudentDashboard, recentExams, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examScores, examTopicLines, practiceTimes } from "@/server/results";
 import { ExamScoresChart } from "@/components/charts/ExamScoresChart";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
@@ -25,15 +25,15 @@ export const dynamic = "force-dynamic";
 type Tab = "today" | "recent" | "tracks";
 const TABS: [Tab, string][] = [
   ["today", "Today"],
-  ["recent", "Recent exams"],
+  ["recent", "Past exams"],
   ["tracks", "All tracks"],
 ];
 
 // 3c Today, 3d Recent exams, 3e All tracks; 3f first day and 3g nothing to practise. The activity charts show from
 // the first day (owner, 2026-11-18), once the learner has a track; Recent exams opens with the overall scores chart.
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string; track?: string }> }) {
   const { user: { student } } = await requireShell("learner");
-  const { tab: raw } = await searchParams;
+  const { tab: raw, track: trackFilter } = await searchParams;
   const tab: Tab = raw === "recent" || raw === "tracks" ? raw : "today";
   const dash = await getStudentDashboard(student.id);
   const tz = student.timeZone;
@@ -92,7 +92,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : tab === "recent" ? (
           <>
             <ExamScoresChart exams={await examScores(student.id)} timeZone={tz} />
-            <Recent recent={dash.recent} tz={tz} lines={await examTopicLines(dash.recent.filter((r) => r.status === "marked").map((r) => r.id))} />
+            <PastExams studentId={student.id} tracks={dash.tracks} trackId={dash.tracks.some((t) => t.id === trackFilter) ? trackFilter : undefined} tz={tz} />
           </>
         ) : (
           <AllTracks tracks={dash.tracks} w={w} decks={decks} />
@@ -299,8 +299,37 @@ function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; s
   );
 }
 
+/** Past exams to list at most (newest first); far more than a learner takes in a term. */
+const PAST_EXAMS_LIMIT = 300;
+
+// 3d: every exam the learner has finished, newest first, optionally one track's, each with its result and marked
+// paper (owner, 2026-11-18: learners look back at how each exam was marked).
+async function PastExams({ studentId, tracks, trackId, tz }: { studentId: string; tracks: StudentTrack[]; trackId?: string; tz: string }) {
+  const recent = await recentExams(studentId, PAST_EXAMS_LIMIT, trackId);
+  const lines = await examTopicLines(recent.filter((r) => r.status === "marked").map((r) => r.id));
+  const chip = (active: boolean) =>
+    `flex min-h-touch items-center rounded border px-3 text-[15px] font-semibold ${active ? "border-brand bg-brand text-white" : "border-line bg-card text-ink hover:border-brand"}`;
+  return (
+    <>
+      {tracks.length > 1 && (
+        <nav aria-label="Show exams from" className="mb-5 mt-8 flex flex-wrap gap-2">
+          <Link href="/today?tab=recent" className={chip(!trackId)} aria-current={!trackId ? "page" : undefined}>
+            All tracks
+          </Link>
+          {tracks.map((t) => (
+            <Link key={t.id} href={`/today?tab=recent&track=${t.id}`} className={chip(trackId === t.id)} aria-current={trackId === t.id ? "page" : undefined}>
+              {t.name}
+            </Link>
+          ))}
+        </nav>
+      )}
+      <Recent recent={recent} tz={tz} lines={lines} />
+    </>
+  );
+}
+
 function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines: Map<string, { strong: string[]; needsWork: string[] }> }) {
-  if (!recent.length) return <p className="text-ink-muted">Exams you finish show here.</p>;
+  if (!recent.length) return <p className="mt-8 text-ink-muted">Exams you finish show here.</p>;
   const day = (d: Date) => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: tz }).format(d).replace(",", "");
   const todayLabel = day(new Date());
   const groups = new Map<string, RecentExam[]>();
@@ -308,8 +337,9 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
   return (
     <section aria-labelledby="recent-h">
       <h2 id="recent-h" className="mb-4 text-xl">
-        Exams you practised recently
+        Your past exams
       </h2>
+      <p className="-mt-2 mb-4 text-ink-muted">Open any exam to see its result, or the marked paper with every answer and why.</p>
       <div className="flex flex-col gap-6">
         {[...groups].map(([label, rows]) => (
           <div key={label}>
@@ -328,22 +358,31 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
                       <span className="block text-sm text-ink-muted">
                         {lines.get(r.id)!.strong.length > 0 && (
                           <>
-                            Strong: <span className="text-ink">{lines.get(r.id)!.strong.map(inSentence).join(", ")}</span>
+                            Right: <span className="text-ink">{lines.get(r.id)!.strong.map(inSentence).join(", ")}</span>
                             {lines.get(r.id)!.needsWork.length > 0 && " · "}
                           </>
                         )}
                         {lines.get(r.id)!.needsWork.length > 0 && (
                           <>
-                            Needs work: <span className="text-ink">{lines.get(r.id)!.needsWork.map(inSentence).join(", ")}</span>
+                            Missed: <span className="text-ink">{lines.get(r.id)!.needsWork.map(inSentence).join(", ")}</span>
                           </>
                         )}
                       </span>
                     )}
                   </span>
                   {r.status === "marked" ? (
-                    <Link href={`/exam/${r.id}/result`} className="link flex min-h-touch items-center text-sm font-semibold" aria-label={`Result of ${r.trackName}, exam ${r.number}`}>
-                      Result
-                    </Link>
+                    <span className="flex items-center gap-4">
+                      <Link href={`/exam/${r.id}/result`} className="link flex min-h-touch items-center text-sm font-semibold" aria-label={`Result of ${r.trackName}, exam ${r.number}`}>
+                        Result
+                      </Link>
+                      <a
+                        href={`/exam/${r.id}/marked?from=past`}
+                        className="link flex min-h-touch items-center text-sm font-semibold"
+                        aria-label={`Marked paper of ${r.trackName}, exam ${r.number}`}
+                      >
+                        Marked paper
+                      </a>
+                    </span>
                   ) : (
                     <span className="text-sm text-ink-muted">Marking…</span>
                   )}

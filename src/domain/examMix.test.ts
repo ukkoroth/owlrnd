@@ -47,6 +47,10 @@ describe("nextExamFocus (4.1e)", () => {
       "Exam 3 will have more questions on resistors in parallel and power and energy, with a few repeats from your strong topics.",
     );
   });
+  it("counts the weak topics instead of naming them when there are many", () => {
+    const topics = ["A", "B", "C", "D", "E", "F"].map((k) => t(k, "needs_work", `Topic ${k}`));
+    expect(nextExamFocus(8, nextExamPlan(topics), topics)).toBe("Exam 8 will have more questions on the 6 topics that aren't strong yet.");
+  });
   it("talks about harder questions when everything is strong", () => {
     const topics = [t("A", "strong", "Ohm's law")];
     expect(nextExamFocus(4, nextExamPlan(topics), topics)).toBe("Exam 4 will have harder questions on all your topics.");

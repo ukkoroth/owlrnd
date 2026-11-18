@@ -62,9 +62,14 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
               <h2 className="text-[21px] leading-snug">{t.name}</h2>
               <div className="mb-4 mt-3 flex items-end justify-between gap-3">
                 <ScoreBars scores={t.scores} />
-                <span className="ml-auto text-sm text-ink-muted">
-                  {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken
-                </span>
+                {t.examsTaken > 0 ? (
+                  // To this track's past exams, each with its marked paper (owner, 2026-11-18).
+                  <Link href={`/today?tab=recent&track=${t.id}`} className="link ml-auto flex min-h-touch items-end text-sm font-semibold" aria-label={`${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"} taken: see past exams in ${t.name}`}>
+                    {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken
+                  </Link>
+                ) : (
+                  <span className="ml-auto text-sm text-ink-muted">No exams taken yet</span>
+                )}
               </div>
               <TopicStrength topics={t.topics} />
               <div className="mt-3">

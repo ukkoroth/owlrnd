@@ -74,10 +74,14 @@ test("M4 done-when: a student starts a suggested exam, answers, gets the blank w
     // Marking runs in the background; the result opens by itself (M5).
     await expect(page).toHaveURL(/\/result$/, { timeout: 20_000 });
     await page.goto("/today?tab=recent");
-    // The overall scores chart opens Recent exams.
+    // The overall scores chart opens Past exams; each marked exam links to its result and its marked paper.
     await expect(page.getByRole("region", { name: "All your exams" })).toContainText("1 exam marked");
     await expect(page.getByRole("main")).toContainText("Physics: Ohm's law · Exam 1");
     await expect(page.getByRole("link", { name: /Result of Physics: Ohm's law, exam 1/ })).toBeVisible();
+    await page.getByRole("link", { name: /Marked paper of Physics: Ohm's law, exam 1/ }).click();
+    await expect(page).toHaveURL(/\/marked\?from=past$/);
+    await page.getByRole("link", { name: "Back to past exams" }).first().click();
+    await expect(page).toHaveURL(/tab=recent$/);
   } finally {
     await deleteParentByEmail(parent.email);
   }
@@ -135,6 +139,32 @@ for (const size of [
     }
   });
 }
+
+test("the paper pages again when its area shrinks without a window resize (iPad leaving full screen)", async ({ page }) => {
+  const { parent, student, studentId } = await createFamily();
+  try {
+    await createTrackWithExam(studentId);
+    await page.setViewportSize({ width: 1180, height: 820 });
+    await signInFully(page, student.username, student.password, parent.email, /\/today$/);
+    await page.getByRole("link", { name: /Start exam 1/ }).click();
+    await expect(page.locator("[data-question]").first()).toBeVisible();
+    // Squeeze the paper from inside the page: no window resize event fires, as when an iPad's full screen animates out.
+    await page.locator("[data-question]").first().evaluate((el) => {
+      (el.closest(".h-dvh") as HTMLElement).style.paddingBottom = "300px";
+    });
+    // Rules §5: every question fits, except one taller than a whole column, which gets that column to itself.
+    await expect(async () => {
+      const bottoms = await page
+        .locator("[data-paper-column]")
+        .evaluateAll((cols) => cols.filter((c) => c.childElementCount > 1).flatMap((c) => [...c.children].map((q) => q.getBoundingClientRect().bottom)));
+      const footerTop = await page.locator("footer").evaluate((f) => f.getBoundingClientRect().top);
+      expect(bottoms.length).toBeGreaterThan(0);
+      for (const b of bottoms) expect(b).toBeLessThanOrEqual(footerTop + 1);
+    }).toPass({ timeout: 3000 });
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});
 
 test("resizing pages again but keeps answers and the question the student was on", async ({ page }) => {
   const { parent, student, studentId } = await createFamily();

@@ -95,6 +95,7 @@ export type RecentExam = {
   id: string;
   number: number;
   overallNumber: number | null;
+  trackId: string;
   trackName: string;
   colorIndex: number;
   status: string;
@@ -102,13 +103,14 @@ export type RecentExam = {
   score: number | null;
 };
 
-export async function recentExams(studentId: string, limit = 30): Promise<RecentExam[]> {
+export async function recentExams(studentId: string, limit = 30, trackId?: string): Promise<RecentExam[]> {
   // Columns selected directly (not through sql``) so drizzle maps timestamps to Date objects.
   const rows = await db
     .select({
       id: exams.id,
       number: exams.number,
       overallNumber: exams.overallNumber,
+      trackId: exams.trackId,
       trackName: tracks.name,
       colorIndex: tracks.colorIndex,
       status: exams.status,
@@ -117,10 +119,10 @@ export async function recentExams(studentId: string, limit = 30): Promise<Recent
     })
     .from(exams)
     .innerJoin(tracks, eq(tracks.id, exams.trackId))
-    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)))
+    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt), trackId ? eq(exams.trackId, trackId) : undefined))
     .orderBy(desc(exams.submittedAt))
     .limit(limit);
-  return rows.map((r) => ({ ...r, trackName: r.trackName ?? "", submittedAt: r.submittedAt! }));
+  return rows.map((r) => ({ ...r, trackId: r.trackId, trackName: r.trackName ?? "", submittedAt: r.submittedAt! }));
 }
 
 export async function getStudentDashboard(studentId: string) {

@@ -42,7 +42,7 @@ export function MarkedPaper({ paper, backHref, backLabel = "Back to result", don
           {pages && (
             <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, columnGap: COLUMN_GAP }} role="group" aria-label={`Page ${page + 1} of ${pageCount}`}>
               {(pages[page] ?? []).map((col, c) => (
-                <div key={c} className="flex flex-col" style={{ gap: QUESTION_GAP }}>
+                <div key={c} data-paper-column className="flex min-h-0 flex-col" style={{ gap: QUESTION_GAP }}>
                   {col.map((i) => render(i, false))}
                 </div>
               ))}

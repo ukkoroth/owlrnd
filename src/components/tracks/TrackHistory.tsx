@@ -41,7 +41,7 @@ export function TrackHistory({ audience, studentId, track, exams, strengths, tim
           <caption className="sr-only">Exams in {track.name}, newest first</caption>
           <thead className="border-b border-line text-[13px] uppercase tracking-wider text-ink-muted">
             <tr>
-              {["Exam", "Date", "Score", "Strong", "Needs work", "Marked paper"].map((h) => (
+              {["Exam", "Date", "Score", "Right", "Missed", "Marked paper"].map((h) => (
                 <th key={h} scope="col" className="whitespace-nowrap px-5 py-3 font-semibold">
                   {h}
                 </th>

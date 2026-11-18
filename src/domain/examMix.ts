@@ -86,6 +86,9 @@ export function inSentence(name: string): string {
 const list = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
 
 /** The "Your next exam in this track" sentence on 4.1e. */
+/** Topics named one by one in the next-exam sentence; more than this are counted. */
+const NAME_AT_MOST = 4;
+
 export function nextExamFocus(examNumber: number, plan: MixSlot[], topics: MixTopic[]): string {
   // In the track's topic order, not the paper's (which puts multiple choice first).
   const names = (focus: Focus) => topics.filter((t) => plan.some((s) => s.focus === focus && s.topicKey === t.key)).map((t) => t.name);
@@ -96,7 +99,9 @@ export function nextExamFocus(examNumber: number, plan: MixSlot[], topics: MixTo
   const revision = nRevision ? ` It also has ${nRevision} revision ${nRevision === 1 ? "question" : "questions"} on earlier topics.` : "";
   if (plan.length && plan.every((s) => s.harder)) return `Exam ${examNumber} will have harder questions on all your topics.`;
   if (weak.length) {
-    return `Exam ${examNumber} will have more questions on ${list(weak.map(inSentence))}${untested.length ? `, some on ${list(untested.map(inSentence))}` : ""}${hasStrong ? ", with a few repeats from your strong topics" : ""}.${revision}`;
+    // A long list of names reads as "everything" (owner, 2026-11-18): past a few, say how many instead.
+    const some = (names: string[], what: string) => (names.length > NAME_AT_MOST ? `the ${names.length} ${what}` : list(names.map(inSentence)));
+    return `Exam ${examNumber} will have more questions on ${some(weak, "topics that aren't strong yet")}${untested.length ? `, some on ${some(untested, "topics you haven't tried yet")}` : ""}${hasStrong ? ", with a few repeats from your strong topics" : ""}.${revision}`;
   }
   if (!untested.length) return `Exam ${examNumber} will have a mix of your strong topics.${revision}`;
   return `Exam ${examNumber} will focus on ${list(untested.map(inSentence))}${hasStrong ? ", with a few repeats from your strong topics" : ""}.${revision}`;
