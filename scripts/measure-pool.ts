@@ -45,7 +45,7 @@ async function run(label: string, bank: boolean, plan: PlanSlot[]) {
 async function main() {
   await run("One exam (10, as today)", false, firstExamPlan(["T1", "T2", "T3"]));
   const mix = topics.map((t) => ({ key: t.key, name: t.name, strength: "not_tested" as const }));
-  await run("Pool batch (20)", true, poolWritePlan(mix, [], [], 20));
+  await run("Pool batch (20)", true, poolWritePlan(mix, [], [], new Map()));
   process.exit(0);
 }
 main().catch((e) => {

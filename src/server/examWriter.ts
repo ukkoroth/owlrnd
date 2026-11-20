@@ -15,7 +15,7 @@ import { attachments, examQuestions, exams, flashcards, marks, questions, topics
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
 import { pickFromBank } from "@/domain/sampleBank";
-import { awaitingRewording, canFill, needsTopUp, poolCandidates } from "@/domain/questionPool";
+import { awaitingRewording, canFill, needsTopUp, poolCandidates, shortfallPlan } from "@/domain/questionPool";
 import { loadPool, writePool } from "./questionPool";
 import { sampleTrack } from "@/content/samples";
 
@@ -155,16 +155,22 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       let { pool, recentGroups } = await loadPool(trackId);
       if (pool.length) {
         let candidates = poolCandidates(pool, recentGroups, topicKeys);
-        if (!canFill(plan, candidates, topicKeys)) {
+        // Short on a weak topic but with enough questions overall: make the exam now (the picker fills the gap from
+        // other topics) and top up in the background. Writing first kept the learner waiting over a minute (2026-11-20).
+        const fillable = canFill(plan, candidates, topicKeys);
+        if (!fillable && candidates.length >= plan.length) topUp = true;
+        else if (!fillable) {
           if (await holdIfBlocked()) return;
-          await writePool(trackId, Math.max(plan.length, rules.pool.examsAhead * rules.exam.maxQuestions));
+          // Only what this exam lacks, so the wait is short; the background top-up writes the rest.
+          await writePool(trackId, shortfallPlan(plan, candidates, topicKeys));
+          topUp = true;
           ({ pool, recentGroups } = await loadPool(trackId));
           candidates = poolCandidates(pool, recentGroups, topicKeys);
         }
         if (candidates.length < plan.length) throw new Error(`write_exam: the pool can't fill the exam for track ${trackId}`);
         fromPool = pickFromBank(plan, candidates, topicKeys, []);
         const picked = new Set(fromPool.map((q) => q.sourceId));
-        topUp = needsTopUp(candidates.filter((c) => !picked.has(c.id)).length, awaitingRewording(pool).length);
+        topUp ||= needsTopUp(candidates.filter((c) => !picked.has(c.id)).length, awaitingRewording(pool).length);
       } else {
         // The track's first exam: written on its own, as before.
         if (await holdIfBlocked()) return;

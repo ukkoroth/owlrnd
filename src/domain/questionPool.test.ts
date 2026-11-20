@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rules } from "@/config/rules";
-import { awaitingRewording, canFill, needsTopUp, poolCandidates, poolWritePlan, type PoolRow } from "./questionPool";
+import { awaitingRewording, canFill, needsTopUp, poolCandidates, poolWritePlan, shortfallPlan, type PoolRow } from "./questionPool";
 import { pickFromBank } from "./sampleBank";
 
 const keys = ["T1", "T2", "T3"];
@@ -60,22 +60,63 @@ describe("poolWritePlan", () => {
     { key: "T2", name: "b", strength: "strong" as const },
     { key: "T3", name: "c", strength: "not_tested" as const },
   ];
-  it("asks for new wordings of misses first, then a mix weighted to weak topics, every topic at least the minimum", () => {
-    const plan = poolWritePlan(active, [], [{ topicKey: "T2", type: "short", prompt: "Missed one" }], 20);
-    expect(plan[0]).toEqual({ topicKey: "T2", type: "short", retryOf: "Missed one" });
-    expect(plan).toHaveLength(rules.pool.batchMax);
-    const count = (k: string) => plan.slice(1).filter((s) => s.topicKey === k).length;
-    expect(count("T1")).toBeGreaterThan(count("T3"));
-    expect(count("T3")).toBeGreaterThan(count("T2"));
-    for (const k of keys) expect(count(k)).toBeGreaterThanOrEqual(rules.pool.minPerTopic);
-    const fresh = plan.slice(1);
-    expect(fresh.filter((s) => s.type === "multiple_choice").length).toBeGreaterThanOrEqual(fresh.length / 2);
+  const S = rules.pool.stockPerTopic;
+  const count = (plan: { topicKey: string; retryOf?: string }[], k: string) => plan.filter((s) => s.topicKey === k && !s.retryOf).length;
+
+  it("an empty pool: every topic up to its stock, weak topics most, then up to two exams' worth", () => {
+    const plan = poolWritePlan(active, [], [], new Map());
+    expect(plan).toHaveLength(rules.pool.examsAhead * rules.exam.maxQuestions);
+    expect(count(plan, "T1")).toBeGreaterThanOrEqual(S.needs_work);
+    expect(count(plan, "T3")).toBeGreaterThanOrEqual(S.not_tested);
+    expect(count(plan, "T2")).toBeGreaterThanOrEqual(S.strong);
+    expect(count(plan, "T1")).toBeGreaterThan(count(plan, "T2"));
+    expect(plan.filter((s) => s.type === "multiple_choice").length).toBeGreaterThanOrEqual(plan.length / 2);
   });
-  it("keeps rewordings to half the batch", () => {
+
+  it("a well-stocked pool with misses waiting: only the new wordings, no new questions (2026-11-20)", () => {
+    const misses = Array.from({ length: 5 }, (_, i) => ({ topicKey: "T1", type: "short" as const, prompt: `m${i}` }));
+    const plan = poolWritePlan(active, [], misses, new Map([["T1", 40], ["T2", 40], ["T3", 40]]));
+    expect(plan).toHaveLength(5);
+    expect(plan.every((s) => s.retryOf)).toBe(true);
+  });
+
+  it("well stocked overall but short on the weak topic: just enough for that topic", () => {
+    const plan = poolWritePlan(active, [], [], new Map([["T1", 1], ["T2", 30], ["T3", 30]]));
+    expect(plan.map((s) => s.topicKey)).toEqual(Array(S.needs_work - 1).fill("T1"));
+  });
+
+  it("nothing lacking and nothing to reword: no AI call", () => {
+    expect(poolWritePlan(active, [], [], new Map([["T1", 10], ["T2", 10], ["T3", 10]]))).toEqual([]);
+  });
+
+  it("asks for new wordings first, and keeps them to half the batch", () => {
     const many = Array.from({ length: 30 }, (_, i) => ({ topicKey: "T1", type: "short" as const, prompt: `m${i}` }));
-    const plan = poolWritePlan(active, [], many, 20);
+    const plan = poolWritePlan(active, [], many, new Map());
+    expect(plan.slice(0, rules.pool.batchMax / 2).every((s) => s.retryOf)).toBe(true);
     expect(plan.filter((s) => s.retryOf)).toHaveLength(rules.pool.batchMax / 2);
     expect(plan).toHaveLength(rules.pool.batchMax);
+  });
+});
+
+describe("shortfallPlan (an exam waiting on the pool)", () => {
+  const c = (topic: number) => ({ id: `c${++n}`, topic, type: "multiple_choice" as const, prompt: `p${n}`, explanation: "x", difficulty: 2, options: ["a", "b", "c", "d"], correctIndex: 0 });
+  const plan = [...Array(5).fill("T1"), ...Array(3).fill("T2"), ...Array(2).fill("T3")].map((k) => ({ topicKey: k, type: "multiple_choice" as const }));
+
+  it("writes only what each planned topic lacks", () => {
+    const have = [c(0), ...Array.from({ length: 6 }, () => c(1)), ...Array.from({ length: 6 }, () => c(2))];
+    const out = shortfallPlan(plan, have, keys);
+    expect(out.map((s) => s.topicKey)).toEqual(["T1", "T1", "T1", "T1"]);
+  });
+
+  it("and enough for a whole paper when the pool is nearly empty", () => {
+    const out = shortfallPlan(plan, [c(0)], keys);
+    expect(out.length + 1).toBeGreaterThanOrEqual(plan.length);
+    expect(out.length).toBeLessThanOrEqual(plan.length);
+  });
+
+  it("nothing when the pool can already fill the plan exactly", () => {
+    const have = [...Array.from({ length: 5 }, () => c(0)), ...Array.from({ length: 3 }, () => c(1)), ...Array.from({ length: 2 }, () => c(2))];
+    expect(shortfallPlan(plan, have, keys)).toEqual([]);
   });
 });
 

@@ -78,7 +78,7 @@ export function TrackCard({
           </span>
         </div>
       )}
-      {preparing && t.scores.length > 0 && <Preparing className="mt-4" label={`Exam ${t.examsTaken + 1} being prepared…`} hold={t.nextExamHold} viewer="holder" />}
+      {preparing && t.scores.length > 0 && <Preparing className="mt-4" label={`Exam ${t.examsTaken + 1} being prepared…`} note="Usually ready within a minute." hold={t.nextExamHold} viewer="holder" />}
       <div className={`mt-4 flex min-h-[66px] flex-col items-center justify-center gap-2 rounded border border-dashed border-line-input px-4 py-3 text-center text-[15px] text-ink-muted ${t.scores.length ? "hidden" : ""}`}>
         {preparing ? (
           <Preparing

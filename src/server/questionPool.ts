@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { holderRef } from "@/domain/accounts";
 import { formatClass } from "@/domain/identity";
 import { awaitingRewording, poolWritePlan, type PoolRow } from "@/domain/questionPool";
+import type { PlanSlot } from "@/domain/examPlan";
 import { rules } from "@/config/rules";
 import { ai } from "./ai";
 import { allowanceOf, budgetLeft, withAiContext } from "./ai/usage";
@@ -69,11 +70,12 @@ export async function loadPool(trackId: string) {
 export type PoolWriteResult = { written: number } | { skipped: string } | { postponed: "budget" | "allowance" | "consent" };
 
 /**
- * One AI call adds to the pool: new wordings of missed questions waiting for one, then about `size` new questions
- * spread by the exam mix (domain/questionPool.poolWritePlan). The caller has checked the limits when it must (an
- * exam waiting on it); the background job checks them itself.
+ * One AI call adds to the pool. A background top-up writes new wordings of missed questions waiting for one, then
+ * only the new questions the stock lacks (domain/questionPool.poolWritePlan). With `forExam`, an exam is waiting:
+ * exactly those slots are written (domain/questionPool.shortfallPlan). The caller has checked the limits when it must
+ * (an exam waiting on it); the background job checks them itself.
  */
-export async function writePool(trackId: string, size: number = rules.pool.examsAhead * rules.exam.maxQuestions): Promise<PoolWriteResult> {
+export async function writePool(trackId: string, forExam?: PlanSlot[]): Promise<PoolWriteResult> {
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
   if (!track || track.status === "draft" || track.status === "archived" || track.sampleKey || track.questionMode === "fresh") return { skipped: "no pool for this track" };
   const learner = await loadLearner(track.studentId);
@@ -87,13 +89,17 @@ export async function writePool(trackId: string, size: number = rules.pool.exams
   const mix = keyed.map((t) => ({ key: t.key, name: t.name, strength: strengths.find((s) => s.id === t.id)?.strength ?? ("not_tested" as const), revision: t.revisionOnly }));
 
   const { pool } = await loadPool(trackId);
-  const waiting = awaitingRewording(pool);
-  const plan = poolWritePlan(
-    mix.filter((t) => !t.revision),
-    mix.filter((t) => t.revision),
-    waiting.map((w) => ({ topicKey: w.topicKey, type: w.type, prompt: w.prompt })),
-    size,
-  );
+  const waiting = forExam ? [] : awaitingRewording(pool);
+  const stock = new Map<string, number>();
+  for (const r of pool) if (!r.used && r.topicKey) stock.set(r.topicKey, (stock.get(r.topicKey) ?? 0) + 1);
+  const plan =
+    forExam ??
+    poolWritePlan(
+      mix.filter((t) => !t.revision),
+      mix.filter((t) => t.revision),
+      waiting.map((w) => ({ topicKey: w.topicKey, type: w.type, prompt: w.prompt })),
+      stock,
+    );
   if (!plan.length) return { written: 0 };
 
   const avoid = (await db.select({ prompt: questions.prompt }).from(questions).where(eq(questions.trackId, trackId)).orderBy(desc(questions.createdAt)).limit(rules.pool.avoidRecent)).map((r) => r.prompt);

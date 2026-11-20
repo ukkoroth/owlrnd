@@ -220,7 +220,7 @@ function Today({
               </div>
               <p className="mt-4 text-sm text-ink-muted">Exam {t.examsTaken + 1} in this track</p>
               <h3 className="text-[21px] leading-snug">{t.name}</h3>
-              <Preparing className="mt-auto pt-5" label="Exam being prepared" note="It appears here by itself when it's ready." hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
+              <Preparing className="mt-auto pt-5" label="Exam being prepared" note="Usually ready within a minute. It appears here by itself." hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
             </li>
           ))}
       </ol>

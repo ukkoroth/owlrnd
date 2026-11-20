@@ -141,7 +141,8 @@ describe("daily limits per family", () => {
     const res = await setAllowanceLimit(parent.email, 50);
     expect(res?.resumed).toBe(1);
     const [due] = await db.select().from(jobs).where(eq(jobs.id, retry!.id));
-    expect(due!.runAt.getTime()).toBeLessThanOrEqual(Date.now());
+    // The database sets it with its own now(); allow for the database and app clocks being a moment apart.
+    expect(due!.runAt.getTime()).toBeLessThanOrEqual(Date.now() + 5_000);
 
     await writeExamJob({ trackId }, { attempt: 1, isLastAttempt: false });
     const [written] = await db.select().from(tracks).where(eq(tracks.id, trackId));

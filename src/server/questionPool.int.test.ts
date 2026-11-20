@@ -3,14 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, learnerActor, makeParent, makeStudent, makeTrackWithExam, parentActor } from "../../tests/db-helpers";
 import { rules } from "@/config/rules";
 import { db } from "./db";
-import { examQuestions, exams, jobs, marks, parents, questions, tracks } from "./db/schema";
-import { writeExamJob } from "./examWriter";
+import { examQuestions, exams, jobs, marks, parents, questions, topics, tracks } from "./db/schema";
+import { planNextExam, writeExamJob } from "./examWriter";
 import { getPaper, saveAnswer, startExam, submitExam } from "./exams";
 import { markExamJob } from "./marking";
 import { loadPool, unusedCount, writePoolJob } from "./questionPool";
 import { archiveTrack, setQuestionMode } from "./trackUpdates";
 import { createSampleTrack } from "./tracks";
-import { poolCandidates } from "@/domain/questionPool";
+import { canFill, poolCandidates } from "@/domain/questionPool";
 
 // Question pool (roadmap 23, owner 2026-11-18). Fake AI.
 beforeAll(() => {
@@ -49,17 +49,20 @@ async function freshTrack() {
 }
 
 describe("question pool (roadmap 23)", () => {
-  it("writes exam 1 on its own; once it's marked, one batch fills the pool and later exams are picked with no writing", async () => {
+  it("writes exam 1 on its own; once it's marked, exam 2 is written into the pool, a top-up stocks it, and later exams are picked with no writing", async () => {
     const { student, trackId, examId } = await freshTrack();
     expect(await questionRows(trackId)).toBe(10); // exam 1 only
     expect(await poolJobsFor(trackId)).toHaveLength(0); // nothing written ahead for a learner who may not come back
 
     await takeAndMark(student.id, examId);
-    await writeExamJob({ trackId }, ctx); // exam 2 asks for the first pool batch
+    await writeExamJob({ trackId }, ctx); // exam 2: only its own questions while the learner waits
     const second = await latestExam(trackId);
     expect(second).toMatchObject({ number: 2, status: "ready" });
-    expect(await questionRows(trackId)).toBe(10 + rules.pool.examsAhead * rules.exam.maxQuestions);
-    expect(await unusedCount(trackId)).toBe(rules.pool.examsAhead * rules.exam.maxQuestions - 10);
+    expect(await questionRows(trackId)).toBe(20);
+    expect(await poolJobsFor(trackId)).not.toHaveLength(0);
+    await writePoolJob({ trackId }); // the background top-up: about two exams' worth in stock
+    expect(await unusedCount(trackId)).toBe(rules.pool.examsAhead * rules.exam.maxQuestions);
+    await db.delete(jobs).where(and(eq(jobs.type, "write_pool"), eq(jobs.status, "queued")));
 
     await takeAndMark(student.id, second.id);
     const before = await questionRows(trackId);
@@ -103,6 +106,37 @@ describe("question pool (roadmap 23)", () => {
     const nowOffered = new Set(poolCandidates(later.pool, later.recentGroups, later.topicKeys).map((c) => c.id));
     const usedOrOffered = variants.filter((v) => nowOffered.has(v.id) || later.pool.find((p) => p.id === v.id)?.used);
     expect(usedOrOffered.length).toBe(variants.length);
+  });
+
+  it("makes the exam at once when a topic is short but the pool has enough overall, and tops up in the background", async () => {
+    const { student, trackId, examId } = await freshTrack();
+    await takeAndMark(student.id, examId, 5);
+    await writeExamJob({ trackId }, ctx);
+    await writePoolJob({ trackId });
+    await takeAndMark(student.id, (await latestExam(trackId)).id, 5);
+
+    // Every topic but the first runs out of unused questions; the first keeps enough for a whole paper.
+    const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(topics.position);
+    const unusedOn = (topicId: string) =>
+      db.select({ id: questions.id }).from(questions).where(and(eq(questions.trackId, trackId), eq(questions.topicId, topicId), sql`not exists (select 1 from ${examQuestions} eq where eq.question_id = ${questions.id})`));
+    for (const t of tps.slice(1)) for (const q of await unusedOn(t.id)) await db.delete(questions).where(eq(questions.id, q.id));
+    const firstTopic = await unusedOn(tps[0]!.id);
+    for (let i = 0; firstTopic.length + i < 10; i++) {
+      const [copy] = await db.select().from(questions).where(eq(questions.id, firstTopic[0]!.id));
+      await db.insert(questions).values({ ...copy!, id: undefined, createdAt: undefined, prompt: `${copy!.prompt} (${i})` });
+    }
+    const keyed = tps.map((t, i) => ({ key: `T${i + 1}`, id: t.id, name: t.name }));
+    const { plan } = await planNextExam(trackId, student.id, keyed);
+    const { pool, recentGroups, topicKeys } = await loadPool(trackId);
+    const candidates = poolCandidates(pool, recentGroups, topicKeys);
+    expect(candidates.length).toBeGreaterThanOrEqual(plan.length);
+    expect(canFill(plan, candidates, topicKeys)).toBe(false);
+
+    const before = await questionRows(trackId);
+    await writeExamJob({ trackId }, ctx);
+    expect(await latestExam(trackId)).toMatchObject({ number: 3, status: "ready" });
+    expect(await questionRows(trackId)).toBe(before); // nothing written while the learner waits
+    expect(await poolJobsFor(trackId)).not.toHaveLength(0); // the short topic is written in the background
   });
 
   it("keeps making exams from the pool when the AI allowance is used up, and holds only when the pool runs dry", async () => {
@@ -151,8 +185,9 @@ describe("question pool (roadmap 23)", () => {
     expect(await setQuestionMode(parentActor(parent.id), trackId, "pool")).toBe(true);
     await takeAndMark(student.id, (await latestExam(trackId)).id);
     await writeExamJob({ trackId }, ctx);
-    expect(await questionRows(trackId)).toBeGreaterThan(20 + 10); // a batch was written, exam 3 picked from it
+    expect(await questionRows(trackId)).toBe(20 + 10); // exam 3's questions written into the pool and picked from it
     expect((await latestExam(trackId)).number).toBe(3);
+    expect(await poolJobsFor(trackId)).not.toHaveLength(0); // the rest of the stock comes in the background
   });
 
   it("only whoever controls the track can change it, and never on a sample track", async () => {

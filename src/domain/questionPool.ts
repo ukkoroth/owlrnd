@@ -76,31 +76,61 @@ export function canFill(plan: PlanSlot[], candidates: PoolQuestion[], topicKeys:
 export const needsTopUp = (unusedLeft: number, awaiting: number) => unusedLeft < rules.pool.lowWater || awaiting >= rules.pool.rewordAfterMisses;
 
 /**
- * What one pool write asks for, at most `rules.pool.batchMax` questions: first a new wording of each missed question
- * waiting for one (a "retry" slot, up to half the batch), then new questions spread by the exam mix (rules §4: weak
- * topics most), with every active topic getting at least `rules.pool.minPerTopic`. At least half multiple choice.
- * `size`: how many new questions are wanted, before the rewordings.
+ * What a background top-up asks for, at most `rules.pool.batchMax` questions: first a new wording of each missed
+ * question waiting for one (a "retry" slot, up to half the batch), then only the new questions the stock lacks:
+ * each topic up to `rules.pool.stockPerTopic` for its strength (weak topics first), then the whole pool up to
+ * `rules.pool.examsAhead` exams, spread by the exam mix (rules §4). At least half multiple choice.
+ * `stock`: unused questions per topic key now. Nothing lacking and nothing to reword: an empty plan, so no AI call.
  */
-export function poolWritePlan(active: MixTopic[], revision: MixTopic[], rewords: { topicKey: string; type: QuestionType; prompt: string }[], size: number): PlanSlot[] {
+export function poolWritePlan(active: MixTopic[], revision: MixTopic[], rewords: { topicKey: string; type: QuestionType; prompt: string }[], stock: Map<string, number>): PlanSlot[] {
   const max = rules.pool.batchMax;
   const retries: PlanSlot[] = rewords.slice(0, Math.floor(max / 2)).map((r) => ({ topicKey: r.topicKey, type: r.type, retryOf: r.prompt }));
-  const room = Math.max(0, Math.min(size, max - retries.length));
-  if (!room || (!active.length && !revision.length)) return retries;
+  const room = max - retries.length;
+  const have = new Map(stock);
+  for (const r of retries) have.set(r.topicKey, (have.get(r.topicKey) ?? 0) + 1);
 
-  const fresh: PlanSlot[] = planWithRevision(active, revision, room).map((s) => ({ topicKey: s.topicKey, type: s.type, ...(s.harder ? { harder: true } : {}) }));
-  // Every active topic gets its minimum, taken from the topic with the most slots.
-  const min = Math.min(rules.pool.minPerTopic, Math.floor(room / Math.max(1, active.length)));
-  for (const t of active) {
-    while (fresh.filter((s) => s.topicKey === t.key).length < min) {
-      const counts = new Map<string, number>();
-      for (const s of fresh) counts.set(s.topicKey, (counts.get(s.topicKey) ?? 0) + 1);
-      const [biggest] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
-      if (!biggest || (counts.get(biggest) ?? 0) <= min) break;
-      const i = fresh.findIndex((s) => s.topicKey === biggest);
-      fresh[i] = { topicKey: t.key, type: fresh[i]!.type };
-    }
+  // Topics below their stock, weakest first.
+  const target = (t: MixTopic, isRevision: boolean) => (isRevision ? rules.pool.stockPerTopic.revision : rules.pool.stockPerTopic[t.strength]);
+  const rank = { needs_work: 0, not_tested: 1, strong: 2 } as const;
+  const byNeed = [...active.map((t) => ({ t, rev: false })), ...revision.map((t) => ({ t, rev: true }))].sort(
+    (a, b) => Number(a.rev) - Number(b.rev) || rank[a.t.strength] - rank[b.t.strength],
+  );
+  const fresh: PlanSlot[] = [];
+  for (const { t, rev } of byNeed) {
+    const lack = Math.max(0, target(t, rev) - (have.get(t.key) ?? 0));
+    for (let i = 0; i < lack && fresh.length < room; i++) fresh.push({ topicKey: t.key, type: "multiple_choice" });
+  }
+
+  // Then the whole pool up to `examsAhead` exams' worth, by the usual mix.
+  const total = [...have.values()].reduce((a, b) => a + b, 0) + fresh.length;
+  const more = Math.min(room - fresh.length, Math.max(0, rules.pool.examsAhead * rules.exam.maxQuestions - total));
+  if (more > 0 && (active.length || revision.length)) {
+    for (const s of planWithRevision(active, revision, more)) fresh.push({ topicKey: s.topicKey, type: s.type, ...(s.harder ? { harder: true } : {}) });
   }
   const types = assignTypes(fresh.length);
   fresh.forEach((s, i) => (s.type = types[i]!));
   return [...retries, ...fresh];
+}
+
+/**
+ * When an exam can't be made from the pool and the learner is waiting: only the questions this exam's plan lacks
+ * (each planned topic up to its slots, then up to the paper's length), so the wait is as short as it can be. The
+ * background top-up writes the rest.
+ */
+export function shortfallPlan(plan: PlanSlot[], candidates: PoolQuestion[], topicKeys: string[]): PlanSlot[] {
+  const want = new Map<string, PlanSlot[]>();
+  for (const s of plan) want.set(s.topicKey, [...(want.get(s.topicKey) ?? []), s]);
+  const lacking: PlanSlot[] = [];
+  for (const [key, slots] of want) {
+    const have = candidates.filter((c) => topicKeys[c.topic] === key).length;
+    lacking.push(...slots.slice(have).map((s) => ({ topicKey: s.topicKey, type: s.type, ...(s.harder ? { harder: true } : {}) })));
+  }
+  // Too few overall even so (the other topics' spares are short too): more of the plan's own topics.
+  for (let i = 0; candidates.length + lacking.length < plan.length; i++) {
+    const s = plan[i % plan.length]!;
+    lacking.push({ topicKey: s.topicKey, type: s.type });
+  }
+  const types = assignTypes(lacking.length);
+  lacking.forEach((s, i) => (s.type = types[i]!));
+  return lacking;
 }
