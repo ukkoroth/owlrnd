@@ -142,7 +142,9 @@ export function ChatThread({ greeting, messages, onSend, placeholder, starters, 
             placeholder={placeholder}
             className="w-full resize-y rounded bg-page/60 px-4 py-3 text-[16px] placeholder:text-ink-muted focus:outline-none"
           />
-          {files.length > 0 && (
+          {/* While a turn is being read, its files show in the pending message above, not here,
+              and no more can be added; they come back only if the turn fails. */}
+          {files.length > 0 && !sending && (
             <ul className="mt-3 flex flex-wrap gap-2" aria-label="Files to send">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`} className="flex items-center gap-1 rounded border border-line bg-pale-2 py-1 pl-3 pr-1 text-sm">
@@ -155,8 +157,12 @@ export function ChatThread({ greeting, messages, onSend, placeholder, starters, 
             </ul>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <FileButton label="Attach file" accept="image/*,application/pdf" onFiles={addFiles} icon={<PaperclipIcon />} />
-            <FileButton label="Take photo" accept="image/*" capture onFiles={addFiles} icon={<CameraIcon />} />
+            {!sending && (
+              <>
+                <FileButton label="Attach file" accept="image/*,application/pdf" onFiles={addFiles} icon={<PaperclipIcon />} />
+                <FileButton label="Take photo" accept="image/*" capture onFiles={addFiles} icon={<CameraIcon />} />
+              </>
+            )}
             <button type="submit" className="btn-primary ml-auto px-8" disabled={sending || (!text.trim() && !files.length)}>
               Send
             </button>

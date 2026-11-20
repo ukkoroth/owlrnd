@@ -30,6 +30,9 @@ test("M3 done-when: a parent creates a track from a description and photos, agre
     await expect(page.getByRole("list", { name: "Files to send" }).getByRole("listitem")).toHaveCount(2);
     await chatSend(page, "Physics unit test on 2099-11-20. Chapter 12: Ohm's law, resistors in series and resistors in parallel.");
     await expect(page.getByText("owlrnd AI is reading…")).toBeVisible();
+    // While the AI reads, no more files can be added and the sent files leave the message box.
+    await expect(page.getByRole("button", { name: "Attach file" })).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Files to send" })).toHaveCount(0);
     await expect(page.getByText(/I can create a track called "Physics: Ohm's law"/)).toBeVisible();
     await expect(page.getByRole("list", { name: "Attached" })).toContainText("Page 141");
     await expect(preview(page)).toContainText("Physics: Ohm's law");
