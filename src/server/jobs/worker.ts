@@ -1,4 +1,5 @@
 import "server-only";
+import { rules } from "@/config/rules";
 import { claimNext, markDone, markFailed, requeueStale } from "./queue";
 
 export type JobContext = { attempt: number; isLastAttempt: boolean };
@@ -38,8 +39,12 @@ export function startWorker({ pollMs = 1_000, concurrency = 1 } = {}) {
     const handler = handlers.get(job.type);
     try {
       if (!handler) throw new Error(`No handler registered for job type "${job.type}"`);
+      const started = Date.now();
       await handler(job.payload, { attempt: job.attempts, isLastAttempt: job.attempts >= job.max_attempts });
       await markDone(job.id);
+      // A slow job may mean someone waited on it (an exam "being prepared"): leave a trace in the logs.
+      const secs = (Date.now() - started) / 1000;
+      if (secs > rules.jobs.slowLogSeconds) console.warn(`[owlrnd jobs] ${job.type} ${job.id} took ${secs.toFixed(0)} s`, JSON.stringify(job.payload));
     } catch (err) {
       console.error(`[owlrnd jobs] ${job.type} ${job.id} failed (attempt ${job.attempts})`, err);
       await markFailed(job.id, job.attempts, job.max_attempts, err);
@@ -61,12 +66,18 @@ export function startWorker({ pollMs = 1_000, concurrency = 1 } = {}) {
     }
   };
 
-  void requeueStale().catch((err) => console.error("[owlrnd jobs] requeueStale failed", err));
+  // Every job "running" now was left by the process before this one; later sweeps catch a job that hung.
+  void requeueStale(0).catch((err) => console.error("[owlrnd jobs] requeueStale failed", err));
+  const sweep = setInterval(() => {
+    void requeueStale(rules.jobs.staleMinutes).catch((err) => console.error("[owlrnd jobs] requeueStale failed", err));
+  }, rules.jobs.sweepEveryMinutes * 60_000);
+  sweep.unref?.();
   for (let n = 0; n < Math.max(1, concurrency); n++) void slot(n);
 
   globalForWorker.owlrndWorker = {
     stop() {
       stopped = true;
+      clearInterval(sweep);
       for (const wake of [...sleepers]) wake();
       globalForWorker.owlrndWorker = undefined;
     },

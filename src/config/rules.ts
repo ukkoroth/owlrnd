@@ -97,20 +97,41 @@ export const rules = {
     pauseAfterDays: 30,
   },
 
+  /** Background jobs (exam writing, marking, flashcards, pool top-ups). */
+  jobs: {
+    /**
+     * A job still "running" after this long is taken to have hung and goes back to the queue. Must stay above the
+     * longest a job can take: an AI call is cut off after `aiCallTimeoutMinutes` and tried at most twice, and a
+     * writer retries a bad reply once, so about 4 x 8 = 32 minutes.
+     */
+    staleMinutes: 45,
+    /** How often the worker looks for hung jobs. */
+    sweepEveryMinutes: 5,
+    /** One AI request is cut off after this long (the SDK's own default is 10 minutes, retried twice). */
+    aiCallTimeoutMinutes: 8,
+    /** A job that takes longer than this is logged as slow. */
+    slowLogSeconds: 30,
+  },
+
   /**
    * Question pool (roadmap 23, owner 2026-11-18): questions are written in batches and each exam is picked from the
    * track's unused ones with the usual adaptive plan, so exams are ready at once and cost less. Missed questions come
    * back after `rules.exam.repeatWindowExams` exams in new words (written in the next top-up), never word for word.
    */
   pool: {
-    /** Each pool write covers about this many exams. */
+    /** A top-up brings the unused questions up to about this many exams' worth, and no further. */
     examsAhead: 2,
     /** At most this many questions in one AI call. */
     batchMax: 20,
     /** Top up in the background when fewer unused questions than this remain. */
     lowWater: 10,
-    /** Every active topic gets at least this many in a write. */
-    minPerTopic: 2,
+    /**
+     * Unused questions each topic keeps in stock, by strength, so the next exam's plan can be met without writing
+     * while the learner waits (2026-11-20: exam 15 waited 72 s with 150 unused questions, none on the weak topic).
+     * A top-up writes only what brings topics up to these and the pool up to `examsAhead`; before, every top-up
+     * wrote a full batch and unused questions piled up.
+     */
+    stockPerTopic: { needs_work: 5, not_tested: 3, strong: 2, revision: 1 },
     /** Also top up when this many missed questions are waiting for a new wording. */
     rewordAfterMisses: 5,
     /** The track's latest prompts the writer is told not to repeat. */

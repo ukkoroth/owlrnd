@@ -48,8 +48,13 @@ export async function markFailed(id: string, attempts: number, maxAttempts: numb
   }
 }
 
-/** Jobs left "running" by a crashed or restarted process go back to the queue. */
-export async function requeueStale(olderThanMinutes = 10) {
+/**
+ * Jobs left "running" by a crashed or restarted process go back to the queue. At start-up the worker passes 0: the
+ * app runs as one container, so every "running" job then belongs to the process that just stopped (a deploy that
+ * landed mid-job used to leave it running for ever, and the learner's next exam "being prepared" with it). While
+ * running, it sweeps with `rules.jobs.staleMinutes`, longer than any job can take, for a job that hung.
+ */
+export async function requeueStale(olderThanMinutes: number) {
   await db
     .update(jobs)
     .set({ status: "queued", lockedAt: null })

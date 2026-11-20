@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { BetaContentBlockParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { z } from "zod";
+import { rules } from "@/config/rules";
 import { env } from "../env";
 import { recordUsage } from "./usage";
 
@@ -10,7 +11,8 @@ let client: Anthropic | undefined;
 
 /** Uses ANTHROPIC_API_KEY, or an `ant auth login` profile when the key is unset. */
 export function anthropic(): Anthropic {
-  client ??= new Anthropic();
+  // A request that hangs is cut off and tried once more, so a job can't sit "running" for half an hour per call.
+  client ??= new Anthropic({ timeout: rules.jobs.aiCallTimeoutMinutes * 60_000, maxRetries: 1 });
   return client;
 }
 

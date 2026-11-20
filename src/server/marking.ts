@@ -138,9 +138,10 @@ export async function markExamJob(payload: unknown) {
         nextExamHold: null,
       })
       .where(eq(tracks.id, exam.trackId));
+    // Queued in the same transaction: a restart right after marking can't leave the track "writing" with no job.
+    if (writeNext) await enqueue("write_exam", { trackId: exam.trackId }, { tx });
   });
 
-  if (writeNext) await enqueue("write_exam", { trackId: exam.trackId });
   // 0.3: questions missed on topics that need work become flashcards.
   if (markedNow) await enqueue("write_flashcards", { trackId: exam.trackId, reason: "missed", examId });
 }

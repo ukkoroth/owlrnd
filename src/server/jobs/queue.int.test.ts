@@ -2,7 +2,7 @@ import { inArray, like, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { claimNext, enqueue, jobStatus, markDone, markFailed } from "./queue";
+import { claimNext, enqueue, jobStatus, markDone, markFailed, requeueStale } from "./queue";
 
 // Runs against the docker Postgres (npm run db:up). Uses its own job type and cleans up after itself.
 const TYPE = `test-${process.pid}`;
@@ -46,5 +46,19 @@ describe("job queue", () => {
     expect(second?.attempts).toBe(2);
     await markFailed(id, second!.attempts, second!.max_attempts, new Error("boom again"));
     expect(await jobStatus(id)).toEqual({ status: "failed", lastError: "Error: boom again" });
+  });
+
+  it("puts a job left running back in the queue: at start-up at once, later only once it has hung", async () => {
+    const id = await enqueue(TYPE, {});
+    await claimOurs();
+    // Claimed 2 minutes ago, e.g. by the container a deploy just replaced.
+    await db.update(jobs).set({ lockedAt: sql`now() - interval '2 minutes'` }).where(inArray(jobs.id, [id]));
+    await requeueStale(45);
+    expect((await jobStatus(id))?.status).toBe("running");
+    await requeueStale(0);
+    expect((await jobStatus(id))?.status).toBe("queued");
+    const again = await claimOurs();
+    expect(again).toMatchObject({ id, attempts: 2 });
+    await markDone(id);
   });
 });
