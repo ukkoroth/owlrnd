@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityGrid, dailyCounts, last7Days, scoreSummary, type ScoredExam } from "./activity";
+import { activityGrid, dailyCounts, dailyWritingTime, formatDuration, last7Days, scoreSummary, type ScoredExam } from "./activity";
 
 describe("activity (rules §9)", () => {
   it("counts exams per day in the student's time zone", () => {
@@ -70,5 +70,34 @@ describe("scoreSummary (3d overall chart)", () => {
     const five = [1, 2, 3, 4, 5].map((n) => exam(n, "a", 4));
     expect(scoreSummary(five).recentAverage).toBeNull();
     expect(scoreSummary([...five, exam(6, "a", 9)]).recentAverage).toBe(5);
+  });
+});
+
+describe("time spent writing exams (owner, 2026-11-22)", () => {
+  const span = (start: string, submit: string) => ({ startedAt: new Date(start), submittedAt: new Date(submit) });
+
+  it("sums start-to-submit per day of submission, in the student's time zone", () => {
+    const spans = [
+      span("2026-11-14T10:00:00Z", "2026-11-14T10:12:00Z"),
+      span("2026-11-14T20:00:00Z", "2026-11-14T20:08:30Z"),
+      { startedAt: null, submittedAt: new Date("2026-11-14T21:00:00Z") },
+    ];
+    expect([...dailyWritingTime(spans, "UTC")]).toEqual([["2026-11-14", 20.5 * 60_000]]);
+    expect([...dailyWritingTime(spans, "Asia/Kolkata")]).toEqual([
+      ["2026-11-14", 12 * 60_000],
+      ["2026-11-15", 8.5 * 60_000],
+    ]);
+  });
+
+  it("counts an exam that crosses midnight on the day it was submitted", () => {
+    expect([...dailyWritingTime([span("2026-11-14T23:55:00Z", "2026-11-15T00:05:00Z")], "UTC")]).toEqual([["2026-11-15", 10 * 60_000]]);
+  });
+
+  it("formats durations", () => {
+    expect(formatDuration(0)).toBe("under a minute");
+    expect(formatDuration(29_000)).toBe("under a minute");
+    expect(formatDuration(34 * 60_000)).toBe("34 min");
+    expect(formatDuration(60 * 60_000)).toBe("1 hr");
+    expect(formatDuration(65 * 60_000)).toBe("1 hr 5 min");
   });
 });

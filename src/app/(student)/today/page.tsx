@@ -10,7 +10,9 @@ import { TrackEdge, TrackTag } from "@/components/TrackTag";
 import { trackCompletion } from "@/domain/goals";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, recentExams, type RecentExam, type StudentTrack } from "@/server/exams";
-import { examScores, examTopicLines, practiceTimes } from "@/server/results";
+import { examScores, examSpans, examTopicLines, practiceTimes } from "@/server/results";
+import { dailyWritingTime, formatDuration } from "@/domain/activity";
+import { todayIn } from "@/domain/tracks";
 import { ExamScoresChart } from "@/components/charts/ExamScoresChart";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
 import { PractiseButton } from "@/components/flashcards/Practise";
@@ -82,7 +84,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </>
         ) : tab === "today" ? (
           <>
-            <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} selfManaged={selfManaged} w={w} decks={decks} />
+            <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} writingToday={dailyWritingTime(await examSpans(student.id), tz).get(todayIn(tz)) ?? 0} selfManaged={selfManaged} w={w} decks={decks} />
             {dash.tracks.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" flashcards={cardTimes} />
@@ -151,6 +153,7 @@ function Today({
   completed,
   tracks,
   done,
+  writingToday,
   selfManaged,
   w,
   decks,
@@ -161,6 +164,8 @@ function Today({
   completed: number;
   tracks: StudentTrack[];
   done: number;
+  /** Milliseconds spent writing exams today, start to submit (owner, 2026-11-22). */
+  writingToday: number;
   selfManaged: boolean;
   w: Words;
 }) {
@@ -190,7 +195,7 @@ function Today({
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>
             {/* The total on owlrnd (owner, 2026-11-16), with today's count when there is one. */}
-            {completed} {completed === 1 ? "exam" : "exams"} completed{done > 0 ? ` · ${done} today` : ""}
+            {completed} {completed === 1 ? "exam" : "exams"} completed{done > 0 ? ` · ${done} today · ${formatDuration(writingToday)} writing` : ""}
           </p>
         )}
       </div>
@@ -334,6 +339,8 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
   const todayLabel = day(new Date());
   const groups = new Map<string, RecentExam[]>();
   for (const r of recent) groups.set(day(r.submittedAt), [...(groups.get(day(r.submittedAt)) ?? []), r]);
+  // Time spent writing the day's listed exams, start to submit (owner, 2026-11-22).
+  const writing = (rows: RecentExam[]) => [...dailyWritingTime(rows, tz).values()].reduce((a, b) => a + b, 0);
   return (
     <section aria-labelledby="recent-h">
       <h2 id="recent-h" className="mb-4 text-xl">
@@ -343,7 +350,14 @@ function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines
       <div className="flex flex-col gap-6">
         {[...groups].map(([label, rows]) => (
           <div key={label}>
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-ink-muted">{label === todayLabel ? `Today · ${label}` : label}</h3>
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-muted">{label === todayLabel ? `Today · ${label}` : label}</h3>
+              {rows.some((r) => r.startedAt) && (
+                <p className="text-sm text-ink-muted">
+                  {rows.length} {rows.length === 1 ? "exam" : "exams"} · {formatDuration(writing(rows))} writing
+                </p>
+              )}
+            </div>
             <ul className="divide-y divide-line rounded border border-line bg-card">
               {rows.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-4">

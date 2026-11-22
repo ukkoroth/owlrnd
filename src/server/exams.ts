@@ -99,6 +99,7 @@ export type RecentExam = {
   trackName: string;
   colorIndex: number;
   status: string;
+  startedAt: Date | null;
   submittedAt: Date;
   score: number | null;
 };
@@ -114,6 +115,7 @@ export async function recentExams(studentId: string, limit = 30, trackId?: strin
       trackName: tracks.name,
       colorIndex: tracks.colorIndex,
       status: exams.status,
+      startedAt: exams.startedAt,
       submittedAt: exams.submittedAt,
       score: exams.score,
     })

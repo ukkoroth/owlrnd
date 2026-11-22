@@ -212,3 +212,11 @@ export async function createTrackWithExam(
   }
   return { trackId, examId };
 }
+
+/** A marked exam with the given start and submit times, written straight to the database (no questions). */
+export async function addMarkedExam(studentId: string, trackId: string, opts: { number: number; startedAt: Date; submittedAt: Date; score?: number }) {
+  await pool.query(
+    `insert into exams (student_id, track_id, number, status, score, started_at, submitted_at, marked_at) values ($1, $2, $3, 'marked', $4, $5, $6, $6)`,
+    [studentId, trackId, opts.number, opts.score ?? 7, opts.startedAt, opts.submittedAt],
+  );
+}

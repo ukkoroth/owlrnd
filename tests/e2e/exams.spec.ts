@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeDb, createFamily, createTrackWithExam, deleteParentByEmail, type FixtureQuestion } from "../fixtures";
+import { addMarkedExam, closeDb, createFamily, createTrackWithExam, deleteParentByEmail, type FixtureQuestion } from "../fixtures";
 import { signInFully } from "./helpers";
 
 test.afterAll(closeDb);
@@ -82,6 +82,29 @@ test("M4 done-when: a student starts a suggested exam, answers, gets the blank w
     await expect(page).toHaveURL(/\/marked\?from=past$/);
     await page.getByRole("link", { name: "Back to past exams" }).first().click();
     await expect(page).toHaveURL(/tab=recent$/);
+  } finally {
+    await deleteParentByEmail(parent.email);
+  }
+});
+
+test("the dashboard shows the time spent writing exams each day, start to submit (owner, 2026-11-22)", async ({ page }) => {
+  const { parent, student, studentId } = await createFamily();
+  try {
+    const { trackId } = await createTrackWithExam(studentId, { name: "Physics: Ohm's law" });
+    const ago = (min: number) => new Date(Date.now() - min * 60_000);
+    await addMarkedExam(studentId, trackId, { number: 2, startedAt: ago(14), submittedAt: ago(2) }); // 12 min
+    await addMarkedExam(studentId, trackId, { number: 3, startedAt: ago(5), submittedAt: ago(4) }); // 1 min, while the other was open
+    await addMarkedExam(studentId, trackId, { number: 4, startedAt: ago(26 * 60 + 20), submittedAt: ago(26 * 60) }); // yesterday, 20 min
+
+    await signInFully(page, student.username, student.password, parent.email, /\/today$/);
+    await expect(page.getByRole("main")).toContainText("3 exams completed · 2 today · 13 min writing");
+    if (process.env.PW_SHOTS) await page.screenshot({ path: `${process.env.PW_SHOTS}/today.png` });
+
+    await page.goto("/today?tab=recent");
+    await expect(page.getByRole("main")).toContainText("2 exams · 13 min writing");
+    await expect(page.getByRole("main")).toContainText("1 exam · 20 min writing");
+    if (process.env.PW_SHOTS) await page.getByRole("heading", { name: "Your past exams" }).scrollIntoViewIfNeeded();
+    if (process.env.PW_SHOTS) await page.screenshot({ path: `${process.env.PW_SHOTS}/past.png` });
   } finally {
     await deleteParentByEmail(parent.email);
   }

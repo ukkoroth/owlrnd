@@ -93,3 +93,32 @@ export function scoreSummary(exams: ScoredExam[], recent = 5): ScoreSummary {
     tracks,
   };
 }
+
+/** An exam's start and submit times; startedAt is null only for rows from before start times were kept. */
+export type ExamSpan = { startedAt: Date | null; submittedAt: Date };
+
+/**
+ * Time spent writing exams per day, in milliseconds, in the student's time zone (owner, 2026-11-22): for each submitted
+ * exam, the time from starting it to submitting it, counted on the day it was submitted. Time elsewhere in the app
+ * doesn't count.
+ */
+export function dailyWritingTime(spans: ExamSpan[], timeZone: string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const { startedAt, submittedAt } of spans) {
+    if (!startedAt) continue;
+    const ms = Math.max(0, submittedAt.getTime() - startedAt.getTime());
+    const day = todayIn(timeZone, submittedAt);
+    m.set(day, (m.get(day) ?? 0) + ms);
+  }
+  return m;
+}
+
+/** "under a minute", "34 min", "1 hr", "1 hr 5 min". */
+export function formatDuration(ms: number): string {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 1) return "under a minute";
+  const h = Math.floor(minutes / 60);
+  const min = minutes % 60;
+  if (!h) return `${min} min`;
+  return min ? `${h} hr ${min} min` : `${h} hr`;
+}

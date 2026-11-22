@@ -3,7 +3,7 @@ import { coverageMet } from "@/domain/goals";
 import { and, asc, count, desc, eq, inArray, isNotNull, sum } from "drizzle-orm";
 import { nextExamFocus, nextExamPlan } from "@/domain/examMix";
 import { examTopicSummary } from "@/domain/topicStrength";
-import type { ScoredExam } from "@/domain/activity";
+import type { ExamSpan, ScoredExam } from "@/domain/activity";
 import { db } from "./db";
 import { answers, examQuestions, exams, marks, pointsEvents, questions, students, topics, tracks } from "./db/schema";
 import { topicStrengths } from "./progress";
@@ -185,6 +185,15 @@ export async function lastExamSummary(studentId: string) {
 export async function practiceTimes(studentId: string): Promise<Date[]> {
   const rows = await db.select({ at: exams.submittedAt }).from(exams).where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)));
   return rows.map((r) => r.at!);
+}
+
+/** Start and submit times of the learner's submitted exams, for the time spent writing exams each day. */
+export async function examSpans(studentId: string): Promise<ExamSpan[]> {
+  const rows = await db
+    .select({ startedAt: exams.startedAt, submittedAt: exams.submittedAt })
+    .from(exams)
+    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)));
+  return rows.map((r) => ({ startedAt: r.startedAt, submittedAt: r.submittedAt! }));
 }
 
 /** 3d overall chart: the learner's latest marked exams across all tracks, oldest first. */
