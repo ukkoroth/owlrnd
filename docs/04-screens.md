@@ -41,7 +41,7 @@ Every screen in version 0.1, in the order of the design canvas. Screenshots are 
 
 | Code | Screen | Purpose | Details | Leads to | Files |
 | --- | --- | --- | --- | --- | --- |
-| 4.1a | Your tracks | Student's list of tracks. | Per track: status, score bars, topic strength, needs work, goal progress, Start button. Paused and goal-reached tracks have no Start button. | 3c, 4.3a, 5b, 3a, 4.1b | [png](../screens/4-1a_your-tracks.png) · [html](../mockups/4-1a_your-tracks.html) |
+| 4.1a | Your tracks | Student's list of tracks, read-only; opened from Tracks in the sidebar (owner, 2026-11-22). | Per track: status, score bars, topic strength, needs work, goal progress, Start button. Paused and goal-reached tracks have no Start button. | 3c, 4.3a, 5b, 3a, 4.1b | [png](../screens/4-1a_your-tracks.png) · [html](../mockups/4-1a_your-tracks.html) |
 | 4.1b | Exam paper | Exam paper on one page. | Serif paper style, questions in two columns, multiple choice and short answers. Submit leads to 4.1c when questions are blank. | 3c, 4.1c | [png](../screens/4-1b_exam-paper.png) · [html](../mockups/4-1b_exam-paper.html) |
 | 4.1c | Submit with unanswered questions | Warning before submitting an incomplete paper. | Names the blank questions; "Go to question 8" or "Submit anyway" (4.1d). | 3c, 4.1e, 4.1b, 4.1d | [png](../screens/4-1c_submit-with-unanswered-questions.png) · [html](../mockups/4-1c_submit-with-unanswered-questions.html) |
 | 4.1d | Marking in progress | Marking in progress after submitting. | Steps: multiple choice marked, reading written answers, result. The student may leave; the result will be on the dashboard. | 3c, 4.1e | [png](../screens/4-1d_marking-in-progress.png) · [html](../mockups/4-1d_marking-in-progress.html) |

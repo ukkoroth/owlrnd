@@ -23,15 +23,12 @@ export default async function StudentLayout({ children }: { children: React.Reac
     <AppShell
       // A self-managed learner is a "Learner"; a child a parent manages is a "Student" (sm-5a, editions §2.7).
       user={{ name: student.name, role: "student", roleLabel: student.type === "self_managed" ? "Learner" : "Student" }}
-      // A self-managed learner manages their tracks too, so the sidebar has Exams and Tracks (sm-3c).
-      nav={
-        student.type === "self_managed"
-          ? [
-              { href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/exam", "/points"] },
-              { href: "/tracks", label: "Tracks", icon: <TracksIcon />, match: ["/tracks"] },
-            ]
-          : [{ href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/tracks", "/exam"] }]
-      }
+      // Exams and Tracks for every learner: a self-managed learner manages their tracks there (sm-3c); a child sees
+      // theirs read-only, with topic strength and goal progress, and no parent controls (4.1a; owner, 2026-11-22).
+      nav={[
+        { href: "/today", label: "Exams", icon: <ExamsIcon />, match: ["/profile", "/exam", "/points"] },
+        { href: "/tracks", label: "Tracks", icon: <TracksIcon />, match: ["/tracks"] },
+      ]}
       points={{ total, levelName: levelFor(total).current, href: "/points" }}
       allowance={allowance}
     >

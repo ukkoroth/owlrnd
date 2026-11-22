@@ -163,9 +163,16 @@ test("a parent-managed learner can't open the learner's set-up screens, and the 
       const res = await page.goto(path);
       expect(res?.status(), path).toBe(404);
     }
-    await page.goto("/tracks");
-    await expect(page.getByRole("link", { name: /Add material|Pause|New track/ })).toHaveCount(0);
-    await expect(page.getByRole("complementary").getByRole("link", { name: "Tracks" })).toHaveCount(0);
+    // Tracks in the sidebar opens their tracks read-only: topic strength and goal, no parent controls (owner, 2026-11-22).
+    await page.goto("/today");
+    await page.getByRole("complementary").getByRole("link", { name: "Tracks" }).click();
+    await expect(page).toHaveURL(/\/tracks$/);
+    await expect(page.getByRole("heading", { name: "Your tracks" })).toBeVisible();
+    await expect(page.getByRole("complementary").getByRole("link", { name: "Tracks" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("main")).toContainText("Physics: Ohm's law");
+    await expect(page.getByRole("main").getByRole("link", { name: /Add material|Pause|New track|Edit|Archive|Delete/ })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("button", { name: /Pause|Archive|Delete|Edit/ })).toHaveCount(0);
+    if (process.env.PW_SHOTS) await page.screenshot({ path: `${process.env.PW_SHOTS}/child-tracks.png` });
   } finally {
     await deleteParentByEmail(parent.email);
   }
