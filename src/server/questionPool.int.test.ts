@@ -10,7 +10,7 @@ import { markExamJob } from "./marking";
 import { loadPool, unusedCount, writePoolJob } from "./questionPool";
 import { archiveTrack, setQuestionMode } from "./trackUpdates";
 import { createSampleTrack } from "./tracks";
-import { canFill, poolCandidates } from "@/domain/questionPool";
+import { awaitingRewording, canFill, poolCandidates } from "@/domain/questionPool";
 
 // Question pool (roadmap 23, owner 2026-11-18). Fake AI.
 beforeAll(() => {
@@ -90,6 +90,12 @@ describe("question pool (roadmap 23)", () => {
     const originals = await db.select().from(questions).where(eq(questions.trackId, trackId));
     for (const v of variants) expect(v.prompt).not.toBe(originals.find((o) => o.id === v.variantOf)!.prompt);
 
+    // Each miss is reworded once: nothing waits now, and another top-up rewords none of them again (2026-11-24: the
+    // "already reworded" check was always false, so the same misses were reworded after every exam).
+    expect(awaitingRewording((await loadPool(trackId)).pool)).toEqual([]);
+    await writePoolJob({ trackId });
+    expect(await db.select().from(questions).where(and(eq(questions.trackId, trackId), isNotNull(questions.variantOf)))).toHaveLength(3);
+
     // Exam 1's ideas are in the repeat window: no rewording is offered yet, and no exam-1 question at all.
     const { pool, recentGroups, topicKeys } = await loadPool(trackId);
     const offered = new Set(poolCandidates(pool, recentGroups, topicKeys).map((c) => c.id));
@@ -136,7 +142,13 @@ describe("question pool (roadmap 23)", () => {
     await writeExamJob({ trackId }, ctx);
     expect(await latestExam(trackId)).toMatchObject({ number: 3, status: "ready" });
     expect(await questionRows(trackId)).toBe(before); // nothing written while the learner waits
-    expect(await poolJobsFor(trackId)).not.toHaveLength(0); // the short topic is written in the background
+    expect(await poolJobsFor(trackId)).toHaveLength(1); // the short topic is written in the background
+
+    // While that top-up waits, the next exam adds no second one beside it (2026-11-24: several ran at once).
+    await takeAndMark(student.id, (await latestExam(trackId)).id, 5);
+    await writeExamJob({ trackId }, ctx);
+    expect(await latestExam(trackId)).toMatchObject({ number: 4, status: "ready" });
+    expect(await poolJobsFor(trackId)).toHaveLength(1);
   });
 
   it("keeps making exams from the pool when the AI allowance is used up, and holds only when the pool runs dry", async () => {

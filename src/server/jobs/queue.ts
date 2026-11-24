@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
 
@@ -64,4 +64,14 @@ export async function requeueStale(olderThanMinutes: number) {
 export async function jobStatus(id: string) {
   const [row] = await db.select({ status: jobs.status, lastError: jobs.lastError }).from(jobs).where(eq(jobs.id, id));
   return row ?? null;
+}
+
+/** Whether a pool top-up for this track is already queued or running, so another isn't added beside it. */
+export async function poolJobPending(trackId: string, tx: Pick<typeof db, "select"> = db): Promise<boolean> {
+  const rows = await tx
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.type, "write_pool"), inArray(jobs.status, ["queued", "running"]), sql`${jobs.payload}->>'trackId' = ${trackId}`))
+    .limit(1);
+  return rows.length > 0;
 }

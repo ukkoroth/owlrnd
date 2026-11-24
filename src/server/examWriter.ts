@@ -8,7 +8,7 @@ import { planWithRevision } from "@/domain/examMix";
 import { formatClass } from "@/domain/identity";
 import { rules } from "@/config/rules";
 import { ai } from "./ai";
-import { enqueue } from "./jobs/queue";
+import { enqueue, poolJobPending } from "./jobs/queue";
 import { examWriteBlocked, withAiContext } from "./ai/usage";
 import { db } from "./db";
 import { attachments, examQuestions, exams, flashcards, marks, questions, topics, trackMessages, tracks } from "./db/schema";
@@ -227,7 +227,8 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
       const [exam] = await tx.insert(exams).values({ studentId: track.studentId, trackId, number: n + 1, status: "ready" }).returning();
       await tx.insert(examQuestions).values(inserted.map((q, i) => ({ examId: exam!.id, questionId: q.id, position: i + 1 })));
       await tx.update(tracks).set({ nextExam: "ready", nextExamHold: null }).where(eq(tracks.id, trackId));
-      if (topUp) await enqueue("write_pool", { trackId }, { tx });
+      // One top-up at a time per track: several at once each saw the same misses and reworded them again (2026-11-24).
+      if (topUp && !(await poolJobPending(trackId, tx))) await enqueue("write_pool", { trackId }, { tx });
     });
   } catch (err) {
     if (ctx.isLastAttempt) await db.update(tracks).set({ nextExam: "failed", nextExamHold: null }).where(eq(tracks.id, trackId));

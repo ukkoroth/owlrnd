@@ -23,12 +23,16 @@ export async function loadPool(trackId: string) {
   const tps = await db.select().from(topics).where(eq(topics.trackId, trackId)).orderBy(asc(topics.position));
   const keyOf = new Map(tps.map((t, i) => [t.id, `T${i + 1}`]));
   const q = questions;
+  // The outer row's id, written with its table name: on a one-table select Drizzle writes ${q.id} as a bare "id",
+  // which inside `from questions v` means v.id, so "reworded" was always false and the same misses were reworded
+  // after every exam (2026-11-24: one question had 38 rewordings).
+  const outerId = sql`${questions}.${sql.identifier("id")}`;
   const rows = await db
     .select({
       q,
-      used: sql<boolean>`exists (select 1 from ${examQuestions} eq where eq.question_id = ${q.id})`,
-      missed: sql<boolean>`exists (select 1 from ${marks} m where m.question_id = ${q.id} and m.verdict = 'missed')`,
-      reworded: sql<boolean>`exists (select 1 from ${questions} v where v.variant_of = ${q.id})`,
+      used: sql<boolean>`exists (select 1 from ${examQuestions} eq where eq.question_id = ${outerId})`,
+      missed: sql<boolean>`exists (select 1 from ${marks} m where m.question_id = ${outerId} and m.verdict = 'missed')`,
+      reworded: sql<boolean>`exists (select 1 from ${questions} v where v.variant_of = ${outerId})`,
     })
     .from(q)
     .where(eq(q.trackId, trackId))
