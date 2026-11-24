@@ -187,13 +187,21 @@ export async function practiceTimes(studentId: string): Promise<Date[]> {
   return rows.map((r) => r.at!);
 }
 
-/** Start and submit times of the learner's submitted exams, for the time spent writing exams each day. */
-export async function examSpans(studentId: string): Promise<ExamSpan[]> {
+/**
+ * Start, submit and answer-save times of the learner's submitted exams, for the time spent writing exams each day.
+ * Pass examIds to fetch just those exams.
+ */
+export async function examSpans(studentId: string, examIds?: string[]): Promise<ExamSpan[]> {
+  if (examIds && !examIds.length) return [];
   const rows = await db
-    .select({ startedAt: exams.startedAt, submittedAt: exams.submittedAt })
+    .select({ id: exams.id, startedAt: exams.startedAt, submittedAt: exams.submittedAt })
     .from(exams)
-    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt)));
-  return rows.map((r) => ({ startedAt: r.startedAt, submittedAt: r.submittedAt! }));
+    .where(and(eq(exams.studentId, studentId), isNotNull(exams.submittedAt), examIds ? inArray(exams.id, examIds) : undefined));
+  const ids = rows.map((r) => r.id);
+  const saves = ids.length ? await db.select({ examId: answers.examId, at: answers.savedAt }).from(answers).where(inArray(answers.examId, ids)) : [];
+  const byExam = new Map<string, Date[]>();
+  for (const a of saves) byExam.set(a.examId, [...(byExam.get(a.examId) ?? []), a.at]);
+  return rows.map((r) => ({ id: r.id, startedAt: r.startedAt, submittedAt: r.submittedAt!, answeredAt: byExam.get(r.id) ?? [] }));
 }
 
 /** 3d overall chart: the learner's latest marked exams across all tracks, oldest first. */

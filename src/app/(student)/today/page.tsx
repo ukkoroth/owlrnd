@@ -11,7 +11,7 @@ import { trackCompletion } from "@/domain/goals";
 import { requireShell } from "@/server/auth/current";
 import { getStudentDashboard, recentExams, type RecentExam, type StudentTrack } from "@/server/exams";
 import { examScores, examSpans, examTopicLines, practiceTimes } from "@/server/results";
-import { dailyWritingTime, formatDuration } from "@/domain/activity";
+import { dailyWritingTime, examWritingTime, formatDuration } from "@/domain/activity";
 import { todayIn } from "@/domain/tracks";
 import { ExamScoresChart } from "@/components/charts/ExamScoresChart";
 import { ActivityCharts } from "@/components/charts/ActivityCharts";
@@ -311,6 +311,7 @@ const PAST_EXAMS_LIMIT = 300;
 // paper (owner, 2026-11-18: learners look back at how each exam was marked).
 async function PastExams({ studentId, tracks, trackId, tz }: { studentId: string; tracks: StudentTrack[]; trackId?: string; tz: string }) {
   const recent = await recentExams(studentId, PAST_EXAMS_LIMIT, trackId);
+  const writingTimes = new Map((await examSpans(studentId, recent.map((r) => r.id))).map((s) => [s.id!, examWritingTime(s)]));
   const lines = await examTopicLines(recent.filter((r) => r.status === "marked").map((r) => r.id));
   const chip = (active: boolean) =>
     `flex min-h-touch items-center rounded border px-3 text-[15px] font-semibold ${active ? "border-brand bg-brand text-white" : "border-line bg-card text-ink hover:border-brand"}`;
@@ -328,19 +329,19 @@ async function PastExams({ studentId, tracks, trackId, tz }: { studentId: string
           ))}
         </nav>
       )}
-      <Recent recent={recent} tz={tz} lines={lines} />
+      <Recent recent={recent} tz={tz} lines={lines} writingTimes={writingTimes} />
     </>
   );
 }
 
-function Recent({ recent, tz, lines }: { recent: RecentExam[]; tz: string; lines: Map<string, { strong: string[]; needsWork: string[] }> }) {
+function Recent({ recent, tz, lines, writingTimes }: { recent: RecentExam[]; tz: string; lines: Map<string, { strong: string[]; needsWork: string[] }>; writingTimes: Map<string, number> }) {
   if (!recent.length) return <p className="mt-8 text-ink-muted">Exams you finish show here.</p>;
   const day = (d: Date) => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: tz }).format(d).replace(",", "");
   const todayLabel = day(new Date());
   const groups = new Map<string, RecentExam[]>();
   for (const r of recent) groups.set(day(r.submittedAt), [...(groups.get(day(r.submittedAt)) ?? []), r]);
-  // Time spent writing the day's listed exams, start to submit (owner, 2026-11-22).
-  const writing = (rows: RecentExam[]) => [...dailyWritingTime(rows, tz).values()].reduce((a, b) => a + b, 0);
+  // Time spent writing the day's listed exams, start to submit, idle gaps capped (owner, 2026-11-22, 2026-11-24).
+  const writing = (rows: RecentExam[]) => rows.reduce((a, r) => a + (writingTimes.get(r.id) ?? 0), 0);
   return (
     <section aria-labelledby="recent-h">
       <h2 id="recent-h" className="mb-4 text-xl">

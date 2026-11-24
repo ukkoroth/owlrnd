@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityGrid, dailyCounts, dailyWritingTime, formatDuration, last7Days, scoreSummary, type ScoredExam } from "./activity";
+import { activityGrid, dailyCounts, dailyWritingTime, examWritingTime, formatDuration, last7Days, scoreSummary, type ScoredExam } from "./activity";
 
 describe("activity (rules §9)", () => {
   it("counts exams per day in the student's time zone", () => {
@@ -91,6 +91,27 @@ describe("time spent writing exams (owner, 2026-11-22)", () => {
 
   it("counts an exam that crosses midnight on the day it was submitted", () => {
     expect([...dailyWritingTime([span("2026-11-14T23:55:00Z", "2026-11-15T00:05:00Z")], "UTC")]).toEqual([["2026-11-15", 10 * 60_000]]);
+  });
+
+  it("caps each idle gap, so a paper left open overnight counts only the time it was worked on (owner, 2026-11-24)", () => {
+    // Started at 19:00, answered for 10 minutes, left open, submitted at 18:00 the next day.
+    const overnight = {
+      startedAt: new Date("2026-11-23T19:00:00Z"),
+      answeredAt: [new Date("2026-11-23T19:04:00Z"), new Date("2026-11-23T19:10:00Z")],
+      submittedAt: new Date("2026-11-24T18:00:00Z"),
+    };
+    expect(examWritingTime(overnight)).toBe((10 + 15) * 60_000);
+    expect([...dailyWritingTime([overnight], "UTC")]).toEqual([["2026-11-24", 25 * 60_000]]);
+  });
+
+  it("counts a steady paper in full, whatever order the answers were saved in", () => {
+    const steady = {
+      startedAt: new Date("2026-11-24T10:00:00Z"),
+      answeredAt: [new Date("2026-11-24T10:24:00Z"), new Date("2026-11-24T10:12:00Z"), new Date("2026-11-24T10:36:00Z")],
+      submittedAt: new Date("2026-11-24T10:40:00Z"),
+    };
+    expect(examWritingTime(steady)).toBe(40 * 60_000);
+    expect(examWritingTime({ startedAt: null, submittedAt: steady.submittedAt })).toBe(0);
   });
 
   it("formats durations", () => {

@@ -263,6 +263,11 @@ export const rules = {
     gridWeeks: 26,
     /** Shade index for 0, 1, 2, 3 and 4+ exams. */
     maxShade: 4,
+    /**
+     * Time spent writing exams: the gap between two moves on a paper (start, each answer saved, submit) counts up to
+     * this many minutes, so a paper left open overnight doesn't count the night (owner, 2026-11-24).
+     */
+    writingGapMinutes: 15,
   },
 } as const;
 

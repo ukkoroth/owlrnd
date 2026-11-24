@@ -94,21 +94,38 @@ export function scoreSummary(exams: ScoredExam[], recent = 5): ScoreSummary {
   };
 }
 
-/** An exam's start and submit times; startedAt is null only for rows from before start times were kept. */
-export type ExamSpan = { startedAt: Date | null; submittedAt: Date };
+/**
+ * An exam's start and submit times, with the times its answers were last saved; startedAt is null only for rows from
+ * before start times were kept.
+ */
+export type ExamSpan = { id?: string; startedAt: Date | null; submittedAt: Date; answeredAt?: Date[] };
 
 /**
- * Time spent writing exams per day, in milliseconds, in the student's time zone (owner, 2026-11-22): for each submitted
- * exam, the time from starting it to submitting it, counted on the day it was submitted. Time elsewhere in the app
- * doesn't count.
+ * Time spent writing one exam, in milliseconds: from starting it to submitting it, but each gap between two moves
+ * (start, an answer saved, submit) counts up to rules.activity.writingGapMinutes, so a paper left open overnight
+ * counts only the time it was worked on (owner, 2026-11-24).
+ */
+export function examWritingTime({ startedAt, submittedAt, answeredAt = [] }: ExamSpan): number {
+  if (!startedAt) return 0;
+  const cap = rules.activity.writingGapMinutes * 60_000;
+  const start = startedAt.getTime();
+  const end = submittedAt.getTime();
+  const moves = [start, ...answeredAt.map((d) => d.getTime()).filter((t) => t > start && t < end).sort((a, b) => a - b), end];
+  let ms = 0;
+  for (let i = 1; i < moves.length; i++) ms += Math.min(cap, Math.max(0, moves[i]! - moves[i - 1]!));
+  return ms;
+}
+
+/**
+ * Time spent writing exams per day, in milliseconds, in the student's time zone (owner, 2026-11-22): each submitted
+ * exam's writing time (examWritingTime), counted on the day it was submitted. Time elsewhere in the app doesn't count.
  */
 export function dailyWritingTime(spans: ExamSpan[], timeZone: string): Map<string, number> {
   const m = new Map<string, number>();
-  for (const { startedAt, submittedAt } of spans) {
-    if (!startedAt) continue;
-    const ms = Math.max(0, submittedAt.getTime() - startedAt.getTime());
-    const day = todayIn(timeZone, submittedAt);
-    m.set(day, (m.get(day) ?? 0) + ms);
+  for (const span of spans) {
+    if (!span.startedAt) continue;
+    const day = todayIn(timeZone, span.submittedAt);
+    m.set(day, (m.get(day) ?? 0) + examWritingTime(span));
   }
   return m;
 }
