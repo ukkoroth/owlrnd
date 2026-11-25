@@ -55,52 +55,64 @@ export default async function YourTracksPage({ searchParams }: { searchParams: P
       {list.length === 0 ? (
         <p className="text-ink-muted">Your parent hasn&apos;t set up a track yet.</p>
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {list.map((t) => (
-            <li key={t.id} className={`card flex flex-col ${t.status === "goal_reached" ? "border-2 border-brand" : ""}`}>
-              <p className={`text-sm ${t.status === "goal_reached" ? "font-semibold text-brand" : "text-ink-muted"}`}>{statusLine(t)}</p>
-              <h2 className="text-[21px] leading-snug">{t.name}</h2>
-              <div className="mb-4 mt-3 flex items-end justify-between gap-3">
-                <ScoreBars scores={t.scores} />
-                {t.examsTaken > 0 ? (
-                  // To this track's past exams, each with its marked paper (owner, 2026-11-18).
-                  <Link href={`/today?tab=recent&track=${t.id}`} className="link ml-auto flex min-h-touch items-end text-sm font-semibold" aria-label={`${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"} taken: see past exams in ${t.name}`}>
-                    {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken
-                  </Link>
-                ) : (
-                  <span className="ml-auto text-sm text-ink-muted">No exams taken yet</span>
-                )}
-              </div>
-              <TopicStrength topics={t.topics} />
-              <div className="mt-3">
-                <NeedsWork topics={t.topics} />
-              </div>
-              <div className="mt-4">
-                <GoalProgress threshold={t.goalThreshold} runLength={t.goalRunLength} progress={t.goalProgress} reached={t.status === "goal_reached"} topics={t.topics} />
-              </div>
-              <DeckLine deck={decks.get(t.id)} timeZone={student.timeZone} reached={t.status === "goal_reached"} />
-              <div className="mt-auto flex flex-col gap-2.5 border-t border-line pt-4">
-                {t.status === "paused" ? (
-                  <p className="text-ink-muted">No new exams while paused</p>
-                ) : t.status === "goal_reached" ? (
-                  <p className="text-ink-muted">Waiting for new topics from your parent</p>
-                ) : t.exam ? (
-                  <ExamLink href={`/exam/${t.exam.id}`} className="btn-primary">
-                    {t.exam.status === "in_progress" ? "Continue" : "Start"} exam {t.exam.number}
-                  </ExamLink>
-                ) : (
-                  <Preparing label={`${t.examsTaken === 0 ? "Your first exam" : `Exam ${t.examsTaken + 1}`} is being prepared…`} note="Usually ready within a minute. This page updates by itself." hold={t.hold} viewer="child" />
-                )}
-                <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} from="tracks" className="h-12 px-5" />
-                {(decks.get(t.id)?.total ?? 0) > 0 && (
-                  <Link href={`/tracks/${t.id}/flashcards`} className="link flex min-h-touch items-center self-start font-semibold" aria-label={`Flashcards in ${t.name}`}>
-                    Flashcards
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        // Tracks still running first; goal-reached tracks move to Completed below them (owner, 2026-11-25).
+        [list.filter((t) => t.status !== "goal_reached"), list.filter((t) => t.status === "goal_reached")].map((group, g) =>
+          group.length === 0 ? null : (
+            <section key={g} aria-labelledby={g ? "completed-h" : undefined} className={g && list.length > group.length ? "mt-8" : undefined}>
+              {g === 1 && (
+                <h2 id="completed-h" className="mb-3 text-xl">
+                  Completed
+                </h2>
+              )}
+              <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {group.map((t) => (
+                  <li key={t.id} className={`card flex flex-col ${t.status === "goal_reached" ? "border-2 border-brand" : ""}`}>
+                    <p className={`text-sm ${t.status === "goal_reached" ? "font-semibold text-brand" : "text-ink-muted"}`}>{statusLine(t)}</p>
+                    <h2 className="text-[21px] leading-snug">{t.name}</h2>
+                    <div className="mb-4 mt-3 flex items-end justify-between gap-3">
+                      <ScoreBars scores={t.scores} />
+                      {t.examsTaken > 0 ? (
+                        // To this track's past exams, each with its marked paper (owner, 2026-11-18).
+                        <Link href={`/today?tab=recent&track=${t.id}`} className="link ml-auto flex min-h-touch items-end text-sm font-semibold" aria-label={`${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"} taken: see past exams in ${t.name}`}>
+                          {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"} taken
+                        </Link>
+                      ) : (
+                        <span className="ml-auto text-sm text-ink-muted">No exams taken yet</span>
+                      )}
+                    </div>
+                    <TopicStrength topics={t.topics} />
+                    <div className="mt-3">
+                      <NeedsWork topics={t.topics} />
+                    </div>
+                    <div className="mt-4">
+                      <GoalProgress threshold={t.goalThreshold} runLength={t.goalRunLength} progress={t.goalProgress} reached={t.status === "goal_reached"} topics={t.topics} />
+                    </div>
+                    <DeckLine deck={decks.get(t.id)} timeZone={student.timeZone} reached={t.status === "goal_reached"} />
+                    <div className="mt-auto flex flex-col gap-2.5 border-t border-line pt-4">
+                      {t.status === "paused" ? (
+                        <p className="text-ink-muted">No new exams while paused</p>
+                      ) : t.status === "goal_reached" ? (
+                        <p className="text-ink-muted">Waiting for new topics from your parent</p>
+                      ) : t.exam ? (
+                        <ExamLink href={`/exam/${t.exam.id}`} className="btn-primary">
+                          {t.exam.status === "in_progress" ? "Continue" : "Start"} exam {t.exam.number}
+                        </ExamLink>
+                      ) : (
+                        <Preparing label={`${t.examsTaken === 0 ? "Your first exam" : `Exam ${t.examsTaken + 1}`} is being prepared…`} note="Usually ready within a minute. This page updates by itself." hold={t.hold} viewer="child" />
+                      )}
+                      <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} from="tracks" className="h-12 px-5" />
+                      {(decks.get(t.id)?.total ?? 0) > 0 && (
+                        <Link href={`/tracks/${t.id}/flashcards`} className="link flex min-h-touch items-center self-start font-semibold" aria-label={`Flashcards in ${t.name}`}>
+                          Flashcards
+                        </Link>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
+        )
       )}
       {list.length > 0 && (
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">

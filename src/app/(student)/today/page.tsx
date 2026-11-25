@@ -85,6 +85,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : tab === "today" ? (
           <>
             <Today suggestions={dash.suggestions} completed={dash.completed} tracks={dash.tracks} done={completedToday(dash.recent.map((r) => r.submittedAt), tz)} writingToday={dailyWritingTime(await examSpans(student.id), tz).get(todayIn(tz)) ?? 0} selfManaged={selfManaged} w={w} decks={decks} />
+            <Completed tracks={dash.tracks} decks={decks} />
             {dash.tracks.length > 0 && (
               <div className="mt-6">
                 <ActivityCharts times={await practiceTimes(student.id)} timeZone={tz} size="lg" flashcards={cardTimes} />
@@ -243,6 +244,8 @@ const statusOf = (t: StudentTrack, w: Words) =>
 function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; selfManaged: boolean; w: Words; decks: Map<string, DeckCount> }) {
   // A new track whose first exam isn't written yet: say so, rather than "all caught up".
   const firstWriting = tracks.find((t) => t.preparing && t.examsTaken === 0);
+  // Goal-reached tracks are listed under Completed instead (owner, 2026-11-25).
+  const running = tracks.filter((t) => t.status !== "goal_reached");
   return (
     <section className="grid max-w-[900px] gap-5 md:grid-cols-[1.2fr_1fr]">
       <div className="card">
@@ -281,25 +284,27 @@ function CaughtUp({ tracks, selfManaged, w, decks }: { tracks: StudentTrack[]; s
           </div>
         )}
       </div>
-      <div className="card bg-transparent">
-        <h2 className="mb-3 text-lg">Your tracks</h2>
-        <ul className="divide-y divide-line">
-          {tracks.map((t) => (
-            <li key={t.id} className="py-2.5">
-              {t.preparing ? (
-                <Preparing label={t.name} note="Exam being prepared…" hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
-              ) : (
-                <>
-                  <p className="font-semibold">{t.name}</p>
-                  <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
-                </>
-              )}
-              {/* Nothing to take, but the deck can still be practised (fc-5: also on finished tracks). */}
-              <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="mt-2 h-11 px-4 text-[15px]" />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {running.length > 0 && (
+        <div className="card bg-transparent">
+          <h2 className="mb-3 text-lg">Your tracks</h2>
+          <ul className="divide-y divide-line">
+            {running.map((t) => (
+              <li key={t.id} className="py-2.5">
+                {t.preparing ? (
+                  <Preparing label={t.name} note="Exam being prepared…" hold={t.hold} viewer={selfManaged ? "holder" : "child"} />
+                ) : (
+                  <>
+                    <p className="font-semibold">{t.name}</p>
+                    <p className="text-sm text-ink-muted">{statusOf(t, w)}</p>
+                  </>
+                )}
+                {/* Nothing to take, but the deck can still be practised (fc-5: also on finished tracks). */}
+                <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="mt-2 h-11 px-4 text-[15px]" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
@@ -413,6 +418,8 @@ function Recent({ recent, tz, lines, writingTimes }: { recent: RecentExam[]; tz:
 
 function AllTracks({ tracks, w, decks }: { tracks: StudentTrack[]; w: Words; decks: Map<string, DeckCount> }) {
   const ready = tracks.filter((t) => t.status === "active" && t.exam);
+  // Goal-reached tracks move to Completed at the bottom (owner, 2026-11-25).
+  const running = tracks.filter((t) => t.status !== "goal_reached");
   return (
     <div className="flex flex-col gap-8">
       <section aria-labelledby="ready-h">
@@ -450,9 +457,9 @@ function AllTracks({ tracks, w, decks }: { tracks: StudentTrack[]; w: Words; dec
         <h2 id="work-h" className="mb-3 text-xl">
           Needs work
         </h2>
-        {tracks.some((t) => t.topics.some((x) => x.strength === "needs_work")) ? (
+        {running.some((t) => t.topics.some((x) => x.strength === "needs_work")) ? (
           <ul className="divide-y divide-line rounded border border-line bg-card">
-            {tracks.flatMap((t) =>
+            {running.flatMap((t) =>
               t.topics
                 .filter((x) => x.strength === "needs_work")
                 .map((x) => (
@@ -477,24 +484,62 @@ function AllTracks({ tracks, w, decks }: { tracks: StudentTrack[]; w: Words; dec
             See all {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
           </Link>
         </div>
-        <ul className="grid gap-4 md:grid-cols-2">
-          {tracks.map((t) => (
-            <li key={t.id}>
-              <Link href="/tracks" className="card block hover:border-brand">
-                <span className="block font-semibold">{t.name}</span>
-                <span className="mb-3 block text-sm text-ink-muted">
-                  {t.status === "paused"
-                    ? w.paused
-                    : `${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"}${t.scores.length ? ` · last score ${t.scores[t.scores.length - 1]} / 10` : ""}`}
-                  {decks.get(t.id)?.due ? ` · ${decks.get(t.id)!.due} ${decks.get(t.id)!.due === 1 ? "flashcard" : "flashcards"} to practise` : ""}
-                </span>
-                <TopicStrength topics={t.topics} compact />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {running.length > 0 ? (
+          <ul className="grid gap-4 md:grid-cols-2">
+            {running.map((t) => (
+              <li key={t.id}>
+                <Link href="/tracks" className="card block hover:border-brand">
+                  <span className="block font-semibold">{t.name}</span>
+                  <span className="mb-3 block text-sm text-ink-muted">
+                    {t.status === "paused"
+                      ? w.paused
+                      : `${t.examsTaken} ${t.examsTaken === 1 ? "exam" : "exams"}${t.scores.length ? ` · last score ${t.scores[t.scores.length - 1]} / 10` : ""}`}
+                    {decks.get(t.id)?.due ? ` · ${decks.get(t.id)!.due} ${decks.get(t.id)!.due === 1 ? "flashcard" : "flashcards"} to practise` : ""}
+                  </span>
+                  <TopicStrength topics={t.topics} compact />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-ink-muted">Every track has reached its goal.</p>
+        )}
       </section>
+
+      <Completed tracks={tracks} decks={decks} className="" />
     </div>
+  );
+}
+
+/** Tracks that reached their goal, below the exams (owner, 2026-11-25). They stop until topics are added. */
+function Completed({ tracks, decks, className = "mt-8" }: { tracks: StudentTrack[]; decks: Map<string, DeckCount>; className?: string }) {
+  const done = tracks.filter((t) => t.status === "goal_reached");
+  if (done.length === 0) return null;
+  return (
+    <section aria-labelledby="completed-h" className={className}>
+      <h2 id="completed-h" className="mb-3 text-xl">
+        Completed
+      </h2>
+      <ul className="divide-y divide-line rounded border border-line bg-card">
+        {done.map((t) => (
+          <li key={t.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3">
+            <span className="flex-1">
+              <span className="font-semibold">{t.name}</span>
+              <span className="block text-sm text-ink-muted">
+                Goal reached · {t.examsTaken} {t.examsTaken === 1 ? "exam" : "exams"}
+                {t.scores.length ? ` · last score ${t.scores[t.scores.length - 1]} / 10` : ""}
+              </span>
+            </span>
+            {t.examsTaken > 0 && (
+              <Link href={`/today?tab=recent&track=${t.id}`} className="link flex min-h-touch items-center text-sm font-semibold" aria-label={`Past exams in ${t.name}`}>
+                Past exams
+              </Link>
+            )}
+            <PractiseButton trackId={t.id} trackName={t.name} deck={decks.get(t.id)} className="h-11 px-4 text-[15px]" />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

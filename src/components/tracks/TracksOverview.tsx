@@ -41,6 +41,9 @@ export function TracksOverview({ audience, studentId: ownId, list, hasDraft, cre
   const subject = audience.kind === "parent" ? audience.studentName : "you";
   // Archived tracks (roadmap 22) are listed apart; with only archived tracks the page shows the empty state too.
   const live = list.filter((t) => t.status !== "archived");
+  const running = live.filter((t) => t.status !== "goal_reached");
+  const completed = live.filter((t) => t.status === "goal_reached");
+  const grid = learner ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2";
   const archived = list.filter((t) => t.status === "archived");
   const studentId = audience.kind === "parent" ? audience.studentId : (ownId ?? list[0]?.studentId);
 
@@ -161,14 +164,26 @@ export function TracksOverview({ audience, studentId: ownId, list, hasDraft, cre
                 <strong>Goal reached on {t.name}.</strong> The track has stopped. Add topics to set a new goal.
               </div>
             ))}
-          <div className={`grid gap-4 ${learner ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2"}`}>
-            {live
-              // A track that just reached its goal comes first (2i).
-              .sort((a, b) => Number(b.status === "goal_reached") - Number(a.status === "goal_reached"))
-              .map((t, i) => (
+          {/* Tracks still running first; goal-reached tracks move to Completed below them (owner, 2026-11-25). */}
+          {running.length > 0 && (
+            <div className={`grid gap-4 ${grid}`}>
+              {running.map((t, i) => (
                 <TrackCard key={t.id} track={t} highlight={created && i === 0} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} cardsActivity={cardsActivity?.get(t.id)} />
               ))}
-          </div>
+            </div>
+          )}
+          {completed.length > 0 && (
+            <section aria-labelledby="completed-h" className={running.length > 0 ? "mt-8" : undefined}>
+              <h2 id="completed-h" className="mb-3 text-xl">
+                Completed
+              </h2>
+              <div className={`grid gap-4 ${grid}`}>
+                {completed.map((t) => (
+                  <TrackCard key={t.id} track={t} audience={audience} timeZone={timeZone} deck={decks?.get(t.id)} cardsActivity={cardsActivity?.get(t.id)} />
+                ))}
+              </div>
+            </section>
+          )}
           {learner && <p className="mt-6 text-sm text-ink-muted">A track stops when its goal is reached, until you add topics.</p>}
         </>
       )}
