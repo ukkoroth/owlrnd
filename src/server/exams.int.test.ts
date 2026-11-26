@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, makeParent, makeStudent, makeTrackWithExam } from "../../tests/db-helpers";
 import { db } from "./db";
 import { exams, jobs, questions, tracks } from "./db/schema";
-import { getPaper, getStudentDashboard, saveAnswer, startExam, submitExam } from "./exams";
+import { getPaper, getStudentDashboard, rushCheck, saveAnswer, startExam, submitExam } from "./exams";
 
 beforeAll(() => {
   process.env.OWLRND_FAKE_AI = "1";
@@ -20,6 +20,34 @@ async function setup() {
   const { trackId, examId } = await makeTrackWithExam(parent.id, student.id);
   return { parent, student, trackId, examId };
 }
+
+describe("rushed papers (rules §5a)", () => {
+  it("won't hand in an empty, keyboard-mash or seconds-old paper", async () => {
+    const { student, examId } = await setup();
+    await startExam(student.id, examId);
+    const paper = (await getPaper(student.id, examId))!;
+    const started = paper.startedAt!;
+    const later = (s: number) => new Date(started + s * 1000);
+    expect(await rushCheck(student.id, examId, later(600))).toMatchObject({ reason: "too_few", answered: 0, needed: 5 });
+
+    const mcqs = paper.questions.filter((q) => q.type === "multiple_choice");
+    const shorts = paper.questions.filter((q) => q.type === "short");
+    for (const q of mcqs.slice(0, 3)) await saveAnswer(student.id, examId, q.id, { chosenOption: 0, text: null });
+    for (const q of shorts.slice(0, 2)) await saveAnswer(student.id, examId, q.id, { chosenOption: null, text: "qwfciewondcveh" });
+    expect(await rushCheck(student.id, examId, later(600))).toMatchObject({ reason: "too_few", answered: 3 });
+
+    for (const q of shorts.slice(0, 2)) await saveAnswer(student.id, examId, q.id, { chosenOption: null, text: "x + 1" });
+    expect(await rushCheck(student.id, examId, later(20))).toEqual({ reason: "too_fast", waitSeconds: 30 });
+    expect(await rushCheck(student.id, examId, later(50))).toBeNull();
+
+    process.env.OWLRND_RUSH_GUARD = "off";
+    try {
+      expect(await rushCheck(student.id, examId, later(1))).toBeNull();
+    } finally {
+      delete process.env.OWLRND_RUSH_GUARD;
+    }
+  });
+});
 
 describe("taking an exam", () => {
   it("suggests the first exam, then starts, saves answers and submits", async () => {

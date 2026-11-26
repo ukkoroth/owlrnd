@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ExamPaper } from "@/components/exam/ExamPaper";
 import { requirePractice } from "@/server/auth/current";
-import { getPaper, startExam } from "@/server/exams";
+import { getPaper, rushGuard, startExam } from "@/server/exams";
 
 export const metadata: Metadata = { title: "Exam · owlrnd" };
 export const dynamic = "force-dynamic";
@@ -16,5 +16,6 @@ export default async function ExamPage({ params }: { params: Promise<{ id: strin
   if (paper.status === "marked") redirect(`/exam/${id}/result`);
   if (paper.status !== "ready" && paper.status !== "in_progress") redirect(`/exam/${id}/marking`);
   if (!(await startExam(student.id, id))) redirect("/today");
-  return <ExamPaper paper={{ ...paper, status: "in_progress" }} />;
+  // Just started: it started now (rules §5a times the paper from its start).
+  return <ExamPaper paper={{ ...paper, status: "in_progress", startedAt: paper.startedAt ?? Date.now() }} rushGuard={rushGuard()} />;
 }

@@ -10,7 +10,8 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
-    // Browser tests use the deterministic fake AI (no API calls, no cost).
-    env: { OWLRND_DEV_PAGES: "1", OWLRND_FAKE_AI: "1" },
+    // Browser tests use the deterministic fake AI (no API calls, no cost), and hand papers in at once (rules §5a off;
+    // the rule has its own unit and integration tests).
+    env: { OWLRND_DEV_PAGES: "1", OWLRND_FAKE_AI: "1", OWLRND_RUSH_GUARD: "off" },
   },
 });

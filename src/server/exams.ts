@@ -1,5 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { rules } from "@/config/rules";
+import { submitBlock, type RushGuard, type SubmitBlock } from "@/domain/rushGuard";
 import { suggestExams } from "@/domain/suggestions";
 import type { ExamHold } from "@/domain/examHold";
 import { todayIn } from "@/domain/tracks";
@@ -166,6 +168,8 @@ export type Paper = {
   answers: Record<string, { chosenOption: number | null; text: string | null }>;
   /** When each answer was last saved (ms), so the paper can keep a newer copy from the browser (0.2). */
   answerSavedAt: Record<string, number>;
+  /** When the paper was started (ms), for the rushed-paper check before submitting (rules §5a). */
+  startedAt: number | null;
 };
 
 /**
@@ -175,7 +179,7 @@ export type Paper = {
 export async function getPaper(studentId: string, examId: string): Promise<Paper | null> {
   if (!/^[0-9a-f-]{36}$/i.test(examId)) return null;
   const [exam] = await db
-    .select({ id: exams.id, number: exams.number, status: exams.status, trackName: tracks.name })
+    .select({ id: exams.id, number: exams.number, status: exams.status, trackName: tracks.name, startedAt: exams.startedAt })
     .from(exams)
     .innerJoin(tracks, eq(tracks.id, exams.trackId))
     .where(and(eq(exams.id, examId), eq(exams.studentId, studentId)));
@@ -189,6 +193,7 @@ export async function getPaper(studentId: string, examId: string): Promise<Paper
   const ans = await db.select().from(answers).where(eq(answers.examId, examId));
   return {
     ...exam,
+    startedAt: exam.startedAt?.getTime() ?? null,
     trackName: exam.trackName ?? "",
     questions: qs,
     answers: Object.fromEntries(ans.map((a) => [a.questionId, { chosenOption: a.chosenOption, text: a.text }])),
@@ -253,7 +258,32 @@ export async function saveAnswer(studentId: string, examId: string, questionId: 
   return true;
 }
 
-/** Submit (idempotent). Blank answers count as wrong when marked (rules §5). */
+/** The rushed-paper settings (rules §5a); OWLRND_RUSH_GUARD=off turns the check off for the browser tests. */
+export function rushGuard(): RushGuard | null {
+  return process.env.OWLRND_RUSH_GUARD === "off" ? null : rules.rushGuard;
+}
+
+/**
+ * Rushed papers (rules §5a): why this in-progress paper can't be handed in yet, or null. The submit action checks it
+ * first, so the learner's paper can't be handed in empty, as keyboard mash or in a few seconds.
+ */
+export async function rushCheck(studentId: string, examId: string, now = new Date()): Promise<SubmitBlock | null> {
+  const [exam] = await db
+    .select({ status: exams.status, startedAt: exams.startedAt })
+    .from(exams)
+    .where(and(eq(exams.id, examId), eq(exams.studentId, studentId)));
+  if (!exam || exam.status !== "in_progress") return null; // not found or already submitted: submitExam handles it
+  const qs = await db
+    .select({ id: questions.id, type: questions.type })
+    .from(examQuestions)
+    .innerJoin(questions, eq(questions.id, examQuestions.questionId))
+    .where(eq(examQuestions.examId, examId))
+    .orderBy(asc(examQuestions.position));
+  const ans = await db.select().from(answers).where(eq(answers.examId, examId));
+  return submitBlock(qs, Object.fromEntries(ans.map((a) => [a.questionId, { chosenOption: a.chosenOption, text: a.text }])), exam.startedAt, now, rushGuard());
+}
+
+/** Submit (idempotent). Blank answers count as wrong when marked (rules §5). Callers check rushCheck first (§5a). */
 export async function submitExam(studentId: string, examId: string) {
   const [exam] = await db
     .select({ status: exams.status })

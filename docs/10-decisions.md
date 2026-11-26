@@ -58,3 +58,4 @@ Use the default until the owner decides. Keep each one configurable.
 | Goal progress after a restart | Counts only exams after the restart (`goal_since_exam`), so earlier qualifying exams don't count towards the new goal | §3 |
 | Archive | *(Changed 2026-11-18, roadmap 22)* Any track; hidden from the learner, history kept and listed under "Archived tracks" with Restore (back to the status it had) and Delete (for good; points stay). An open exam is discarded on archive | §2 |
 | Activity grid weeks | Sunday at the top of each column (Mon / Wed / Fri labelled); on narrow screens it scrolls and opens on the latest weeks | §9 |
+| Rushed papers *(owner, 2026-11-26)* | Hand in only with at least half the questions really answered (blank and random typing don't count) and not sooner than 10 seconds per answer; no "Submit anyway". `rules.rushGuard` | §5a |

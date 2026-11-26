@@ -222,6 +222,16 @@ export const rules = {
     minFontPx: 16,
   },
 
+  /**
+   * §5a Rushed papers (owner, 2026-11-26): a paper can be handed in only with at least this share of its questions
+   * really answered (blank and keyboard-mash answers don't count), and not before this many seconds per answer
+   * since it was started.
+   */
+  rushGuard: {
+    minAnsweredShare: 0.5,
+    minSecondsPerAnswer: 10,
+  },
+
   /** §6 Marking */
   marks: {
     multipleChoice: 1,

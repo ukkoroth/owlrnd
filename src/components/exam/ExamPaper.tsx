@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveAnswer, submitExam } from "@/app/(paper)/exam/[id]/actions";
 import { blankQuestions, blankSentence, type AnswerValue } from "@/domain/exam";
+import { blockMessage, isRealAnswer, submitBlock, type RushGuard, type SubmitBlock } from "@/domain/rushGuard";
 import type { Paper, PaperQuestion } from "@/server/exams";
 import { COLUMN_GAP, QUESTION_GAP, sectionHeadings, usePaging } from "./usePaging";
 import { enterFullscreen, exitFullscreen, FULLSCREEN_EVENTS, fullscreenSupported, isFullscreen } from "./fullscreen";
@@ -45,7 +46,7 @@ function clearLocal(examId: string) {
  * the real column width; the heights go to `paginate`, and one page at a time is shown in a container that is exactly
  * the window's height. Resizing pages the questions again, keeping answers and the question the student was on.
  */
-export function ExamPaper({ paper }: { paper: Paper }) {
+export function ExamPaper({ paper, rushGuard }: { paper: Paper; rushGuard: RushGuard | null }) {
   const qs = paper.questions;
   const [answers, setAnswers] = useState<Answers>(() =>
     Object.fromEntries(qs.map((q) => [q.id, paper.answers[q.id] ?? { chosenOption: null, text: null }])),
@@ -57,6 +58,9 @@ export function ExamPaper({ paper }: { paper: Paper }) {
   const [focusTarget, setFocusTarget] = useState<number | null>(null);
 
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // Rules §5a: a paper that is empty, keyboard mash or handed in within seconds can't be submitted yet.
+  const [block, setBlock] = useState<SubmitBlock | null>(null);
+  const blockRef = useRef<HTMLDialogElement>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const inflight = useRef(new Set<Promise<unknown>>());
 
@@ -207,11 +211,27 @@ export function ExamPaper({ paper }: { paper: Paper }) {
       await flush();
       clearLocal(paper.id);
       exitFullscreen();
-      await submitExam(paper.id);
+      // The server checks again (rules §5a); it only refuses here if the browser's clock is off.
+      const refused = await submitExam(paper.id);
+      if (refused) showBlock(refused);
     });
+
+  // The first question still to answer (blank or random typing), for the "Answer at least N" dialog.
+  const firstToAnswer = useMemo(() => {
+    const i = qs.findIndex((q) => !isRealAnswer(q, answers[q.id]));
+    return i < 0 ? null : i + 1;
+  }, [qs, answers]);
+
+  const showBlock = (b: SubmitBlock) => {
+    dialogRef.current?.close();
+    setBlock(b);
+    blockRef.current?.showModal();
+  };
 
   const onSubmit = async () => {
     await flush();
+    const refused = submitBlock(qs, answersRef.current, paper.startedAt ? new Date(paper.startedAt) : null, new Date(), rushGuard);
+    if (refused) return showBlock(refused);
     const missing = blankQuestions(qs, answersRef.current);
     if (missing.length) {
       setBlanks(missing);
@@ -376,6 +396,40 @@ export function ExamPaper({ paper }: { paper: Paper }) {
             Submit anyway
           </button>
         </div>
+      </dialog>
+
+      <dialog
+        ref={blockRef}
+        aria-labelledby="block-title"
+        className="m-auto w-[min(480px,calc(100vw-32px))] rounded bg-white p-7 font-sans text-paper-ink backdrop:bg-black/45"
+      >
+        {block && (
+          <>
+            <h2 id="block-title" className="text-[22px] font-semibold">
+              {blockMessage(block).title}
+            </h2>
+            <p className="mt-3 text-paper-muted">{blockMessage(block).body}</p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              {block.reason === "too_few" && firstToAnswer !== null ? (
+                <button
+                  type="button"
+                  className="btn bg-paper-select px-5 text-white hover:opacity-90"
+                  onClick={() => {
+                    blockRef.current?.close();
+                    goToQuestion(firstToAnswer);
+                  }}
+                  autoFocus
+                >
+                  Go to question {firstToAnswer}
+                </button>
+              ) : (
+                <button type="button" className="btn bg-paper-select px-5 text-white hover:opacity-90" onClick={() => blockRef.current?.close()} autoFocus>
+                  Back to my answers
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </dialog>
     </div>
   );

@@ -100,6 +100,12 @@ Adaptivity happens **between** exams. The whole paper is shown at once and does 
 - Answers are kept when moving between pages and if the student leaves and returns before submitting.
 - **Submitting with blank questions** shows a warning naming them (4.1c). Blank answers count as wrong.
 
+## §5a Rushed papers *(owner, 2026-11-26)*
+
+- A paper can be handed in only when **at least half its questions are really answered** **(default)**: a chosen option, or typed text that isn't blank or random typing ("pojwecxnwdc"). If not, the paper says "Answer at least N questions", names any answers that look like random typing, and offers to go to the first question still to answer. There is no "Submit anyway".
+- A paper can't be handed in **sooner than 10 seconds per answer** after it was started **(default)**. If it is, the paper says "Take a little more time" and how many seconds are left.
+- Checked in the paper and again on the server when submitting. Both values are in `rules.rushGuard`.
+
 ## §6 Marking
 
 - Multiple choice is marked immediately.
