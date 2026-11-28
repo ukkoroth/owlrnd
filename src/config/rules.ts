@@ -172,6 +172,23 @@ export const rules = {
     maxExplanation: 300,
   },
 
+  /**
+   * Pictures (docs/plan-wrong-answer-visuals.md; owner 2026-11-28): after questions or cards are written, the AI
+   * draws a short animated picture for those a picture helps. Shown under a wrong answer on the marked paper and on a
+   * card's answer side. Drawn with Opus for now; usage to be reviewed after some exams.
+   */
+  visuals: {
+    enabled: true,
+    /** Questions and cards described to the AI in one call. */
+    batchMax: 10,
+    effort: "medium" as "low" | "medium" | "high",
+    /** Limits every scene must keep to (domain/visualScene.ts). */
+    maxSteps: 5,
+    maxItems: 40,
+    maxCaption: 140,
+    maxLabel: 24,
+  },
+
   /** §3 Goals: "score X / 10 or better in N exams in a row" */
   goal: {
     defaultThreshold: 8, // X

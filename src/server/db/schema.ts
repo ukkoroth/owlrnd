@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import type { StoredPreview, StoredUpdate } from "@/domain/tracks";
+import type { Scene } from "@/domain/visualScene";
 
 // Tables from docs/06-data.md, added milestone by milestone.
 
@@ -168,7 +169,7 @@ export const signInFailures = pgTable(
 
 // ── AI cost controls ────────────────────────────────────────────────────────
 
-export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers", "write_flashcards", "write_pool"]);
+export const aiPurpose = pgEnum("ai_purpose", ["track_chat", "track_update", "write_exam", "mark_answers", "write_flashcards", "write_pool", "draw_visuals"]);
 
 /**
  * One row per Claude call, with its estimated cost. The family link is cleared if the account is deleted, so the
@@ -387,9 +388,13 @@ export const questions = pgTable(
     explanation: text("explanation").notNull(),
     /** A new wording of a missed question (question pool, roadmap 23): the two count as one idea for repeats. */
     variantOf: uuid("variant_of").references((): AnyPgColumn => questions.id, { onDelete: "set null" }),
+    /** A picture shown under a wrong answer (domain/visualScene.ts); null when none helps or not drawn yet. */
+    visual: jsonb("visual").$type<Scene>(),
+    /** When the picture job looked at this question (null: still to do). */
+    visualDrawnAt: timestamp("visual_drawn_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("questions_track_idx").on(t.trackId, t.topicId)],
+  (t) => [index("questions_track_idx").on(t.trackId, t.topicId), index("questions_visual_todo_idx").on(t.trackId).where(sql`visual_drawn_at is null`)],
 );
 
 export const examStatus = pgEnum("exam_status", ["ready", "in_progress", "submitted", "marking", "marked"]);
@@ -622,6 +627,10 @@ export const flashcards = pgTable(
     /** For a card made from a missed exam question: that question (so it becomes a card only once). */
     sourceQuestionId: uuid("source_question_id").references(() => questions.id, { onDelete: "set null" }),
     box: integer("box").notNull().default(1),
+    /** A picture shown on the answer side (domain/visualScene.ts); null when none helps or not drawn yet. */
+    visual: jsonb("visual").$type<Scene>(),
+    /** When the picture job looked at this card (null: still to do). */
+    visualDrawnAt: timestamp("visual_drawn_at", { withTimezone: true }),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

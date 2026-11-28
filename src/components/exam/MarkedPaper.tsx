@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { MarkedQuestion } from "@/server/results";
+import { SceneView } from "@/components/visuals/SceneView";
 import { COLUMN_GAP, QUESTION_GAP, sectionHeadings, usePaging } from "./usePaging";
 
 type Props = {
@@ -15,7 +16,8 @@ type Props = {
 
 /**
  * 4.1f. Every question with a tick or cross, the correct option filled, the student's wrong option ringed red,
- * and a one-line reason for each miss. Paged like the exam, so it never scrolls either (rules §5).
+ * and a one-line reason for each miss. A miss with a picture shows it under the reason, playing when its page comes
+ * up (docs/plan-wrong-answer-visuals.md). Paged like the exam, picture included, so it never scrolls either (rules §5).
  */
 export function MarkedPaper({ paper, backHref, backLabel = "Back to result", doneHref = "/today", doneLabel = "Back to dashboard" }: Props) {
   const qs = paper.questions;
@@ -140,6 +142,7 @@ function Marked({ index, q, heading, measure }: { index: number; q: MarkedQuesti
             {q.explanation}
           </p>
         )}
+        {!q.correct && q.visual && <SceneView scene={q.visual} still={measure} className="mt-3" />}
       </div>
     </div>
   );

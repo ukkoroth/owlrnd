@@ -1,4 +1,5 @@
 import "server-only";
+import type { Scene } from "@/domain/visualScene";
 import { coverageMet } from "@/domain/goals";
 import { and, asc, count, desc, eq, inArray, isNotNull, sum } from "drizzle-orm";
 import { nextExamFocus, nextExamPlan } from "@/domain/examMix";
@@ -97,6 +98,8 @@ export type MarkedQuestion = {
   text: string | null;
   correct: boolean;
   reason: string | null;
+  /** A picture shown under a wrong answer (docs/plan-wrong-answer-visuals.md), if one helps. */
+  visual: Scene | null;
 };
 
 /** 4.1f. Answers are shown only once the exam is marked (AI §6). */
@@ -134,6 +137,7 @@ export async function getMarkedPaper(studentId: string, examId: string) {
         text: a?.text ?? null,
         correct: m.verdict === "correct",
         reason: m.reason,
+        visual: q.visual ?? null,
       }),
     ),
   };

@@ -91,3 +91,14 @@ export const flashcardsSchema = z.object({
   ),
 });
 export type FlashcardsOutput = z.infer<typeof flashcardsSchema>;
+
+/** Pictures for questions and cards (docs/07-ai.md §8). Each scene is JSON text, checked by domain/visualScene.ts. */
+export const drawVisualsSchema = z.object({
+  pictures: z.array(
+    z.object({
+      key: z.string().describe("The item's key, e.g. Q1 or C1."),
+      scene: z.string().nullable().describe("The scene as JSON text, or null when a picture would not make the idea clearer."),
+    }),
+  ),
+});
+export type DrawVisualsOutput = z.infer<typeof drawVisualsSchema>;

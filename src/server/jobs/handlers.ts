@@ -4,6 +4,7 @@ import { consentOverdueJob, consentReminderJob } from "../consent";
 import { markExamJob } from "../marking";
 import { writeFlashcardsJob } from "../flashcards";
 import { writePoolJob } from "../questionPool";
+import { drawVisualsJob } from "../visuals";
 import { deleteFilesJob } from "./files";
 import { registerHandler } from "./worker";
 
@@ -14,6 +15,7 @@ export function registerAllHandlers() {
   registerHandler("delete_files", deleteFilesJob);
   registerHandler("write_flashcards", (payload) => writeFlashcardsJob(payload));
   registerHandler("write_pool", (payload) => writePoolJob(payload));
+  registerHandler("draw_visuals", drawVisualsJob);
   registerHandler("consent_reminder", (payload) => consentReminderJob(payload));
   registerHandler("consent_overdue", (payload) => consentOverdueJob(payload));
 }

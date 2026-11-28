@@ -1,4 +1,5 @@
 import "server-only";
+import type { Scene } from "@/domain/visualScene";
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { rules } from "@/config/rules";
 import { holderRef } from "@/domain/accounts";
@@ -15,6 +16,7 @@ import { trackMaterial } from "./examWriter";
 import { enqueue } from "./jobs/queue";
 import { authorizeTrack, loadLearner } from "./learners";
 import { topicStrengths } from "./progress";
+import { queueVisuals, unskipVisuals } from "./visuals";
 
 // 0.3 Flashcards, F1 (docs/plan-0.3-flashcards.md): writing a track's deck. A starter deck when a track is created
 // or gets new topics; a card for each of up to 3 missed exam questions on topics that need work; a top-up when the
@@ -125,6 +127,7 @@ export async function writeDeck(trackId: string, reason: DeckReason, examId?: st
     )
     .onConflictDoNothing()
     .returning({ id: flashcards.id });
+  if (saved.length) await queueVisuals(trackId);
   return { written: saved.length };
 }
 
@@ -229,6 +232,8 @@ export type SessionCard = {
   answer: string;
   explanation: string;
   fromMissed: boolean;
+  /** A picture for the answer side (docs/plan-wrong-answer-visuals.md), if one helps. */
+  visual: Scene | null;
 };
 
 export type StartedSession = { sessionId: string; trackId: string; trackName: string; colorIndex: number; cards: SessionCard[] } | null;
@@ -274,6 +279,8 @@ export async function startSession(actor: Actor, trackId: string, opts: { again?
       .slice(0, F.sessionSize);
   }
   if (!picked.length) return { sessionId: "", trackId, trackName: track.name ?? "", colorIndex: track.colorIndex, cards: [] };
+  // Old cards written before pictures existed get theirs drawn now (they show from the next session).
+  if (!track.sampleKey && (await unskipVisuals("flashcards", picked.map((c) => c.id)))) await queueVisuals(trackId);
 
   const names = new Map((await db.select({ id: topics.id, name: topics.name }).from(topics).where(eq(topics.trackId, trackId))).map((t) => [t.id, t.name]));
   const [session] = await db.insert(flashcardSessions).values({ studentId: student.id, trackId, startedAt: now }).returning({ id: flashcardSessions.id });
@@ -282,7 +289,7 @@ export async function startSession(actor: Actor, trackId: string, opts: { again?
     trackId,
     trackName: track.name ?? "",
     colorIndex: track.colorIndex,
-    cards: picked.map((c) => ({ id: c.id, topicName: names.get(c.topicId) ?? "", front: c.front, answer: c.answer, explanation: c.explanation, fromMissed: c.source === "missed_question" })),
+    cards: picked.map((c) => ({ id: c.id, topicName: names.get(c.topicId) ?? "", front: c.front, answer: c.answer, explanation: c.explanation, fromMissed: c.source === "missed_question", visual: c.visual ?? null })),
   };
 }
 

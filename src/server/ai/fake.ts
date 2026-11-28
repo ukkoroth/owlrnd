@@ -9,6 +9,8 @@ import type { WrittenCard } from "@/domain/flashcards";
 import type { AnswerToMark, MarkedAnswer } from "./markAnswers";
 import type { TrackUpdateInput } from "./trackUpdate";
 import type { TrackUpdateOutput } from "./schemas";
+import type { DrawVisualsInput, DrawnVisuals } from "./drawVisuals";
+import { sampleVisuals } from "@/content/visuals/samples";
 
 /**
  * Deterministic stand-in for Claude, used when OWLRND_FAKE_AI=1 (automated tests). It reads simple cues from the
@@ -145,4 +147,9 @@ export async function fakeWriteFlashcards(input: WriteFlashcardsInput): Promise<
     cards.push({ topicKey: m.topicKey, front: `In other words: ${m.question}`.slice(0, 200), answer: m.expected.slice(0, 120) || "See the explanation", explanation: (m.explanation || "From your exam.").slice(0, 300), missedKey: m.key });
   }
   return cards;
+}
+
+/** A picture for items mentioning an angle or a mirror (the sample scene), none for the rest. */
+export async function fakeDrawVisuals(input: DrawVisualsInput): Promise<DrawnVisuals> {
+  return new Map(input.items.map((i) => [i.key, /angle|mirror|°/i.test(`${i.prompt} ${i.answer}`) ? sampleVisuals[0]!.scene : null]));
 }

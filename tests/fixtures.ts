@@ -143,7 +143,7 @@ export async function closeDb() {
   await p?.end();
 }
 
-export type FixtureQuestion = { type: "multiple_choice" | "short"; prompt: string; options?: string[]; correct?: number; expected?: string; explanation?: string };
+export type FixtureQuestion = { type: "multiple_choice" | "short"; prompt: string; options?: string[]; correct?: number; expected?: string; explanation?: string; /** A picture (domain/visualScene.ts), already drawn. */ visual?: unknown };
 
 /** An active track with one ready exam, written straight to the database (no AI). */
 export async function createTrackWithExam(
@@ -195,9 +195,9 @@ export async function createTrackWithExam(
   }
   for (const [i, q] of qs.entries()) {
     const { rows } = await pool.query(
-      `insert into questions (track_id, topic_id, type, prompt, options, correct_option, expected_answer, difficulty, explanation)
-       values ($1, $2, $3, $4, $5, $6, $7, 2, $8) returning id`,
-      [trackId, tp[i % tp.length]!.id, q.type, q.prompt, JSON.stringify(q.options ?? []), q.correct ?? null, q.expected ?? null, q.explanation ?? `SECRET-EXPLANATION-${i + 1}`],
+      `insert into questions (track_id, topic_id, type, prompt, options, correct_option, expected_answer, difficulty, explanation, visual, visual_drawn_at)
+       values ($1, $2, $3, $4, $5, $6, $7, 2, $8, $9, now()) returning id`,
+      [trackId, tp[i % tp.length]!.id, q.type, q.prompt, JSON.stringify(q.options ?? []), q.correct ?? null, q.expected ?? null, q.explanation ?? `SECRET-EXPLANATION-${i + 1}`, q.visual ? JSON.stringify(q.visual) : null],
     );
     await pool.query(`insert into exam_questions (exam_id, question_id, position) values ($1, $2, $3)`, [examId, rows[0].id, i + 1]);
   }

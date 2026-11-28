@@ -14,6 +14,7 @@ import { trackMaterial } from "./examWriter";
 import { enqueue } from "./jobs/queue";
 import { loadLearner } from "./learners";
 import { topicStrengths } from "./progress";
+import { queueVisuals } from "./visuals";
 
 /**
  * The question pool (roadmap 23, owner 2026-11-18; domain/questionPool.ts). The pool is the track's own question
@@ -139,6 +140,7 @@ export async function writePool(trackId: string, forExam?: PlanSlot[]): Promise<
     variantOf: originalOf(i),
   }));
   await db.insert(questions).values(rows);
+  await queueVisuals(trackId);
   return { written: rows.length };
 }
 

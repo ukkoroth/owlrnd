@@ -75,3 +75,13 @@ export async function poolJobPending(trackId: string, tx: Pick<typeof db, "selec
     .limit(1);
   return rows.length > 0;
 }
+
+/** True while a job of `type` for this track is queued or running (one at a time per track). */
+export async function trackJobPending(type: JobType, trackId: string, tx: Pick<typeof db, "select"> = db): Promise<boolean> {
+  const rows = await tx
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.type, type), inArray(jobs.status, ["queued", "running"]), sql`${jobs.payload}->>'trackId' = ${trackId}`))
+    .limit(1);
+  return rows.length > 0;
+}

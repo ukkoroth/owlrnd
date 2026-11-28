@@ -5,6 +5,7 @@ import { ExamLink } from "@/components/exam/ExamLink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { answerCard, finishPractice } from "@/app/_actions/flashcards";
 import { TrackTag } from "@/components/TrackTag";
+import { SceneView } from "@/components/visuals/SceneView";
 import type { SessionSummary, StartedSession } from "@/server/flashcards";
 
 type Session = NonNullable<StartedSession>;
@@ -106,10 +107,11 @@ export function FlashcardSession({ session, back }: { session: Session; back: st
                 {card.fromMissed && !flipped && <span className="rounded bg-pale px-1.5 py-0.5 text-[11px] text-sidebar">From a missed exam question</span>}
               </p>
               {flipped ? (
-                <div className="my-auto flex flex-col gap-3 py-4 text-center">
+                <div className="my-auto flex min-h-0 flex-col gap-3 overflow-y-auto py-4 text-center">
                   <p className="font-paper text-lg text-ink-muted md:text-[19px]">{card.front}</p>
                   <p className="font-paper text-2xl font-semibold md:text-[32px]">{card.answer}</p>
                   <p className="mx-auto max-w-[520px] text-[15px] leading-relaxed md:text-base">{card.explanation}</p>
+                  {card.visual && <SceneView key={card.id} scene={card.visual} compact className="mt-1 text-left" />}
                 </div>
               ) : (
                 <p className="my-auto py-6 text-center font-paper text-2xl leading-snug md:text-[30px]">{card.front}</p>

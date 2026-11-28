@@ -14,6 +14,7 @@ import { db } from "./db";
 import { attachments, examQuestions, exams, flashcards, marks, questions, topics, trackMessages, tracks } from "./db/schema";
 import type { JobContext } from "./jobs/worker";
 import { topicStrengths } from "./progress";
+import { queueVisuals, unskipVisuals } from "./visuals";
 import { pickFromBank } from "@/domain/sampleBank";
 import { awaitingRewording, canFill, needsTopUp, poolCandidates, shortfallPlan } from "@/domain/questionPool";
 import { loadPool, writePool } from "./questionPool";
@@ -226,6 +227,11 @@ export async function writeExamJob(payload: unknown, ctx: JobContext) {
         .returning({ id: questions.id });
       const [exam] = await tx.insert(exams).values({ studentId: track.studentId, trackId, number: n + 1, status: "ready" }).returning();
       await tx.insert(examQuestions).values(inserted.map((q, i) => ({ examId: exam!.id, questionId: q.id, position: i + 1 })));
+      // Pictures for the paper's questions (shown under wrong answers once marked); old pool questions are drawn now.
+      if (!sample) {
+        await unskipVisuals("questions", inserted.map((q) => q.id), tx);
+        await queueVisuals(trackId, tx);
+      }
       await tx.update(tracks).set({ nextExam: "ready", nextExamHold: null }).where(eq(tracks.id, trackId));
       // One top-up at a time per track: several at once each saw the same misses and reworded them again (2026-11-24).
       if (topUp && !(await poolJobPending(trackId, tx))) await enqueue("write_pool", { trackId }, { tx });
