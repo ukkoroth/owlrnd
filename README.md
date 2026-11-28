@@ -36,19 +36,19 @@ Short, paper-style practice exams that adapt between exams, with flashcards in b
   </tr>
   <tr>
     <td><img src="docs/images/screens/fc-3_flashcard.png" alt="A flashcard on Ohm's law with its answer, a one-line explanation, and Not yet and Got it buttons"></td>
-    <td></td>
+    <td><img src="docs/images/screens/4-1f_marked-paper-picture.png" alt="A marked paper where two wrong answers on mirrors each show a diagram with numbered steps: the angle measured from the normal, and parallel sunlight meeting at the focus"></td>
   </tr>
   <tr>
     <td><b>7. Flashcards between exams (0.3).</b> Short cards from the track's material and missed questions. Say Got it or Not yet; cards come back on a spaced schedule. No marks, no effect on the goal.</td>
-    <td></td>
+    <td><b>8. A picture for the miss (0.3.15).</b> Where a diagram helps, a wrong answer shows a short animated picture in a few captioned steps: the common slip in red, the right idea in navy. Flashcards show them on the answer side. Names and definitions get none.</td>
   </tr>
 </table>
 
-Most are the design screens (sample family: Atticus Finch, Scout and Jem); 2 and 7 are taken from the app. All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
+Most are the design screens (sample family: Atticus Finch, Scout and Jem); 2, 7 and 8 are taken from the app. All 41 screens are in [`screens/`](screens/), listed with what each one does in [`docs/04-screens.md`](docs/04-screens.md).
 
 ## What's coming
 
-**Released so far:** 0.1, the core loop (a parent sets up tracks, the child practises short adaptive exams, both see progress); 0.2, two kinds of account (learners preparing on their own, with a parent's consent from 13 to 17, and parent-managed children), a demo AI allowance per account and goals that need every topic strong; 0.3 "Flashcards" ([`docs/plan-0.3-flashcards.md`](docs/plan-0.3-flashcards.md)).
+**Released so far:** 0.1, the core loop (a parent sets up tracks, the child practises short adaptive exams, both see progress); 0.2, two kinds of account (learners preparing on their own, with a parent's consent from 13 to 17, and parent-managed children), a demo AI allowance per account and goals that need every topic strong; 0.3 "Flashcards" ([`docs/plan-0.3-flashcards.md`](docs/plan-0.3-flashcards.md)); 0.3.15, pictures for wrong answers and flashcards ([`docs/plan-wrong-answer-visuals.md`](docs/plan-wrong-answer-visuals.md)).
 
 Here's what's planned next, roughly in order. The full roadmap is in [`docs/09-roadmap.md`](docs/09-roadmap.md).
 
@@ -116,6 +116,13 @@ tests/e2e/            Playwright
 - **Practising:** `/practise/[trackId]` (focus mode, no sidebar; Space, then 1 / 2) and the deck page `/tracks/[trackId]/flashcards`. Practise buttons with due counts are on the dashboard and on Your tracks.
 - **Rules:** Leitner boxes (due again after 1, 2, 4, 8 or 16 days), 5 points per finished session of 8+ cards (at most 2 a day per track), no effect on scores, goals or streaks. All in `rules.flashcards` (`src/config/rules.ts`) and `src/domain/flashcards.ts`; rules §8 and §9a.
 
+## Pictures (0.3.15)
+
+- **Drawing:** after a paper, a pool batch or cards are written, the background job `draw_visuals` (`src/server/visuals.ts`, AI in `src/server/ai/drawVisuals.ts`) sends up to 10 of them to Claude, which describes a picture for each one a picture helps, or none. Writing never waits for it. A card made from a missed question takes that question's picture.
+- **Scene format and checks:** `src/domain/visualScene.ts`: named points, rays by angle and length, angle arcs in degrees, labels, up to 5 captioned steps and simple moves, turns and fades. Every scene is checked (frame, known points, limits, fixed colours) and asked for once more if it fails, then dropped. Drawn by `src/components/visuals/` (plain SVG, no library).
+- **Where:** under a wrong answer on the marked paper, playing when its page comes up (the paging includes it, so the page never scrolls), and on a card's answer side. Reduced motion shows the finished picture.
+- **Trying it:** `/dev/visuals` shows the nine sample scenes (`src/content/visuals/samples.ts`); `npm run ai:visuals -- items.json` draws pictures for your own questions with the live API and prints the cost. Settings in `rules.visuals`; AI behaviour in `docs/07-ai.md` §8.
+
 ## Accounts (M1)
 
 - One sign-in (`/sign-in`) for parents and students; every sign-in is confirmed with a 6-digit code emailed to the parent. In dev, read it in Mailpit.
@@ -130,7 +137,7 @@ In development, `/dev/shell?role=student` and `/dev/shell?role=parent` preview t
 
 ## Running costs: plan an AI budget
 
-owlrnd uses the Claude API to read textbook pages, agree tracks with the parent, write each exam, mark typed answers and write flashcards. You pay Anthropic for that by usage, so set a monthly spend limit on your API key in the [Claude Console](https://console.anthropic.com) before you invite families.
+owlrnd uses the Claude API to read textbook pages, agree tracks with the parent, write each exam, mark typed answers, write flashcards and draw pictures for them. You pay Anthropic for that by usage, so set a monthly spend limit on your API key in the [Claude Console](https://console.anthropic.com) before you invite families.
 
 The figures below are **estimates** from the app's prompt sizes and recorded outputs, for **Claude Opus 5.5** (model ID `claude-opus-5-5`, the app's default `ANTHROPIC_MODEL`) at its list prices of November 2026 ($4 per million input tokens, $20 per million output tokens), checked against one real test track in November 2026 (see *Measured* below). Check current prices on Anthropic's pricing page.
 
@@ -142,7 +149,8 @@ The figures below are **estimates** from the app's prompt sizes and recorded out
 | Marking typed answers (effort `medium`) | In: ~1,500. Out: ~1,000–1,500 | $0–0.03 |
 | Flashcards from missed questions (up to 3 cards, after marking) *(0.3)* | In: ~5,000. Out: ~600–1,000 | $0.03 |
 | The deck's card fronts in the paper's prompt, so exams rarely repeat them *(0.3)* | In: up to ~3,000 more | $0–0.01 |
-| **Per exam** | | **~$0.13–0.27** |
+| Pictures for the paper's new questions, drawn in the background *(0.3.15)* | In: ~4,300. Out: ~12,500 per 10 questions | ~$0.27 (measured) |
+| **Per exam** | | **~$0.40–0.55** (~$0.13–0.27 without pictures) |
 
 Multiple-choice answers, blank answers and answers that exactly match the expected answer are marked by owlrnd itself, with no AI call. A paper that fails validation is rewritten once, which adds about 5–10% overall.
 
@@ -155,6 +163,10 @@ Practising flashcards makes **no AI calls**; only writing cards does.
 | Starter deck when a track is created: about 6 cards per topic, up to 60 | In: ~4,700. Out: ~9,300 for 60 cards | ~$0.20 (measured, 60 cards) |
 | Top-up of 10 cards, when a learner practises with none due | In: ~5,100. Out: ~1,100–1,900 | $0.04–0.06 (measured) |
 | **Most a track can ever cost in cards** (a deck stops at 200) | | **~$0.70–1.15** |
+
+### Pictures *(0.3.15)*
+
+Measured on 28 November 2026 with 10 real optics questions on `claude-opus-5-5` at effort `medium`: 7 got a picture, 3 correctly got none, in one call of 4,290 input and 12,471 output tokens, **$0.27** and 106 s. Effort `low` cost $0.17 but the pictures were visibly worse, so the app uses `medium` (`rules.visuals.effort`). Pictures for a 60-card starter deck add about $1.60. Subjects with fewer diagrams (vocabulary, history) get fewer pictures and cost less. Questions and cards written before 0.3.15 are drawn only when an exam or practice session picks them. With pictures, the $5 demo allowance covers roughly half as many exams as the figures below; set `rules.visuals.enabled` to `false` to turn pictures off.
 
 ### Measured (one test track, 16 November 2026, `claude-opus-5-5`)
 

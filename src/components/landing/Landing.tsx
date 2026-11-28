@@ -9,6 +9,7 @@ import dashImg from "./img/dash.png";
 import flashcardsImg from "./img/flashcards.png";
 import paperImg from "./img/paper.png";
 import parentImg from "./img/parent.png";
+import picturesImg from "./img/pictures.png";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 /**
@@ -25,6 +26,7 @@ const SHOTS = {
   chat: { src: chatImg, alt: "A learner creating a JEE Physics track by chatting with the owlrnd AI" },
   paper: { src: paperImg, alt: "An owlrnd exam paper with numbered multiple-choice questions" },
   parent: { src: parentImg, alt: "The parent's view of two children's practice activity" },
+  pictures: { src: picturesImg, alt: "An owlrnd marked paper where two wrong answers on mirrors each show a diagram with numbered steps: the angle measured from the normal, and sunlight meeting at the focus" },
 };
 
 const STEPS = [
@@ -34,9 +36,16 @@ const STEPS = [
 ];
 
 const EXAM_POINTS = [
-  ["A reason for every miss", "Every marked test shows the right answer and a short worked explanation."],
+  ["A reason for every miss", "Every marked test shows the right answer and a short worked explanation, with a picture where one helps."],
   ["Strengths and weak spots", "Every result lists the topics you have mastered and the ones costing you marks."],
   ["The next test adapts", "Weak topics come back until they are strong, and strong ones return now and then so they stay strong."],
+];
+
+/** 0.3.15 Pictures for wrong answers (docs/plan-wrong-answer-visuals.md). */
+const PICTURE_POINTS = [
+  ["Only where it helps", "Rays, angles, motion, shapes and amounts get a picture. Names and definitions don't: a picture won't help you remember a word."],
+  ["Built from the question", "Every picture uses the question's own numbers and labels, and stays within your syllabus."],
+  ["On your flashcards too", "Cards show the same pictures on the answer side, so the idea sticks between tests."],
 ];
 
 /** No package is live in 0.2 (owner, 2026-11-15): every card shows "Coming soon" (hand-off, open items). */
@@ -89,6 +98,7 @@ export function Landing() {
         <Hero />
         <HowItWorks />
         <TheExam />
+        <Pictures />
         <Flashcards />
         <Goals />
         <Packages />
@@ -242,9 +252,24 @@ function TheExam() {
   );
 }
 
+function Pictures() {
+  return (
+    <section id="pictures" className="scroll-mt-4 px-6 py-20">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-9">
+        <SectionIntro eyebrow="Pictures" title="See why, not just what.">
+          When you get a question wrong, the marked test can show a short animated diagram under the explanation. It
+          plays one step at a time and shows the common slip next to the right idea.
+        </SectionIntro>
+        <Shot shot={SHOTS.pictures} border="border-paper-rule" />
+        <Points items={PICTURE_POINTS} />
+      </div>
+    </section>
+  );
+}
+
 function Flashcards() {
   return (
-    <section id="flashcards" className="scroll-mt-4 px-6 py-20">
+    <section id="flashcards" className="scroll-mt-4 border-y border-line bg-white px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-9">
         <SectionIntro eyebrow="Flashcards" title="Learn it between tests.">
           A few minutes at a time: read the question, think, show the answer, and say Got it or Not yet. No marks and no
@@ -260,7 +285,7 @@ function Flashcards() {
 function Goals() {
   const max = Math.max(...GOAL_SCORES);
   return (
-    <section className="border-y border-line bg-white px-6 py-20">
+    <section className="px-6 py-20">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-16 gap-y-10">
         <div className="flex min-w-0 flex-[1_1_400px] flex-col gap-4">
           <Eyebrow>Goals</Eyebrow>
